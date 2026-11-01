@@ -23,6 +23,44 @@
       "fee": 3000,
       "hooks": "0x77e52E93Aa0892b29a4527Af4f3a79F01cfa9044",
       "tickSpacing": 60
+    },
+    "cbBTC": {
+      "currency0": "0x0000000000000000000000000000000000000000",
+      "currency1": "0xCEC185eB182c47d1bA1EFc84e6959e18cd620Be4",
+      "fee": 2500,
+      "hooks": "0x0000000000000000000000000000000000000000",
+      "tickSpacing": 25,
+      "fromBlock": 48557561
+    },
+    "LINK": {
+      "currency0": "0x0000000000000000000000000000000000000000",
+      "currency1": "0x492641F648a4986844848E0beFE66D14817bCE34",
+      "fee": 30000,
+      "hooks": "0x0000000000000000000000000000000000000000",
+      "tickSpacing": 300,
+      "fromBlock": 75161612
+    },
+    "VIRTUAL": {
+      "currency0": "0x0000000000000000000000000000000000000000",
+      "currency1": "0xc6911796042b15d7Fa4F6CDe69e245DdCd3d9c31",
+      "fee": 8388608,
+      "hooks": "0x594e8e6281eDf2d363a0293a50004Cf868E7a080",
+      "tickSpacing": 60,
+      "fromBlock": 75963906
+    },
+    "PENGU": {
+      "currency0": "0x0000000000000000000000000000000000000000",
+      "currency1": "0x74BE72AFFAFbC8de30F0C11247814036314D625f",
+      "fee": 10000,
+      "hooks": "0x0000000000000000000000000000000000000000",
+      "tickSpacing": 100,
+      "fromBlock": 47519915
     }
+  },
+  "tokens": {
+    "cbBTC": "0xCEC185eB182c47d1bA1EFc84e6959e18cd620Be4",
+    "LINK": "0x492641F648a4986844848E0beFE66D14817bCE34",
+    "VIRTUAL": "0xc6911796042b15d7Fa4F6CDe69e245DdCd3d9c31",
+    "PENGU": "0x74BE72AFFAFbC8de30F0C11247814036314D625f"
   }
 }

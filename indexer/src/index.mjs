@@ -56,18 +56,25 @@ const abiFor = Object.fromEntries(
     .filter(([addr]) => addr),
 )
 for (const k of ['calls', 'puts', 'nft', 'registry']) if (!A[k]) throw new Error(`deployments/${CHAIN_ID}.json is missing ${k}`)
-// Uniswap v4 pools we price from: poolId -> { symbol, token, tokenIs0 }
-const poolId = (k) => keccak256(encodeAbiParameters([{ type: 'address' }, { type: 'address' }, { type: 'uint24' }, { type: 'int24' }, { type: 'address' }], [k.currency0, k.currency1, Number(k.fee), Number(k.tickSpacing), k.hooks]))
-const POOLS = Object.fromEntries(
-  Object.entries(dep.pools ?? {}).map(([symbol, key]) => {
-    const token = symbol === 'KYTE' ? dep.kyteToken : dep.tokens?.[symbol]
-    return [poolId(key).toLowerCase(), { symbol, token: getAddress(token), tokenIs0: key.currency0.toLowerCase() === token.toLowerCase() }]
-  }),
-)
 const watched = Object.keys(abiFor)
 const SWAP_TOPIC = toEventSelector('Swap(bytes32,address,int128,int128,uint160,uint128,int24,uint24)')
+const SWAP_EVENT = ABI.poolManager.find((x) => x.type === 'event' && x.name === 'Swap')
 
 const client = createPublicClient({ transport: httpTransport(RPC_URL, { retryCount: 6, retryDelay: 1500 }) })
+
+// Uniswap v4 pools we price from (paired with WETH or native ETH): poolId -> { symbol, token, tokenIs0, fromBlock }.
+// Prices are stored under the token's on-chain symbol, the same one the AssetRegistry / UI use (the KYTE pool's
+// token may be called something else on chain, e.g. "TI"). `fromBlock` (optional) is where its swap history starts.
+const poolId = (k) => keccak256(encodeAbiParameters([{ type: 'address' }, { type: 'address' }, { type: 'uint24' }, { type: 'int24' }, { type: 'address' }], [k.currency0, k.currency1, Number(k.fee), Number(k.tickSpacing), k.hooks]))
+const POOLS = Object.fromEntries(
+  await Promise.all(
+    Object.entries(dep.pools ?? {}).map(async ([name, key]) => {
+      const token = getAddress(name === 'KYTE' ? dep.kyteToken : dep.tokens?.[name])
+      const symbol = name === 'KYTE' ? await client.readContract({ address: token, abi: ABI.erc20, functionName: 'symbol' }).catch(() => name) : name
+      return [poolId(key).toLowerCase(), { symbol, token, tokenIs0: key.currency0.toLowerCase() === token.toLowerCase(), fromBlock: key.fromBlock }]
+    }),
+  ),
+)
 
 // ------------------------------------------------------------------ db
 fs.mkdirSync(path.join(ROOT, 'indexer/data'), { recursive: true })
@@ -166,6 +173,59 @@ async function refreshOffer(id, market, blockNumber, created) {
   )
 }
 
+// Uniswap v4 PoolManager Swap: price of currency0 in currency1 = (sqrtPriceX96 / 2^96)^2, in raw units
+async function recordSwap(log, args) {
+  const pool = POOLS[String(args.id).toLowerCase()]
+  if (!pool) return
+  const dec = await decimalsOf(pool.token)
+  const p = (Number(args.sqrtPriceX96) / 2 ** 96) ** 2
+  const ethPerToken = (pool.tokenIs0 ? p : 1 / p) * 10 ** dec / 1e18
+  const wethAmt = pool.tokenIs0 ? args.amount1 : args.amount0
+  const volume = Math.abs(Number(wethAmt)) / 1e18
+  q.upsertPrice.run(`${log.transactionHash}:${log.logIndex}`, pool.symbol, Number(log.blockNumber), await at(log.blockNumber), ethPerToken, volume, log.transactionHash)
+}
+
+// One-time swap history for pools created before START_BLOCK (or added to the config after the indexer had
+// already passed them). Swap logs of our pools only, in big ranges, so tens of millions of blocks take a few
+// requests. Done once per pool (meta `backfill:<poolId>`); rows are keyed by tx:logIndex, so overlaps are harmless.
+// Only the last BACKFILL_DAYS: the chart shows at most 500 candles (~21 days at 1h), and every swap costs a
+// getBlock for its timestamp, so years of history would be hours of rate-limited RPC calls for nothing.
+const BACKFILL_SPAN = BigInt(process.env.BACKFILL_SPAN || 9_000_000)
+const BACKFILL_DAYS = Number(process.env.BACKFILL_DAYS || 30)
+async function backfillSwaps() {
+  if (!A.poolManager) return
+  const headBlock = await client.getBlock()
+  const head = headBlock.number
+  const sample = head > 1_000_000n ? head - 1_000_000n : 0n
+  const secsPerBlock = (Number(headBlock.timestamp) - (await at(sample))) / Number(head - sample || 1n)
+  const window = BigInt(Math.ceil((BACKFILL_DAYS * 86_400) / Math.max(secsPerBlock, 0.01)))
+  const earliest = head > window ? head - window : 0n
+  for (const [id, pool] of Object.entries(POOLS)) {
+    if (pool.fromBlock == null || q.getMeta.get(`backfill:${id}`)) continue
+    let span = BACKFILL_SPAN
+    let n = 0
+    const start = BigInt(pool.fromBlock) > earliest ? BigInt(pool.fromBlock) : earliest
+    for (let from = start; from <= head; ) {
+      const to = from + span - 1n > head ? head : from + span - 1n
+      let logs
+      try {
+        logs = await client.getLogs({ address: A.poolManager, event: SWAP_EVENT, args: { id }, fromBlock: from, toBlock: to })
+      } catch (e) {
+        if (e.status === 429 || /rate limit/i.test(`${e.details ?? ''} ${e.message ?? ''}`)) { await new Promise((r) => setTimeout(r, 61_000)); continue }
+        if (span <= 10_000n) throw e
+        span /= 4n // RPC refused the range (too many results / too wide): retry smaller
+        continue
+      }
+      for (const l of logs) await recordSwap(l, l.args)
+      n += logs.length
+      console.log(`[indexer] backfill ${pool.symbol}: blocks ${from}-${to}, ${logs.length} swaps`)
+      from = to + 1n
+    }
+    q.setMeta.run(`backfill:${id}`, String(head))
+    console.log(`[indexer] backfilled ${n} ${pool.symbol} swaps from block ${start}`)
+  }
+}
+
 // ------------------------------------------------------------------ sync
 let latestSeen = 0n
 let chainNow = Math.floor(Date.now() / 1000) // latest block timestamp; the contracts use block.timestamp
@@ -233,18 +293,9 @@ async function syncRange(from, to) {
       case 'PutsEnabled':
         await refreshAsset(args.token)
         break
-      case 'Swap': {
-        // Uniswap v4 PoolManager: price of currency0 in currency1 = (sqrtPriceX96 / 2^96)^2, in raw units
-        const pool = POOLS[String(args.id).toLowerCase()]
-        if (!pool) break
-        const dec = await decimalsOf(pool.token)
-        const p = (Number(args.sqrtPriceX96) / 2 ** 96) ** 2
-        const ethPerToken = (pool.tokenIs0 ? p : 1 / p) * 10 ** dec / 1e18
-        const wethAmt = pool.tokenIs0 ? args.amount1 : args.amount0
-        const volume = Math.abs(Number(wethAmt)) / 1e18
-        q.upsertPrice.run(key, pool.symbol, Number(log.blockNumber), await at(log.blockNumber), ethPerToken, volume, log.transactionHash)
+      case 'Swap':
+        await recordSwap(log, args)
         break
-      }
     }
   }
   for (const [id, t] of touched) {
@@ -268,6 +319,14 @@ async function syncOnce() {
     await syncRange(from, to)
     q.setMeta.run('lastBlock', String(to))
     from = to + 1n
+  }
+}
+
+// Runs beside the live sync (offers keep updating while history loads); retried until every pool is done.
+async function backfillLoop() {
+  try { await backfillSwaps() } catch (e) {
+    console.error('[indexer] backfill error (retrying in 60s):', e.shortMessage ?? e.message)
+    setTimeout(backfillLoop, 60_000)
   }
 }
 
@@ -544,3 +603,4 @@ await refreshAllAssets()
 await syncOnce()
 server.listen(PORT, HOST, () => console.log(`[indexer] chain ${CHAIN_ID} → http://${HOST}:${PORT}`))
 loop()
+backfillLoop()
