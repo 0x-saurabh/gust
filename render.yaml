@@ -56,7 +56,8 @@ services:
     region: oregon
     autoDeploy: true
     buildCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && pnpm install --frozen-lockfile && pnpm build
-    startCommand: pnpm exec next start -p $PORT
+    # Not `pnpm exec`: at runtime corepack fetches the latest pnpm, which reinstalls everything and misses the port scan.
+    startCommand: node_modules/.bin/next start -p $PORT
     healthCheckPath: /terms
     envVars:
       - key: NODE_VERSION
