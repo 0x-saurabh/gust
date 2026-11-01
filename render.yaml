@@ -1,0 +1,93 @@
+# Render Blueprint: site + indexer + keeper, all from the root Dockerfile (APP picks the image).
+# Create it: https://dashboard.render.com/blueprint/new  (or the deploy link in docker/README.md)
+# Values marked sync: false are asked for once, when the Blueprint is created.
+#
+# Render URLs are https://<service-name>.onrender.com unless that name is taken (then a suffix is added).
+# If yours differ, fix NEXT_PUBLIC_INDEXER_URL / NEXT_PUBLIC_SITE_URL / CORS_ORIGINS and redeploy kyte-web.
+
+services:
+  # ---------------------------------------------------------------- indexer + API
+  - type: web
+    name: kyte-indexer
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: services-entrypoint node indexer/src/index.mjs
+    plan: 0.5c-512mb # disks need a paid plan
+    healthCheckPath: /health # the API opens after the first catch-up sync (about a minute)
+    disk:
+      name: indexer-data
+      mountPath: /app/indexer/data
+      sizeGB: 1
+    envVars:
+      - key: APP
+        value: services
+      - key: CHAIN_ID
+        value: "4663"
+      - key: START_BLOCK
+        value: "103214110" # current mainnet deploy block
+      - key: RPC_URL
+        sync: false # private Robinhood Chain RPC recommended; blank = public RPC
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "10000"
+      - key: TRUST_PROXY
+        value: "1" # behind Render's load balancer
+      - key: CORS_ORIGINS
+        value: https://kyte-web.onrender.com
+      - key: RATE_LIMIT_PER_MIN
+        value: "240"
+
+  # ---------------------------------------------------------------- website
+  - type: web
+    name: kyte-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: 0.5c-512mb
+    healthCheckPath: /
+    envVars:
+      - key: APP
+        value: web
+      - key: PORT
+        value: "10000"
+      # NEXT_PUBLIC_* are build args baked into the bundle: change them, then redeploy this service.
+      - key: NEXT_PUBLIC_CHAIN_ID
+        value: "4663"
+      - key: NEXT_PUBLIC_INDEXER_URL
+        value: https://kyte-indexer.onrender.com
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://kyte-web.onrender.com
+      - key: NEXT_PUBLIC_PRIVY_APP_ID
+        value: cmvv5q9or008m0ijyddu8fpv5 # also add the site URL to the Privy app's allowed origins
+      - key: NEXT_PUBLIC_RPC_URL
+        value: ""
+      - key: NEXT_PUBLIC_DEMO
+        value: "0"
+
+  # ---------------------------------------------------------------- keeper bot
+  - type: worker
+    name: kyte-keeper
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: services-entrypoint node keeper/src/index.mjs
+    plan: 0.5c-512mb
+    envVars:
+      - key: APP
+        value: services
+      - key: CHAIN_ID
+        value: "4663"
+      - key: START_BLOCK
+        value: "103214110"
+      - key: RPC_URL
+        sync: false
+      - key: KEEPER_PRIVATE_KEY
+        sync: false # key of the `keeper` address in contracts/deployments/4663.json (0x3263…D455)
+      - key: MAX_GAS_GWEI
+        value: "1"
+      - key: KEEPER_MIN_ETH
+        value: "0.02"
+      - key: ALERT_WEBHOOK_URL
+        sync: false # Slack/Discord webhook for failed jobs and low gas (optional)

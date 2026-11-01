@@ -5,6 +5,8 @@
 
 ARG NODE_IMAGE=node:22-bookworm-slim
 ARG FOUNDRY_IMAGE=ghcr.io/foundry-rs/foundry:v1.8.3
+# Hosts that can't pick a --target (Render) choose the image with this build arg: web | services
+ARG APP=web
 
 # ------------------------------------------------------------ contract ABIs (forge)
 # The indexer and keeper read ABIs from contracts/out, which is build output and not in git.
@@ -77,8 +79,13 @@ COPY --from=contracts /app/contracts/out ./contracts/out
 COPY contracts/deployments ./contracts/deployments
 COPY indexer/src ./indexer/src
 COPY keeper/src ./keeper/src
+COPY --chmod=755 docker/services-entrypoint.sh /usr/local/bin/services-entrypoint
 RUN mkdir -p indexer/data && chown node:node indexer/data
-USER node
+# Starts as root only to fix the data dir's owner (disks/volumes can mount root-owned), then runs as `node`.
+ENTRYPOINT ["services-entrypoint"]
 VOLUME ["/app/indexer/data"]
 EXPOSE 4200
 CMD ["node", "indexer/src/index.mjs"]
+
+# ------------------------------------------------------------ default image (APP build arg)
+FROM ${APP} AS final

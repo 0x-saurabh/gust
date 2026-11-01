@@ -63,6 +63,34 @@ docker compose --profile proxy --profile keeper up -d --build
 Caddy gets and renews the certificates itself. Web and indexer stay bound to `127.0.0.1`, so the only public
 ports are Caddy's.
 
+## Render
+
+`render.yaml` is a Blueprint for the same three services, built from the same Dockerfile (the `APP` env var,
+passed to the build, picks the image: `web` or `services`):
+
+| Render service | Type | Plan | Notes |
+|---|---|---|---|
+| `kyte-indexer` | web | `0.5c-512mb` + 1 GB disk | Disk keeps the SQLite db across deploys; a deploy has a few seconds of downtime |
+| `kyte-web` | web | `0.5c-512mb` | |
+| `kyte-keeper` | background worker | `0.5c-512mb` | |
+
+Deploy: open
+[render.com/deploy?repo=https://github.com/0x-saurabh/gust](https://render.com/deploy?repo=https://github.com/0x-saurabh/gust)
+(Render must have access to the repo through its GitHub app). Render asks for the `sync: false` values once:
+`RPC_URL` (blank = public RPC), `KEEPER_PRIVATE_KEY`, `ALERT_WEBHOOK_URL`.
+
+After the first deploy:
+
+1. Check the two `.onrender.com` URLs Render gave the services. If they aren't `kyte-indexer.onrender.com` and
+   `kyte-web.onrender.com`, update `NEXT_PUBLIC_INDEXER_URL` / `NEXT_PUBLIC_SITE_URL` on `kyte-web` and
+   `CORS_ORIGINS` on `kyte-indexer`, then redeploy `kyte-web` (the URLs are baked into the build).
+2. Add the site URL to the Privy app's allowed origins.
+3. Custom domains: add them in each service's settings, then update the same three variables.
+
+`TRUST_PROXY=1` is set on the indexer because every request reaches it through Render's load balancer; without
+it, all visitors would share one rate-limit bucket. The client IP is taken from the first `X-Forwarded-For`
+entry, which a client can set itself, so the per-IP limit is best-effort there.
+
 ## Operating
 
 ```bash
