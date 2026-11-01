@@ -1,0 +1,21 @@
+**/node_modules
+.next
+.git
+.github
+.claude
+**/.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# secrets and local state never go into an image
+**/.env
+**/.env.*
+!.env.example
+docker/secrets
+indexer/data
+scripts/mainnet/out
+
+# forge output is rebuilt inside the image
+contracts/out
+contracts/cache
+contracts/broadcast
