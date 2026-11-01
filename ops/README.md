@@ -57,6 +57,10 @@ ops/set-keeper-key.sh             # once: hidden prompt for the keeper key, save
 After that no Terminal is needed. Logs are in `~/Library/Logs/kyte-indexer.log` and `~/Library/Logs/kyte-keeper.log`.
 Remove the services with `ops/install-macos-services.sh --remove`.
 
+macOS blocks background services from reading external drives ("Operation not permitted"), so the installer
+copies the service runtime (about 80 MB) to `~/.kyte/app` on the internal disk and runs it from there. Re-run the
+installer after pulling new indexer or keeper code.
+
 A laptop sleeps and travels, so this is a stopgap. While the Mac is off the keeper does not run expiries or splits.
 Users are never blocked, since anyone can call those, but fee splits wait.
 
