@@ -33,4 +33,6 @@ faucet (devnet only) funds your wallet with ETH, WETH, $KYTE and the test tokens
 | `src/` | Website (Next.js 16, wagmi, viem). Theme tokens in `src/app/globals.css`; brand/fees in `src/lib/config.ts` |
 | `scripts/sync-contracts.mjs` | Copies ABIs + deployed addresses into `src/lib/generated/` |
 
+**Docker / production:** `docker compose up -d --build` runs the site + indexer (+ keeper, + HTTPS). See [`docker/README.md`](docker/README.md).
+
 Tests: `cd contracts && forge test` (106). `node scripts/check-hook.mjs` shows KyteHook fees landing in the FeeVault on the devnet. Web: `pnpm typecheck && pnpm build`.

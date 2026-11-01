@@ -1,0 +1,11 @@
+# Automatic HTTPS (Let's Encrypt) for the site and the indexer API.
+# Both domains must point at this host, with ports 80 and 443 open.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3010
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy indexer:4200
+}

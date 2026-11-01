@@ -1,0 +1,100 @@
+# Kyte stack: web + indexer (+ keeper, + TLS proxy). Setup and commands: docker/README.md
+#   cp docker/compose.env.example .env      # then edit
+#   docker compose up -d --build            # web + indexer
+#   docker compose --profile keeper up -d   # + keeper (needs docker/secrets/keeper_key)
+#   docker compose --profile proxy up -d    # + Caddy with automatic HTTPS
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+x-chain: &chain
+  CHAIN_ID: ${CHAIN_ID:-4663}
+  RPC_URL: ${RPC_URL:-}
+  START_BLOCK: ${START_BLOCK:-103214110}
+
+services:
+  indexer:
+    build: { context: ., target: services }
+    image: kyte-services:${TAG:-latest}
+    command: ["node", "indexer/src/index.mjs"]
+    environment:
+      <<: *chain
+      HOST: 0.0.0.0
+      PORT: 4200
+      POLL_MS: ${POLL_MS:-2000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-240}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+    volumes:
+      - indexer-data:/app/indexer/data
+    ports:
+      - "127.0.0.1:${INDEXER_PORT:-4200}:4200"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4200/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15m # first start syncs from START_BLOCK before the API opens
+      retries: 3
+    restart: unless-stopped
+    logging: *logging
+
+  keeper:
+    profiles: ["keeper"]
+    image: kyte-services:${TAG:-latest}
+    depends_on: [indexer] # shares the image built for the indexer; the keeper itself reads the chain directly
+    command: ["node", "keeper/src/index.mjs"]
+    environment:
+      <<: *chain
+      KEEPER_PRIVATE_KEY_FILE: /run/secrets/keeper_key
+      INTERVAL_MS: ${KEEPER_INTERVAL_MS:-30000}
+      BUYBACK_MIN_WETH: ${BUYBACK_MIN_WETH:-0.01}
+      BUYBACK_SLIPPAGE_BPS: ${BUYBACK_SLIPPAGE_BPS:-100}
+      MAX_GAS_GWEI: ${MAX_GAS_GWEI:-1}
+      MAX_SPOT_TWAP_DEVIATION_BPS: ${MAX_SPOT_TWAP_DEVIATION_BPS:-300}
+      KEEPER_MIN_ETH: ${KEEPER_MIN_ETH:-0.02}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+    secrets: [keeper_key]
+    restart: unless-stopped
+    logging: *logging
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_CHAIN_ID: ${CHAIN_ID:-4663}
+        NEXT_PUBLIC_RPC_URL: ${NEXT_PUBLIC_RPC_URL:-}
+        NEXT_PUBLIC_DEMO: ${NEXT_PUBLIC_DEMO:-0}
+        NEXT_PUBLIC_INDEXER_URL: ${NEXT_PUBLIC_INDEXER_URL:-}
+        NEXT_PUBLIC_PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID:-}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+    image: kyte-web:${TAG:-latest}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3010}:3010"
+    restart: unless-stopped
+    logging: *logging
+
+  caddy:
+    profiles: ["proxy"]
+    image: caddy:2.10-alpine
+    depends_on: [web, indexer]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:-localhost}
+      API_DOMAIN: ${API_DOMAIN:-api.localhost}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    logging: *logging
+
+secrets:
+  keeper_key:
+    file: ./docker/secrets/keeper_key
+
+volumes:
+  indexer-data:
+  caddy-data:
+  caddy-config:

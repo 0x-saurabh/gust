@@ -12,6 +12,8 @@ const securityHeaders = [
 ]
 
 const config: NextConfig = {
+  // The Docker image sets NEXT_OUTPUT=standalone (self-contained server.js); `pnpm start` keeps the normal output.
+  ...(process.env.NEXT_OUTPUT === 'standalone' ? { output: 'standalone' as const } : {}),
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   async headers() {
