@@ -34,7 +34,8 @@ const SENDER = env.SENDER || 'deployer'
 const CAST = `${os.homedir()}/.foundry/bin/cast`
 const MULTISEND = '0x9641d764fc13c8B624c04430C7356C1C7C8102e2' // MultiSendCallOnly v1.4.1
 const ZERO = '0x0000000000000000000000000000000000000000'
-const plan = JSON.parse(fs.readFileSync(`scripts/mainnet/out/timelock-${CHAIN_ID}.json`, 'utf8'))
+// PLAN_FILE runs a different action list through the same flow (e.g. scripts/mainnet/set-keeper.sh).
+const plan = JSON.parse(fs.readFileSync(env.PLAN_FILE || `scripts/mainnet/out/timelock-${CHAIN_ID}.json`, 'utf8'))
 const TL = getAddress(plan.timelock)
 
 const client = createPublicClient({ transport: http(RPC, { retryCount: 6, retryDelay: 2000 }) })
