@@ -8,6 +8,25 @@ Three services. Each restarts on its own after a crash or a reboot.
 | **keeper** | Expires options, runs the daily fee split, runs buybacks | Yes: the keeper wallet (`keeper` in `contracts/deployments/4663.json`) |
 | **web** | The website | No |
 
+## Option R: Render (recommended, nothing to run yourself)
+
+`render.yaml` in the repo root is a Render Blueprint with all three services:
+
+| Service | Render type | Plan | Why |
+|---|---|---|---|
+| kyte-indexer | Private service + 1 GB disk | Starter | Free instances sleep; a sleeping indexer stops scanning. The disk keeps its progress across deploys |
+| kyte-keeper | Background worker | Starter | Runs every minute, forever |
+| kyte-web | Web service | Starter | Talks to the private indexer through `/api/indexer` |
+
+1. Open https://dashboard.render.com/blueprint/new and connect the GitHub repo `0x-saurabh/gust`.
+2. Pick the branch that has `render.yaml` (`worktree-ops-automation` until it is merged into `main`).
+3. Fill in the values Render asks for: `KEEPER_PRIVATE_KEY` (the keeper wallet only), `NEXT_PUBLIC_PRIVY_APP_ID`,
+   `NEXT_PUBLIC_SITE_URL` (your domain, or the `onrender.com` URL), and optionally `ALERT_WEBHOOK_URL`.
+4. Review the monthly cost Render shows and click **Apply**.
+
+After that every push to that branch redeploys automatically, and Render restarts anything that stops. Add the
+site URL to the allowed origins in the Privy dashboard, and point your domain at `kyte-web`.
+
 ## Option A: a server (real production)
 
 Any Linux machine with Docker works: a VPS (Hetzner, DigitalOcean, AWS Lightsail) or a Docker app host.

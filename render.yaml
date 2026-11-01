@@ -1,0 +1,80 @@
+# Render Blueprint: Dashboard > New > Blueprint > pick this repo (and this branch). Render shows the cost first.
+# Everything here restarts on its own. The indexer and keeper run on paid instances because free ones sleep
+# when idle, and a sleeping indexer stops scanning.
+services:
+  # Follows Robinhood Chain and stores the order book, stakes and proof events. Private: only the website talks to it.
+  - type: pserv
+    name: kyte-indexer
+    runtime: docker
+    dockerfilePath: ./ops/docker/backend.Dockerfile
+    dockerContext: .
+    dockerCommand: bash ops/run-indexer.sh
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    envVars:
+      - key: CHAIN_ID
+        value: "4663"
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "4200"
+      - key: POLL_MS
+        value: "3000"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: RATE_LIMIT_PER_MIN
+        value: "1200"
+    disk:
+      name: indexer-data
+      mountPath: /app/indexer/data
+      sizeGB: 1
+
+  # Expires options, runs the daily fee split and buybacks. Paste the keeper wallet key when Render asks.
+  - type: worker
+    name: kyte-keeper
+    runtime: docker
+    dockerfilePath: ./ops/docker/backend.Dockerfile
+    dockerContext: .
+    dockerCommand: bash ops/run-keeper.sh
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    envVars:
+      - key: CHAIN_ID
+        value: "4663"
+      - key: KEEPER_PRIVATE_KEY
+        sync: false
+      - key: ALERT_WEBHOOK_URL
+        sync: false
+
+  # The website. Reaches the private indexer through its own /api/indexer route.
+  - type: web
+    name: kyte-web
+    runtime: node
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    buildCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm exec next start -p $PORT
+    healthCheckPath: /terms
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: NEXT_PUBLIC_CHAIN_ID
+        value: "4663"
+      - key: NEXT_PUBLIC_DEMO
+        value: "0"
+      - key: NEXT_PUBLIC_INDEXER_URL
+        value: /api/indexer
+      - key: INDEXER_INTERNAL_HOSTPORT
+        fromService:
+          type: pserv
+          name: kyte-indexer
+          property: hostport
+      - key: NEXT_PUBLIC_PRIVY_APP_ID
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false

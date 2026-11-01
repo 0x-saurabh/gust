@@ -34,7 +34,12 @@ if (!DEVNET && ANVIL_KEYS.has(KEY)) throw new Error('refusing to run with a publ
 delete process.env.KEEPER_PRIVATE_KEY // keep it out of child processes and crash dumps
 
 const dep = JSON.parse(fs.readFileSync(path.join(ROOT, `contracts/deployments/${CHAIN_ID}.json`), 'utf8'))
-const abiOf = (file, name) => JSON.parse(fs.readFileSync(path.join(ROOT, `contracts/out/${file}/${name}.json`), 'utf8')).abi
+// Fresh forge build when present (local dev), else the committed copies in indexer/abis (servers, Render).
+const abiOf = (file, name) => {
+  const built = path.join(ROOT, `contracts/out/${file}/${name}.json`)
+  const shipped = path.join(ROOT, `indexer/abis/${name}.json`)
+  return JSON.parse(fs.readFileSync(fs.existsSync(built) ? built : shipped, 'utf8')).abi
+}
 const ABI = {
   market: abiOf('CallMarket.sol', 'CallMarket'),
   vault: abiOf('FeeVault.sol', 'FeeVault'),
