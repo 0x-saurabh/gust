@@ -1,0 +1,26 @@
+# Website image. NEXT_PUBLIC_* values are baked in at build time.
+FROM node:24-slim AS build
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY . .
+ARG NEXT_PUBLIC_CHAIN_ID=4663
+ARG NEXT_PUBLIC_DEMO=0
+ARG NEXT_PUBLIC_INDEXER_URL
+ARG NEXT_PUBLIC_SITE_URL
+ARG NEXT_PUBLIC_PRIVY_APP_ID
+ARG NEXT_PUBLIC_RPC_URL
+ENV NEXT_PUBLIC_CHAIN_ID=$NEXT_PUBLIC_CHAIN_ID NEXT_PUBLIC_DEMO=$NEXT_PUBLIC_DEMO NEXT_PUBLIC_INDEXER_URL=$NEXT_PUBLIC_INDEXER_URL \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL NEXT_PUBLIC_PRIVY_APP_ID=$NEXT_PUBLIC_PRIVY_APP_ID NEXT_PUBLIC_RPC_URL=$NEXT_PUBLIC_RPC_URL \
+    NEXT_TELEMETRY_DISABLED=1
+RUN pnpm build
+
+FROM node:24-slim
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+COPY --from=build /app /app
+USER node
+EXPOSE 3010
+CMD ["pnpm", "start"]

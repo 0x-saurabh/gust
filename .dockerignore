@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.next
+contracts/cache
+contracts/broadcast
+contracts/lib
+indexer/data
+scripts/mainnet/.env
+scripts/mainnet/out
+.env
+.env.local
+*.tsbuildinfo
+.tmp-sec-build
