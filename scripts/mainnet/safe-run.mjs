@@ -181,10 +181,15 @@ async function auto() {
 
   // Wait for the timelock.
   const readyAt = Math.max(...ops.map((o) => o.readyAt))
-  console.log(`\nWaiting until ${fmt(readyAt)} for the 48 h timelock. Keep this window open; your Mac is kept awake.`)
+  console.log(`\nWaiting until ${fmt(readyAt)} for the ${Math.round(plan.delay / 60)} min timelock. Keep this window open; your Mac is kept awake.`)
   const POLL = Number(env.POLL_MS || 300000)
   for (;;) {
-    ops = await opState()
+    // A network blip must not end a two-day wait: retry the read instead of crashing.
+    try { ops = await opState() } catch (e) {
+      process.stdout.write(`\r  network error (${(e.shortMessage ?? e.message ?? '').split('\n')[0].slice(0, 60)}), retrying...   `)
+      await sleep(15000)
+      continue
+    }
     if (ops.every((o) => o.done)) break
     if (ops.every((o) => o.ready || o.done)) {
       console.log('\nTimelock open. Executing...')

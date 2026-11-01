@@ -1,0 +1,49 @@
+# Production: everything restarts on its own (crash, reboot of the host). No terminal needed after `up`.
+#   1. cp ops/docker/prod.env.example ops/docker/prod.env   (fill in your domain + Privy id)
+#   2. put the keeper wallet key in ops/docker/secrets/keeper.key (one line, 0x...)
+#   3. docker compose up -d --build
+services:
+  indexer:
+    build: { context: ., dockerfile: ops/docker/backend.Dockerfile }
+    command: ["bash", "ops/run-indexer.sh"]
+    environment: { CHAIN_ID: "4663", HOST: "0.0.0.0", PORT: "4200", TRUST_PROXY: "1", CORS_ORIGINS: "${SITE_ORIGIN:-*}" }
+    volumes: [ "indexer-data:/app/indexer/data" ]
+    ports: [ "4200:4200" ]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4200/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  keeper:
+    build: { context: ., dockerfile: ops/docker/backend.Dockerfile }
+    command: ["bash", "ops/run-keeper.sh"]
+    environment:
+      CHAIN_ID: "4663"
+      KEEPER_PRIVATE_KEY_FILE: /run/secrets/keeper_key
+      KEEPER_KEY_PERM_CHECK: "0"
+      ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
+    secrets: [ keeper_key ]
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: ops/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_CHAIN_ID: "4663"
+        NEXT_PUBLIC_DEMO: "0"
+        NEXT_PUBLIC_INDEXER_URL: "${INDEXER_PUBLIC_URL}"
+        NEXT_PUBLIC_SITE_URL: "${SITE_ORIGIN}"
+        NEXT_PUBLIC_PRIVY_APP_ID: "${PRIVY_APP_ID}"
+    ports: [ "3010:3010" ]
+    depends_on: [ indexer ]
+    restart: unless-stopped
+
+volumes:
+  indexer-data:
+
+secrets:
+  keeper_key:
+    file: ops/docker/secrets/keeper.key

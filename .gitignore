@@ -9,3 +9,5 @@ indexer/data
 scripts/mainnet/.env
 scripts/mainnet/out
 .DS_Store
+ops/docker/secrets/
+ops/docker/prod.env
