@@ -1,12 +1,19 @@
 'use client'
 
-import { CandlestickSeries, ColorType, createChart, HistogramSeries, LineStyle, type IChartApi, type IPriceLine, type ISeriesApi, type SeriesMarker, type Time, type UTCTimestamp, createSeriesMarkers } from 'lightweight-charts'
+import { AreaSeries, ColorType, createChart, HistogramSeries, LineStyle, type IChartApi, type IPriceLine, type ISeriesApi, type SeriesMarker, type Time, type UTCTimestamp, createSeriesMarkers } from 'lightweight-charts'
 import { memo, useEffect, useRef } from 'react'
 import { useCandles, useMarkers, type Candle } from '@/lib/data'
 
 export type PriceLine = { price: number; title: string; color?: string; dashed?: boolean }
 
 const MAX_BARS = 600
+
+/** '#4dfca9' + alpha -> 'rgba(77,252,169,a)'; anything that isn't a 6-digit hex falls back to the brand mint. */
+function hexA(hex: string, a: number) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  const n = parseInt(m ? m[1] : '4dfca9', 16)
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
+}
 
 /**
  * The indexer only returns buckets that had a swap, each opening at its own first trade. On a thin pool that draws
@@ -35,7 +42,7 @@ export function continuous(raw: Candle[], interval: number, now = Date.now() / 1
 }
 
 /**
- * TradingView Lightweight Charts: candles + volume from Uniswap v4 swaps (via the indexer), optional price
+ * TradingView Lightweight Charts: price area (bar closes) + volume from Uniswap v4 swaps (via the indexer), optional price
  * lines (strikes, break even) and markers (fills, exercises). Isolated client component, no re-render churn.
  */
 export const TokenChart = memo(function TokenChart({
@@ -57,7 +64,7 @@ export const TokenChart = memo(function TokenChart({
   const markers = useMarkers(symbol)
   const box = useRef<HTMLDivElement>(null)
   const chart = useRef<IChartApi | null>(null)
-  const series = useRef<ISeriesApi<'Candlestick'> | null>(null)
+  const series = useRef<ISeriesApi<'Area'> | null>(null)
   const volume = useRef<ISeriesApi<'Histogram'> | null>(null)
   const priceLines = useRef<IPriceLine[]>([])
   const fitted = useRef(false)
@@ -85,8 +92,10 @@ export const TokenChart = memo(function TokenChart({
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
     })
-    series.current = c.addSeries(CandlestickSeries, {
-      upColor: accent, downColor: '#ff6b6b', borderVisible: false, wickUpColor: accent, wickDownColor: '#ff6b6b',
+    // A price line with a soft gradient under it rather than candles: thin pools read as a clean trend.
+    series.current = c.addSeries(AreaSeries, {
+      lineColor: accent, lineWidth: 2, topColor: hexA(accent, 0.28), bottomColor: hexA(accent, 0),
+      crosshairMarkerRadius: 4, crosshairMarkerBorderColor: accent, crosshairMarkerBackgroundColor: '#0b0b0b',
       priceFormat: { type: 'price', precision: 8, minMove: 1e-8 },
     })
     volume.current = c.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceScaleId: 'vol', color: '#313131', lastValueVisible: false, priceLineVisible: false })
@@ -116,7 +125,7 @@ export const TokenChart = memo(function TokenChart({
       const precision = Math.min(10, Math.max(2, Math.ceil(-Math.log10(last)) + 3))
       s.applyOptions({ priceFormat: { type: 'price', precision, minMove: 10 ** -precision } })
     }
-    s.setData(data.map((d) => ({ time: d.time as UTCTimestamp, open: d.open, high: d.high, low: d.low, close: d.close })))
+    s.setData(data.map((d) => ({ time: d.time as UTCTimestamp, value: d.close })))
     v.setData(data.map((d) => ({ time: d.time as UTCTimestamp, value: d.volume, color: d.close >= d.open ? 'rgba(77,252,169,0.45)' : 'rgba(255,107,107,0.45)' })))
     if (!fitted.current && data.length) {
       chart.current?.timeScale().fitContent()
@@ -179,7 +188,7 @@ export const TokenChart = memo(function TokenChart({
       {candles.isLoading && <div className="shimmer absolute inset-0 rounded-lg" />}
       {empty && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-muted">
-          No swaps for {symbol} yet. Candles appear as soon as the Uniswap v4 pool trades.
+          No swaps for {symbol} yet. The chart starts as soon as the Uniswap v4 pool trades.
         </div>
       )}
     </div>
