@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+indexer/data
+
+scripts/mainnet/.env
+scripts/mainnet/out
+.DS_Store

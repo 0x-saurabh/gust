@@ -1,0 +1,83 @@
+{
+  "4663": {
+    "assetRegistry": "0xcD076486FBd192e2E942dA9DB2B78817DF0d5235",
+    "buybackBurner": "0xAF341cFdaEB96c18784ba60b2fdd51A7153E42d9",
+    "callMarket": "0x459cF18A424271A417547F6B349e962c09e492EE",
+    "feeVault": "0x78c569A1137B78cB78F42c42B4B6C2b8F1E3dDef",
+    "guardian": "0x9F433eE8020cFb3521bDaE0DDA612932e1E90EF0",
+    "keeper": "0x32639BF2456bC69e1E59f68F7F56390299d5D455",
+    "kyteHook": "0x77e52E93Aa0892b29a4527Af4f3a79F01cfa9044",
+    "kyteToken": "0x3849DcF9FA77EC5c21D57d841a268E77830800aF",
+    "opsSafe": "0xd97693DF18dd20b8C7A542ea0E167c75F630aDA5",
+    "optionNft": "0x71B515C3786bF8897368f548d5DbBc2423E73391",
+    "putMarket": "0xD1a3c2Fa0E7901437929B7518AD66d71B1d676a4",
+    "router": "0xe17887A4BA9a373ec94a00D5F0c812fa6a994Ad4",
+    "stakingPool": "0x4eD46d734e3Ddd9BF21364B9DfFBb2Ee030CEf8b",
+    "swapAdapter": "0x9376B2091e50A17ac14fc8dA2DE7e2368B3b0fa9",
+    "timelock": "0xf8E6fAF7e0E57bc91aD5C59B84FedE2Cab842893",
+    "uniswapV4PoolManager": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+    "weth": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+    "pools": {
+      "KYTE": {
+        "currency0": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+        "currency1": "0x3849DcF9FA77EC5c21D57d841a268E77830800aF",
+        "fee": 3000,
+        "hooks": "0x77e52E93Aa0892b29a4527Af4f3a79F01cfa9044",
+        "tickSpacing": 60
+      }
+    },
+    "deployBlock": 103214110
+  },
+  "31337": {
+    "assetRegistry": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+    "buybackBurner": "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf",
+    "callMarket": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+    "feeVault": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+    "kyteHook": "0x8eCFBa4e3090a2c77F8232920bfCe8c904bAD044",
+    "kyteToken": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+    "opsSafe": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
+    "optionNft": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+    "pools": {
+      "GALE": {
+        "currency0": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        "currency1": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+        "fee": 3000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 60
+      },
+      "KYTE": {
+        "currency0": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        "currency1": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+        "fee": 3000,
+        "hooks": "0x8eCFBa4e3090a2c77F8232920bfCe8c904bAD044",
+        "tickSpacing": 60
+      },
+      "NIMB": {
+        "currency0": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        "currency1": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+        "fee": 3000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 60
+      },
+      "ZEPH": {
+        "currency0": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        "currency1": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+        "fee": 3000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 60
+      }
+    },
+    "putMarket": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+    "router": "0x0E801D84Fa97b50751Dbf25036d067dCf18858bF",
+    "stakingPool": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
+    "swapAdapter": "0x4826533B4897376654Bb4d4AD88B7faFD0C98528",
+    "tokens": {
+      "GALE": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "NIMB": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+      "ZEPH": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+    },
+    "uniswapV4PoolManager": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
+    "uniswapV4SwapRouter": "0x9A676e781A523b5d0C0e43731313A708CB607508",
+    "weth": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+  }
+}

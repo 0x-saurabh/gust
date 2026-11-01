@@ -1,0 +1,31 @@
+// Brand and protocol parameters.
+export const BRAND = {
+  name: 'Kyte',
+  wordmark: 'kyte.sh',
+  token: '$KYTE',
+  tagline: 'Covered options on Robinhood Chain',
+} as const
+
+// Launch values from SPEC.md §7.1. The contracts snapshot these per position.
+export const FEES = {
+  premiumBps: 300, // 3% of the premium
+  exerciseBps: 10, // 0.1% of the strike
+} as const
+
+export const SPLIT = {
+  stakersBps: 3000,
+  buybackBps: 2000,
+  opsBps: 5000,
+} as const
+
+export const LIMITS = {
+  minDurationSec: 60 * 60, // 1 hour
+  maxDurationSec: 90 * 24 * 60 * 60, // 90 days
+  minPremiumEth: 0.0005,
+  epochSec: 24 * 60 * 60,
+} as const
+
+export const DEMO = process.env.NEXT_PUBLIC_DEMO !== '0'
+
+/** Privy app id. Wallet picker shows only wallets installed in the browser (see components/Providers.tsx). */
+export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''
