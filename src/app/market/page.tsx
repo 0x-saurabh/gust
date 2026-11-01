@@ -21,9 +21,10 @@ export default function MarketPage() {
   const assets = useAssets()
   const prices = usePrices()
 
-  const symbols = (assets.data ?? []).map((a) => a.symbol)
+  // Only tokens the AssetRegistry has enabled: one the guardian disables leaves the market tabs on its own.
+  const symbols = (assets.data ?? []).filter((a) => a.enabled).map((a) => a.symbol)
   useEffect(() => {
-    if (!symbol && symbols.length) setSymbol(symbols[0])
+    if (symbols.length && !symbols.includes(symbol)) setSymbol(symbols[0])
   }, [symbol, symbols])
   const asset = (assets.data ?? []).find((a) => a.symbol === symbol)
   const quote = prices.data?.[symbol]
