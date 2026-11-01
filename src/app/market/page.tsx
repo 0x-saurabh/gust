@@ -14,7 +14,7 @@ const INTERVALS = [{ label: '1m', sec: '60' }, { label: '5m', sec: '300' }, { la
 export default function MarketPage() {
   const [kind, setKind] = useState<'all' | Kind>('all')
   const [symbol, setSymbol] = useState('')
-  const [interval, setInterval] = useState('60')
+  const [interval, setInterval] = useState('900')
   const [sort, setSort] = useState<SortKey>('expiry')
   const [buying, setBuying] = useState<Offer | null>(null)
   const offers = useOffers()
