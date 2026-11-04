@@ -437,8 +437,8 @@ export function useHealth() {
 // ------------------------------------------------------------------ price feed (Uniswap v4 swaps via the indexer)
 
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number }
-export type Marker = { time: number; name: 'OptionBought' | 'Exercised' | 'Expired'; kind: Kind; tx: string; strikePerToken: number }
-export type Quote = { price: number; at: number; change1h: number }
+export type Marker = { time: number; name: 'OfferCreated' | 'OptionBought' | 'Exercised' | 'Expired' | 'OfferCancelled'; kind: Kind; tx: string; strikePerToken: number }
+export type Quote = { price: number; at: number; change1h: number; source?: 'uniswap-v4' | 'robinhood' }
 
 export function useCandles(symbol: string, interval = 60) {
   const live = useLive()

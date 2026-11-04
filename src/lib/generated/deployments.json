@@ -24,7 +24,117 @@
         "fee": 3000,
         "hooks": "0x77e52E93Aa0892b29a4527Af4f3a79F01cfa9044",
         "tickSpacing": 60
+      },
+      "cbBTC": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0xCEC185eB182c47d1bA1EFc84e6959e18cd620Be4",
+        "fee": 2500,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 25,
+        "fromBlock": 48557561
+      },
+      "LINK": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0x492641F648a4986844848E0beFE66D14817bCE34",
+        "fee": 30000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 300,
+        "fromBlock": 75161612
+      },
+      "VIRTUAL": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0xc6911796042b15d7Fa4F6CDe69e245DdCd3d9c31",
+        "fee": 8388608,
+        "hooks": "0x594e8e6281eDf2d363a0293a50004Cf868E7a080",
+        "tickSpacing": 60,
+        "fromBlock": 75963906
+      },
+      "PENGU": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0x74BE72AFFAFbC8de30F0C11247814036314D625f",
+        "fee": 10000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 100,
+        "fromBlock": 47519915
+      },
+      "PONS": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0x39dBED3a2bd333467115dE45665cC57F813C4571",
+        "fee": 8388608,
+        "hooks": "0x594e8e6281edf2d363a0293a50004cf868e7a080",
+        "tickSpacing": 60,
+        "fromBlock": 54583584
+      },
+      "CASHCAT": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0x020bfC650A365f8BB26819deAAbF3E21291018b4",
+        "fee": 8388608,
+        "hooks": "0x594e8e6281edf2d363a0293a50004cf868e7a080",
+        "tickSpacing": 60,
+        "fromBlock": 66505471
+      },
+      "AI": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0x2E8c31162b855A2ffa90F6F8634643Ad6F111e18",
+        "fee": 8388608,
+        "hooks": "0x594e8e6281edf2d363a0293a50004cf868e7a080",
+        "tickSpacing": 200,
+        "fromBlock": 57726892
+      },
+      "LIT": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0xeeca2E7Dc194a320d349122d88259bB9595a4cB0",
+        "fee": 8900,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 89,
+        "fromBlock": 67445355
+      },
+      "PENDLE": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0x5E49E1f85813F2B65858860A3FA231b4186f2e0E",
+        "fee": 2500,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 25,
+        "fromBlock": 54193076
+      },
+      "APE": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0x8f86a15EC17cb3369d8b3E666dAdBC11daA82b79",
+        "fee": 3000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 60,
+        "fromBlock": 17767645
+      },
+      "STONKBROKER": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0xe934e36A439C94017B64a3FecE66AF12099aBF50",
+        "fee": 10000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 200,
+        "fromBlock": 12670814
+      },
+      "ORBIO": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0xAa07A0e9209e16aC99708C3EC70159c6eF3128A3",
+        "fee": 9000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 90,
+        "fromBlock": 64708744
       }
+    },
+    "tokens": {
+      "cbBTC": "0xCEC185eB182c47d1bA1EFc84e6959e18cd620Be4",
+      "LINK": "0x492641F648a4986844848E0beFE66D14817bCE34",
+      "VIRTUAL": "0xc6911796042b15d7Fa4F6CDe69e245DdCd3d9c31",
+      "PENGU": "0x74BE72AFFAFbC8de30F0C11247814036314D625f",
+      "PONS": "0x39dBED3a2bd333467115dE45665cC57F813C4571",
+      "CASHCAT": "0x020bfC650A365f8BB26819deAAbF3E21291018b4",
+      "AI": "0x2E8c31162b855A2ffa90F6F8634643Ad6F111e18",
+      "LIT": "0xeeca2E7Dc194a320d349122d88259bB9595a4cB0",
+      "PENDLE": "0x5E49E1f85813F2B65858860A3FA231b4186f2e0E",
+      "APE": "0x8f86a15EC17cb3369d8b3E666dAdBC11daA82b79",
+      "STONKBROKER": "0xe934e36A439C94017B64a3FecE66AF12099aBF50",
+      "ORBIO": "0xAa07A0e9209e16aC99708C3EC70159c6eF3128A3"
     },
     "deployBlock": 103214110
   },

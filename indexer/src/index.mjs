@@ -330,6 +330,53 @@ async function backfillLoop() {
   }
 }
 
+// Quote prices for listed stock tokens that have no Uniswap v4 pool of ours: Robinhood's Stock Token API
+// (token-adjusted mid, USD) divided by ETH/USD. Robinhood Stock Tokens match by contract address; Ondo
+// tokenized stocks (AAPLon, NVDAon, ...) follow their underlying ticker. One point per token per poll, so the
+// chart moves even when nobody swaps on chain. Rows are keyed q:<symbol>:<time> and pruned after QUOTE_DAYS.
+const QUOTES_URL = process.env.QUOTES_URL || 'https://api.robinhood.com/rhj/prices'
+const QUOTE_MS = Number(process.env.QUOTE_MS || 30_000)
+const QUOTE_DAYS = Number(process.env.QUOTE_DAYS || 30)
+const quoteSource = new Map() // symbol -> 'robinhood' (shown in /prices so the UI can label the feed)
+async function fetchJson(url) {
+  const r = await fetch(url, { signal: AbortSignal.timeout(10_000), headers: { accept: 'application/json' } })
+  if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`)
+  return r.json()
+}
+async function ethUsd() {
+  try { return Number((await fetchJson('https://api.coinbase.com/v2/prices/ETH-USD/spot')).data.amount) } catch {}
+  const k = await fetchJson('https://api.kraken.com/0/public/Ticker?pair=ETHUSD')
+  return Number(Object.values(k.result)[0].c[0])
+}
+async function pollQuotes() {
+  const pooled = new Set(Object.values(POOLS).map((p) => p.symbol))
+  const assets = all('SELECT address, symbol FROM assets').filter((a) => !pooled.has(a.symbol))
+  if (!assets.length) return
+  const [{ quotes }, usd] = await Promise.all([fetchJson(QUOTES_URL), ethUsd()])
+  if (!(usd > 0)) return
+  const byAddr = new Map(), bySym = new Map()
+  for (const qt of quotes ?? []) {
+    if (qt.isTradingHalt) continue
+    const bid = Number(qt.tokenBid ?? qt.bid), ask = Number(qt.tokenAsk ?? qt.ask)
+    const mid = bid > 0 && ask > 0 ? (bid + ask) / 2 : bid || ask
+    if (!(mid > 0)) continue
+    bySym.set(qt.tokenSymbol, mid)
+    for (const d of qt.deployments ?? []) if (Number(d.chainId) === CHAIN_ID) byAddr.set(d.contractAddress.toLowerCase(), mid)
+  }
+  const now = Math.floor(Date.now() / 1000)
+  for (const a of assets) {
+    const usdPrice = byAddr.get(a.address.toLowerCase()) ?? (a.symbol.endsWith('on') ? bySym.get(a.symbol.slice(0, -2)) : undefined)
+    if (!usdPrice) continue
+    quoteSource.set(a.symbol, 'robinhood')
+    q.upsertPrice.run(`q:${a.symbol}:${now}`, a.symbol, 0, now, usdPrice / usd, 0, null)
+  }
+  db.prepare("DELETE FROM prices WHERE key LIKE 'q:%' AND at < ?").run(now - QUOTE_DAYS * 86_400)
+}
+async function quoteLoop() {
+  try { await pollQuotes() } catch (e) { console.error('[indexer] quote error:', e.message) }
+  setTimeout(quoteLoop, QUOTE_MS).unref?.()
+}
+
 async function loop() {
   try { await syncOnce() } catch (e) { console.error('[indexer] sync error:', e.shortMessage ?? e.message) }
   setTimeout(loop, POLL_MS)
@@ -378,11 +425,11 @@ const routes = {
   },
   '/prices': async () => {
     const out = {}
-    for (const sym of new Set(Object.values(POOLS).map((p) => p.symbol))) {
+    for (const sym of new Set([...Object.values(POOLS).map((p) => p.symbol), ...quoteSource.keys()])) {
       const last = all('SELECT price, at FROM prices WHERE symbol = ? ORDER BY at DESC, block DESC LIMIT 1', sym)[0]
       if (!last) continue
       const ago = all('SELECT price FROM prices WHERE symbol = ? AND at <= ? ORDER BY at DESC LIMIT 1', sym, last.at - 3600)[0]
-      out[sym] = { price: last.price, at: last.at, change1h: ago ? (last.price - ago.price) / ago.price : 0 }
+      out[sym] = { price: last.price, at: last.at, change1h: ago ? (last.price - ago.price) / ago.price : 0, source: quoteSource.get(sym) ?? 'uniswap-v4' }
     }
     return out
   },
@@ -390,7 +437,10 @@ const routes = {
     const symbol = symbolParam(u, 'ZEPH')
     const interval = intParam(u, 'interval', 60, 10, 86_400)
     const limit = intParam(u, 'limit', 300, 1, 2000)
-    const rows = all('SELECT at, price, volume_eth FROM prices WHERE symbol = ? ORDER BY at ASC, block ASC', symbol)
+    // Quote-priced tokens get a point every QUOTE_MS: only read the window the chart can show. Swap-priced
+    // tokens are sparse, so they keep their whole history (the last `limit` buckets, however old).
+    const since = quoteSource.has(symbol) ? Math.floor(Date.now() / 1000) - interval * (limit + 1) : 0
+    const rows = all('SELECT at, price, volume_eth FROM prices WHERE symbol = ? AND at >= ? ORDER BY at ASC, block ASC', symbol, since)
     const buckets = new Map()
     for (const r of rows) {
       const t = Math.floor(r.at / interval) * interval
@@ -402,7 +452,7 @@ const routes = {
   },
   '/markers': async (u) => {
     const symbol = symbolParam(u, 'ZEPH')
-    const ev = all("SELECT e.name, e.at, e.tx, o.kind, o.amount, o.decimals, o.strike FROM events e JOIN offers o ON o.id = json_extract(e.args, '$.id') WHERE o.symbol = ? AND e.name IN ('OptionBought','Exercised','Expired') ORDER BY e.at ASC", symbol)
+    const ev = all("SELECT e.name, e.at, e.tx, o.kind, o.amount, o.decimals, o.strike FROM events e JOIN offers o ON o.id = json_extract(e.args, '$.id') WHERE o.symbol = ? AND e.name IN ('OfferCreated','OptionBought','Exercised','Expired','OfferCancelled') ORDER BY e.at ASC", symbol)
     return ev.map((e) => ({ time: e.at, name: e.name, kind: e.kind, tx: e.tx, strikePerToken: f18(e.strike) / Number(formatUnits(BigInt(e.amount), e.decimals)) }))
   },
   '/expirable': async () => {
@@ -604,3 +654,4 @@ await syncOnce()
 server.listen(PORT, HOST, () => console.log(`[indexer] chain ${CHAIN_ID} → http://${HOST}:${PORT}`))
 loop()
 backfillLoop()
+quoteLoop()
