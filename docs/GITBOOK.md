@@ -67,7 +67,18 @@ end shows how to split it.
 **Appendices**
 - [A. Chain facts](#appendix-a-chain-facts)
 - [B. Protocol constants](#appendix-b-protocol-constants)
-- [C. Suggested GitBook SUMMARY.md](#appendix-c-suggested-gitbook-summarymd)
+- [C. The $KYTE token](#appendix-c-the-kyte-token)
+- [D. Every listed token](#appendix-d-every-listed-token)
+- [E. KyteHook deep dive](#appendix-e-kytehook-deep-dive)
+- [F. Option NFT metadata](#appendix-f-option-nft-metadata)
+- [G. Scripts reference](#appendix-g-scripts-reference)
+- [H. Website components](#appendix-h-website-components)
+- [I. Terms of use](#appendix-i-terms-of-use)
+- [J. Privacy policy](#appendix-j-privacy-policy)
+- [K. Status and roadmap](#appendix-k-status-and-roadmap)
+- [L. Changelog](#appendix-l-changelog)
+- [M. Brand, links and contact](#appendix-m-brand-links-and-contact)
+- [N. Suggested GitBook SUMMARY.md](#appendix-n-suggested-gitbook-summarymd)
 
 ---
 
@@ -114,6 +125,10 @@ Kyte lists tokens through an on-chain **AssetRegistry**. Markets v2 has room for
 **Robinhood Stock Tokens** (tokenized equities such as AAPL, NVDA, TSLA and SPY), Ondo tokenized stocks, and a
 curated set of Robinhood Chain native crypto tokens. Each token has its own exposure cap and minimum strike. The
 **Market** page shows only tokens that are currently enabled.
+
+As of 5 November 2026, **228 tokens** are listed in markets v2 (203 Robinhood Stock Tokens and ETFs, 11 Ondo
+tokenized stocks, and 14 crypto tokens), all with puts enabled. The full list with addresses and limits is in
+[Appendix D](#appendix-d-every-listed-token).
 
 ---
 
@@ -353,7 +368,7 @@ FeeVault and BuybackBurner events.
 |---|---|---|---|---|
 | Premium fee | **3%** (300 bps) | The premium, when an offer is filled | Deducted from what the seller receives | 10% |
 | Exercise fee | **0.1%** (10 bps) | The strike, when an option is exercised | Deducted from what the strike receiver gets | 1% |
-| Swap fee (KyteHook) | **0.1%** (10 bps) | WETH side of swaps in the `$KYTE`/WETH Uniswap v4 pool | Traders in that pool | 1% |
+| Swap fee (KyteHook) | **0.1%** (10 bps) | WETH side of swaps in the `$KYTE`/WETH Uniswap v4 pool, when WETH is the swap's unspecified side ([details](#appendix-e-kytehook-deep-dive)) | Traders in that pool | 1% |
 | Cancel / expire | Free | | | |
 
 - Fees are **snapshotted per position** at creation. A later fee change only applies to new positions.
@@ -874,6 +889,8 @@ the same file.
 | `Paused` / `Unpaused` | Any governed contract | `by` |
 | `AssetAdded` | AssetRegistry | `token`, `cap`, `minStrike` |
 | `AssetEnabled` / `PutsEnabled` | AssetRegistry | `token`, `enabled` |
+| `HookFee` | KyteHook | `id` (PoolId, indexed), `currency` (indexed), `amount` |
+| `FeeChanged` / `FeeVaultChanged` | KyteHook | old and new value |
 
 Calls and puts share the market events; the id's tag says which market emitted it.
 
@@ -1426,7 +1443,589 @@ Compile-time constants (`contracts/src/lib/Constants.sol`) can't be changed, eve
 Current settable values on mainnet: premium fee 300 bps, exercise fee 10 bps, split 3000/2000/5000, hook fee 10 bps,
 buyback `maxPerCall` 1 ETH, `maxSlippageBps` 500, `minClaim` 0, timelock delay 600 s.
 
-## Appendix C: Suggested GitBook SUMMARY.md
+## Appendix C: The $KYTE token
+
+`$KYTE` is the protocol token. It does two things in the protocol:
+
+| Use | How |
+|---|---|
+| **Staking** | Stake `$KYTE` in the StakingPool to receive 30% of all protocol fees, in WETH, every epoch ([section 19](#19-staking-mechanics)) |
+| **Buy-and-burn** | 20% of all fees buy `$KYTE` on the hooked Uniswap v4 pool and burn it in the same transaction ([section 18](#18-revenue-fee-vault-split-and-buyback)) |
+
+| Fact | Value |
+|---|---|
+| Address (from `contracts/deployments/4663.json`) | `0x3849DcF9FA77EC5c21D57d841a268E77830800aF` |
+| Decimals | 18 |
+| Buyback pool | `$KYTE`/WETH on Uniswap v4: fee 3000, tickSpacing 60, hooks = KyteHook `0x77e52E93Aa0892b29a4527Af4f3a79F01cfa9044` |
+| Burn method | `burn(amount)` if the token supports it, otherwise transfer to `0x000000000000000000000000000000000000dEaD` |
+| Immutable in | StakingPool (`stakeToken`) and BuybackBurner (`token`). Changing the token means redeploying both |
+
+> **Before publishing:** the contract at this address currently reports `name() = "Test"` and `symbol() = "TI"`.
+> If the real `$KYTE` launches at a different address, update this appendix and the addresses in
+> [section 24](#24-deployed-addresses).
+
+**Fill in before publishing** (not in the codebase):
+
+| Item | Value |
+|---|---|
+| Total supply | `[TO FILL]` |
+| Launch venue and date | `[TO FILL]` |
+| Distribution / allocation | `[TO FILL]` |
+| Where to buy (pool / app link) | `[TO FILL]` |
+| Team or treasury holdings, vesting | `[TO FILL]` |
+
+---
+
+## Appendix D: Every listed token
+
+Read from the AssetRegistry contracts on 5 November 2026. **Exposure cap** is the maximum underlying, in whole
+tokens, that may sit in open and filled positions at once, per market (calls and puts separately). **Min strike** is
+the minimum *total* strike of one offer, in ETH. To refresh this list, call `assetCount()`, `listedTokens(i)` and
+`getAsset(token)` on each registry, or use the indexer's `GET /assets`.
+
+The website's Market page shows only enabled tokens. New offers go to v2. v1 positions keep settling.
+
+> **Not yet listed:** the trending tokens in `scripts/mainnet/v2-extra-tokens.json` (MOW, AnsemCat, TORCH, PRIORS,
+> HOOKR, DELTA, Index, FOBO, LOBIN, RAETO, GRIFT, REBATE, BLORB, HPHONE, RYFT) are prepared for a follow-up listing
+> (`scripts/mainnet/list-trending.sh`) and are not in the registry yet.
+
+### Markets v2: 228 tokens
+
+| Symbol | Name | Address | Enabled | Puts | Exposure cap (tokens) | Min strike (ETH, total) |
+|---|---|---|---|---|---|---|
+| AAOI | Applied Optoelectronics • Robinhood Token | `0x521Cf887E6531c6F667b5BC4D896E5d9bfE8EB2E` | Yes | Yes | 774 | 0.0001 |
+| AAPL | Apple • Robinhood Token | `0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9` | Yes | Yes | 151 | 0.0001 |
+| AAPLon | Apple (Ondo Tokenized) | `0x9Bf86418CaF2b7a939603d6c24219a77Bf7F9b33` | Yes | Yes | 100 | 0.0001 |
+| ABCL | Abcellera Biologics • Robinhood Token | `0x3139D77Ace0cbAA5bDfD38bD1F1911a794AF0B0e` | Yes | Yes | 4,209 | 0.0001 |
+| ADBE | Adobe • Robinhood Token | `0x232B8ed6377BE97813853B0Ac104c4Cda8378d1B` | Yes | Yes | 205 | 0.0001 |
+| AEHR | Aehr • Robinhood Token | `0x5F604fBA1162193A4388A5DFa56F556f3E133cC2` | Yes | Yes | 769 | 0.0001 |
+| AEIS | Advanced Energy • Robinhood Token | `0xfAf9cb261B5FCC1f404Bb10CD39C5c6C1974E612` | Yes | Yes | 220 | 0.0001 |
+| AI | Artificial Inu | `0x2E8c31162b855A2ffa90F6F8634643Ad6F111e18` | Yes | Yes | 1,000,000 | 0.0001 |
+| ALAB | Astera Labs, Inc. • Robinhood Token | `0x748c32c3ca24eDf31ea597Db1F3d330a7a6DA3Dc` | Yes | Yes | 218 | 0.0001 |
+| AMAT | Applied Materials • Robinhood Token | `0x36046893810a7E7fCE501229d57dc3FC8c8716d0` | Yes | Yes | 131 | 0.0001 |
+| AMBA | Ambarella • Robinhood Token | `0x99D9D8663545151603863C5AcbD6FC3218899009` | Yes | Yes | 817 | 0.0001 |
+| AMC | AMC Entertainment • Robinhood Token | `0x05a3d1Cd21d0C88145E82600E62e7E496e0F222B` | Yes | Yes | 15,385 | 0.0001 |
+| AMD | AMD • Robinhood Token | `0x86923f96303D656E4aa86D9d42D1e57ad2023fdC` | Yes | Yes | 97 | 0.0001 |
+| AMKR | Amkor Technology • Robinhood Token | `0xDd356AA38F40A7b7076755aC854B6FBb1F0D305B` | Yes | Yes | 1,337 | 0.0001 |
+| AMZN | Amazon • Robinhood Token | `0x12f190a9F9d7D37a250758b26824B97CE941bF54` | Yes | Yes | 201 | 0.0001 |
+| ANET | Arista • Robinhood Token | `0x28bABD556b60E53663B8615036479a29c2CDd1Bf` | Yes | Yes | 271 | 0.0001 |
+| APE | ApeCoin | `0x8f86a15EC17cb3369d8b3E666dAdBC11daA82b79` | Yes | Yes | 400,000 | 0.0001 |
+| APLD | Applied Digital • Robinhood Token | `0xb8DBf92F9741c9ac1c32115E78581f23509916FD` | Yes | Yes | 2,894 | 0.0001 |
+| APP | AppLovin • Robinhood Token | `0xA249BAF1063Af884807C1E1400AEf7784836917E` | Yes | Yes | 206 | 0.0001 |
+| ASML | ASML Holding NV • Robinhood Token | `0x47F93d52cBeC7C6D2CfC080e154002370a60dAEA` | Yes | Yes | 33 | 0.0001 |
+| ASTS | AST SpaceMobile • Robinhood Token | `0x1AF6446f07eb1d97c546AFC8c9544cBDF3AD5137` | Yes | Yes | 1,339 | 0.0001 |
+| AUR | Aurora Innovation • Robinhood Token | `0x373C06c4f7BDe527D7Dae4BA169E42b55E393CeD` | Yes | Yes | 11,905 | 0.0001 |
+| AVAV | AeroVironment • Robinhood Token | `0xF6290b5e7C26502e2dA514C31509849718EA76A5` | Yes | Yes | 408 | 0.0001 |
+| AVGO | Broadcom • Robinhood Token | `0x156E175DD063a8cE274C50654eF40e0032b3fbcF` | Yes | Yes | 151 | 0.0001 |
+| AXON | Axon • Robinhood Token | `0xC27dBD474aF5181c5A8777903690D8D262D12648` | Yes | Yes | 122 | 0.0001 |
+| AXTI | AXT • Robinhood Token | `0x141eEa040c2250eEc0314e336975e81f85f6585e` | Yes | Yes | 958 | 0.0001 |
+| BA | Boeing • Robinhood Token | `0x4D21483a44Bf67a86b77E3dA301411880797D452` | Yes | Yes | 289 | 0.0001 |
+| BABA | Alibaba • Robinhood Token | `0xad25Ac6C84D497db898fa1E8387bf6Af3532a1c4` | Yes | Yes | 490 | 0.0001 |
+| BB | Blackberry • Robinhood Token | `0x48E39E56aCdbA37b09020C0b734A613C9a2f100A` | Yes | Yes | 6,204 | 0.0001 |
+| BE | Bloom Energy • Robinhood Token | `0x822CC93fFD030293E9842c30BBD678F530701867` | Yes | Yes | 227 | 0.0001 |
+| BMNR | BitMine Immersion Technologies • Robinhood Token | `0x9a7842EDed60b0FE1e03eEc342C82A397c821eD0` | Yes | Yes | 2,464 | 0.0001 |
+| BND | Vanguard Total Bond Market ETF • Robinhood Token | `0x2F62fC9fAbb470C690f141c28340eD832bB27020` | Yes | Yes | 704 | 0.0001 |
+| BULL | Webull • Robinhood Token | `0xceF9027c7d6985b85f0BA431125073529A947A68` | Yes | Yes | 9,653 | 0.0001 |
+| CASHCAT | Cash Cat | `0x020bfC650A365f8BB26819deAAbF3E21291018b4` | Yes | Yes | 500,000 | 0.0001 |
+| cbBTC | Coinbase Wrapped BTC | `0xCEC185eB182c47d1bA1EFc84e6959e18cd620Be4` | Yes | Yes | 1 | 0.0001 |
+| CBRS | Cerebras Systems • Robinhood Token | `0x5c90450Bbb4273D7b2f17CF6917AEB237A569679` | Yes | Yes | 515 | 0.0001 |
+| CCL | Carnival Corporation • Robinhood Token | `0x9651342CeA770aE9a2969Ba2A52611523146aef9` | Yes | Yes | 1,683 | 0.0001 |
+| CEG | Constellation Energy • Robinhood Token | `0xaE517A2903E68bd929Dfd15be875F8369D53e94a` | Yes | Yes | 192 | 0.0001 |
+| CELH | Celsius • Robinhood Token | `0x8cF07C5A878945185d327aAa6e33FAa95F95e7bF` | Yes | Yes | 1,676 | 0.0001 |
+| CIEN | Ciena • Robinhood Token | `0x44f6D488021f8233B9416294d1FE9b1fEe28382d` | Yes | Yes | 169 | 0.0001 |
+| CLOV | Clover Health Investments • Robinhood Token | `0x62200915e7DEab1eC7f79fb246daDbB80eACdDd0` | Yes | Yes | 11,934 | 0.0001 |
+| CLS | Celestica • Robinhood Token | `0xBf449977089c718C004a66C554B26B94ef3Ad4De` | Yes | Yes | 194 | 0.0001 |
+| CLSK | CleanSpark • Robinhood Token | `0xcBB95BBF36099d34dA091dc6Fa6F49EfA257Cee3` | Yes | Yes | 6,354 | 0.0001 |
+| COHR | Coherent • Robinhood Token | `0x92F9F459F1a9a5AD266b182BE7Bffd1C6c666894` | Yes | Yes | 239 | 0.0001 |
+| COIN | Coinbase • Robinhood Token | `0x6330D8C3178a418788dF01a47479c0ce7CCF450b` | Yes | Yes | 348 | 0.0001 |
+| COST | Costco • Robinhood Token | `0x4EA005168D7F09a7A0Ba9D1DEf21a479950E44C2` | Yes | Yes | 50 | 0.0001 |
+| CRCL | Circle Internet Group • Robinhood Token | `0xdF0992E440dD0be65BD8439b609d6D4366bf1CB5` | Yes | Yes | 670 | 0.0001 |
+| CRCLon | Circle Internet Group (Ondo Tokenized) | `0x369C4748E98C153e9B7aDeBc3E71e9e2a5f60Dc0` | Yes | Yes | 500 | 0.0001 |
+| CRDO | Credo Technology Group • Robinhood Token | `0x4D67253bc223e6b0e104F1084c1fb2b669dDC41b` | Yes | Yes | 331 | 0.0001 |
+| CRM | Salesforce • Robinhood Token | `0xd95B44124e475743a7589e68F3D74008A5536D44` | Yes | Yes | 226 | 0.0001 |
+| CRWD | CrowdStrike Holdings • Robinhood Token | `0xea72Ecca2d0f6bFA1394DBBCff85b52CD4233931` | Yes | Yes | 52 | 0.0001 |
+| CRWV | CoreWeave • Robinhood Token | `0x5f10A1C971B69e47e059e1dC91901B59b3fB49C3` | Yes | Yes | 960 | 0.0001 |
+| CSCO | Cisco Systems • Robinhood Token | `0xF543967EEBB6f1917992eF0E68De63ab07a5a0dA` | Yes | Yes | 487 | 0.0001 |
+| CTSH | Cognizant • Robinhood Token | `0x63D5a3b6939a33f1e75d8Bcd85759858239600DB` | Yes | Yes | 787 | 0.0001 |
+| CVNA | Carvana • Robinhood Token | `0xa4f319104089FE321dc8093C6E707d4fE190A988` | Yes | Yes | 708 | 0.0001 |
+| DDOG | Datadog • Robinhood Token | `0x27c99fBde9D0d2AA4f4Bfb4943f237843DdF6958` | Yes | Yes | 227 | 0.0001 |
+| DELL | Dell • Robinhood Token | `0x941AE714EC6D8130c7B75d67160Ca08f1e7d11Dd` | Yes | Yes | 122 | 0.0001 |
+| DIS | Disney • Robinhood Token | `0x501B1B3B79750313AD2C4CcCD08586c4C17d7283` | Yes | Yes | 439 | 0.0001 |
+| DJT | Trump Media & Technology Group • Robinhood Token | `0x1D11f0496982706C5e14A514D4E79F2e6BdE4516` | Yes | Yes | 9,010 | 0.0001 |
+| DOCN | DigitalOcean • Robinhood Token | `0xc02f12B9fe9E707079EC0d546f3050d3F6C1F8bD` | Yes | Yes | 569 | 0.0001 |
+| ELF | e.l.f. Beauty • Robinhood Token | `0x39EC44Bee4F6A116c6F9B8De566848a985C53C60` | Yes | Yes | 452 | 0.0001 |
+| EWT | iShares MSCI Taiwan Capped ETF • Robinhood Token | `0x1c690498150252222C275A5CEd69d3A6b1f52D5E` | Yes | Yes | 518 | 0.0001 |
+| EWY | iShares MSCI South Korea fund • Robinhood Token | `0x7f0aBeF0C07280F82c6a08ead09dEd6BAE2C13Fc` | Yes | Yes | 325 | 0.0001 |
+| F | Ford Motor • Robinhood Token | `0x25C288E6D899b9BC30160965aD9644c67e73bE0C` | Yes | Yes | 4,082 | 0.0001 |
+| FICO | Fair Isaac • Robinhood Token | `0xa48F22A46C0F1C46CA7D111CB6c137c271987180` | Yes | Yes | 70 | 0.0001 |
+| FIG | Figma • Robinhood Token | `0x41F4267525a8AFf329540eF24fD83d9044758B33` | Yes | Yes | 2,383 | 0.0001 |
+| FISV | Fiserv • Robinhood Token | `0x9ECe29A4A2397C0a35fb5fA8EE2b9509130a98cc` | Yes | Yes | 857 | 0.0001 |
+| FIX | Comfort Systems • Robinhood Token | `0x93Dbb1d2Dc5D63F4abACFF30485273f538Df68Ac` | Yes | Yes | 40 | 0.0001 |
+| FLNC | Fluence Energy • Robinhood Token | `0x282e87451E10fA6679BC7D76C69BE44cD3fC777C` | Yes | Yes | 8,961 | 0.0001 |
+| FLY | Firefly Aerospace Inc. • Robinhood Token | `0x03BC731Ffb162cdd7B98D3C6542bFC291126075d` | Yes | Yes | 2,977 | 0.0001 |
+| FTNT | Fortinet • Robinhood Token | `0x3FB8976980d486084b2eb4a404BD12e72823958f` | Yes | Yes | 394 | 0.0001 |
+| FUTU | Futu Holdings • Robinhood Token | `0xeB30663bDFf0622Ef4e4E5cBb4E975F19f33f51D` | Yes | Yes | 485 | 0.0001 |
+| GDX | VanEck Gold Miners ETF • Robinhood Token | `0xBDFa7A06458Aa26b8E736E0fC87aD37C3BB8Ac2e` | Yes | Yes | 619 | 0.0001 |
+| GE | General Electric • Robinhood Token | `0x63b814DDBd6BF339f25Fed8c36158a008D5B373e` | Yes | Yes | 157 | 0.0001 |
+| GEV | GE Vernova • Robinhood Token | `0x94B8AAE43A1cCc08Aa64B7D1F29b4D920aF4a0C9` | Yes | Yes | 55 | 0.0001 |
+| GLD | SPDR Gold Trust • Robinhood Token | `0xC9a981FEE1F9DEc688bb123ccDeCc63D0deBFC4e` | Yes | Yes | 137 | 0.0001 |
+| GLW | Corning • Robinhood Token | `0x7c04E6A3368F2A1DE3874f0e80d2e0A1a9915da6` | Yes | Yes | 399 | 0.0001 |
+| GLXY | Galaxy Digital Inc. • Robinhood Token | `0x2D427692E928fa156ec22acfaBaFA0447C5805B7` | Yes | Yes | 3,141 | 0.0001 |
+| GME | GameStop • Robinhood Token | `0x1b0E319c6A659F002271B69dB8A7df2F911c153E` | Yes | Yes | 2,084 | 0.0001 |
+| GOOGL | Alphabet Class A • Robinhood Token | `0x2e0847E8910a9732eB3fb1bb4b70a580ADAD4FE3` | Yes | Yes | 181 | 0.0001 |
+| GOOGLon | Alphabet Class A (Ondo Tokenized) | `0xe10cc5f0cd0C90322ebEB33e7757B2c9090146DC` | Yes | Yes | 200 | 0.0001 |
+| HII | Huntington Ingalls • Robinhood Token | `0xEB61c0Ed490A367d4E3631cCf8a74B3bfc7E775D` | Yes | Yes | 159 | 0.0001 |
+| HIMS | Hims & Hers Health • Robinhood Token | `0xCceE82fE024c36fA15E1005edE3E9e4787e23D09` | Yes | Yes | 1,961 | 0.0001 |
+| HOODon | Robinhood Markets (Ondo Tokenized) | `0x43Cac729218C62210D71D66B7F0eC93990D8d8cc` | Yes | Yes | 500 | 0.0001 |
+| HPE | HP Enterprise • Robinhood Token | `0x59dd09d4900C2E4B5F75b7c0d4E6796fcc234Cb1` | Yes | Yes | 939 | 0.0001 |
+| HWM | Howmet Aerospace • Robinhood Token | `0xAEa445c5F3DB1a462998ccC422A875A361ee5d99` | Yes | Yes | 225 | 0.0001 |
+| IBM | IBM • Robinhood Token | `0x980dcf6766FA79f5Cf0c4AAdb3ab477ff15a9619` | Yes | Yes | 202 | 0.0001 |
+| IBRX | ImmunityBio, • Robinhood Token | `0x7c148F74ac7445D1F28366b7FcDC6792a9Fcd0Cf` | Yes | Yes | 6,173 | 0.0001 |
+| INDA | iShares MSCI India ETF • Robinhood Token | `0xACEF2e09adb47aD6aBeBAD9fF06689E60615C2B6` | Yes | Yes | 1,031 | 0.0001 |
+| INFQ | Infleqtion • Robinhood Token | `0xB853bC83a753342a4f8320ea680b4B1E84118D21` | Yes | Yes | 6,025 | 0.0001 |
+| INOD | Innodata • Robinhood Token | `0xf1953DAB6FaD537488d5A022361FfAa8B4c95eC6` | Yes | Yes | 1,214 | 0.0001 |
+| INTC | Intel • Robinhood Token | `0xc72b96e0E48ecd4DC75E1e45396e26300BC39681` | Yes | Yes | 830 | 0.0001 |
+| INTU | Intuit • Robinhood Token | `0x56d23beE5f41A7120170b0c603Dae30128e460e9` | Yes | Yes | 146 | 0.0001 |
+| IONQ | IonQ • Robinhood Token | `0x558378E000D634A36593E338eBacdd6207640EfE` | Yes | Yes | 1,691 | 0.0001 |
+| IREN | IREN Limited • Robinhood Token | `0xF0AB0c93bE6F41369d302e55db1A96b3c430212D` | Yes | Yes | 2,123 | 0.0001 |
+| JBL | Jabil Inc. • Robinhood Token | `0xEAf2512dFC1bEAc608F8794B3793CD4E02894Aa6` | Yes | Yes | 186 | 0.0001 |
+| JNJ | Johnson & Johnson • Robinhood Token | `0x03DfbBE0AC4E7bCDaFd08eD41A400326B77D8c80` | Yes | Yes | 189 | 0.0001 |
+| JOBY | Joby Aviation • Robinhood Token | `0xb334C5cE741B80B5B671F47F5C269Cb193fe8E24` | Yes | Yes | 10,417 | 0.0001 |
+| JPM | JPMorgan Chase • Robinhood Token | `0x07c44dA0848960bFf894F17584dB8B2F60B2409E` | Yes | Yes | 149 | 0.0001 |
+| KLAC | KLA • Robinhood Token | `0x96b933C74eCB4A0926b9210cef7b743EF46be2E9` | Yes | Yes | 320 | 0.0001 |
+| KSS | Kohls Corporation • Robinhood Token | `0x12e3c047bf9AeCAF9dDC98c05C31BFD1dd043993` | Yes | Yes | 2,123 | 0.0001 |
+| KTOS | Kratos Defense & Security Solutions • Robinhood Token | `0x7FD06a4d81cCfA3F351394E144d5191874C31313` | Yes | Yes | 1,235 | 0.0001 |
+| LHX | L3Harris • Robinhood Token | `0x48d60243c66437c6ac3c2495Be94747aEd5Dfe25` | Yes | Yes | 181 | 0.0001 |
+| LINK | ChainLink Token | `0x492641F648a4986844848E0beFE66D14817bCE34` | Yes | Yes | 1,000 | 0.0001 |
+| LIT | Lighter | `0xeeca2E7Dc194a320d349122d88259bB9595a4cB0` | Yes | Yes | 20,000 | 0.0001 |
+| LITE | Lumentum • Robinhood Token | `0x8eF20885F94e3D9bc7eB3080279188Bd5ED7c08C` | Yes | Yes | 74 | 0.0001 |
+| LLY | Eli Lilly • Robinhood Token | `0x8005d266423c7ea827372c9c864491e5786600ea` | Yes | Yes | 36 | 0.0001 |
+| LMT | Lockheed • Robinhood Token | `0x329fcACEb9AD6F9580DD5F643fed0646900D043c` | Yes | Yes | 79 | 0.0001 |
+| LRCX | Lam Research Corp • Robinhood Token | `0x57b0030166DB0C31690d1A5aA167e2e26e2C29a4` | Yes | Yes | 217 | 0.0001 |
+| LULU | Lululemon • Robinhood Token | `0x4e62068525Ab11FE768e29dfD00ef909B9803016` | Yes | Yes | 469 | 0.0001 |
+| LUNR | Intuitive Machines • Robinhood Token | `0xa5D4968421bA94814Be3B136b15cf422101aC1a3` | Yes | Yes | 4,794 | 0.0001 |
+| MCD | McDonald's • Robinhood Token | `0x2fdaa4604F10F4AE7f66fa48A174bCd25b1ece20` | Yes | Yes | 192 | 0.0001 |
+| MDB | MongoDB • Robinhood Token | `0xDdf2266b79abf0B48898959B0ed6E6adf512be74` | Yes | Yes | 151 | 0.0001 |
+| META | Meta Platforms • Robinhood Token | `0xc0D6457C16Cc70d6790Dd43521C899C87ce02f35` | Yes | Yes | 81 | 0.0001 |
+| METAon | Meta Platforms (Ondo Tokenized) | `0x7b5026cfcB4De0cF3d9a39FE2A541514b71437A2` | Yes | Yes | 100 | 0.0001 |
+| MOD | Modine • Robinhood Token | `0xc6Cbad1016b38B797610c25E1dc7D95988B1f362` | Yes | Yes | 401 | 0.0001 |
+| MPWR | Monolithic Power Systems • Robinhood Token | `0x52D50D0280AD1054b43f052bD70a49a212A1b128` | Yes | Yes | 38 | 0.0001 |
+| MRNA | Moderna • Robinhood Token | `0x43B07D15cE533bEc5476d70C22a78a1B2B662155` | Yes | Yes | 220 | 0.0001 |
+| MRVL | Marvell Technology • Robinhood Token | `0x62fd0668e10D8B72339BE2DCF7643001688ff13B` | Yes | Yes | 291 | 0.0001 |
+| MSFT | Microsoft • Robinhood Token | `0xe93237C50D904957Cf27E7B1133b510C669c2e74` | Yes | Yes | 97 | 0.0001 |
+| MSTR | Strategy Inc. • Robinhood Token | `0xec262a75e413fAfD0dF80480274532C79D42da09` | Yes | Yes | 370 | 0.0001 |
+| MSTRon | MicroStrategy (Ondo Tokenized) | `0x09dedC334fC47ab543e5D70C7FD9D2B1aea175bd` | Yes | Yes | 400 | 0.0001 |
+| MTSI | MACOM • Robinhood Token | `0xC93f4d80e268AB922e871bd169156C3CC41894e6` | Yes | Yes | 215 | 0.0001 |
+| MU | Micron Technology • Robinhood Token | `0xfF080c8ce2E5feadaCa0Da81314Ae59D232d4afD` | Yes | Yes | 59 | 0.0001 |
+| MXL | MaxLinear • Robinhood Token | `0x48961813349333209994750ffA89b3c5C22eC969` | Yes | Yes | 790 | 0.0001 |
+| NAVN | Navan • Robinhood Token | `0xf7181b63Fdb858558A74ba96BC42732684cd7965` | Yes | Yes | 2,026 | 0.0001 |
+| NBIS | Nebius Group • Robinhood Token | `0x9D9c6684F596F66a64C030B93A886D51Fd4D7931` | Yes | Yes | 333 | 0.0001 |
+| NET | Cloudflare, Inc. Class A common stock • Robinhood Token | `0x116F00968269B7bfbaD4109cE591d6E74c0601d4` | Yes | Yes | 186 | 0.0001 |
+| NFLX | Netflix • Robinhood Token | `0xE0444EF8BF4eD74f74FD73686e2ddF4C1c5591E8` | Yes | Yes | 793 | 0.0001 |
+| NNE | Nano Nuclear Energy • Robinhood Token | `0xBEF75684C43c4ea7BD18Dd532a2244674Ee8b926` | Yes | Yes | 4,981 | 0.0001 |
+| NOW | ServiceNow • Robinhood Token | `0x0C3260aF4B8f13a69c4c2dFb84fD667890CDFa14` | Yes | Yes | 464 | 0.0001 |
+| NU | Nu • Robinhood Token | `0x408c14038a04f7bD235329E26d2bf569ee20e250` | Yes | Yes | 4,311 | 0.0001 |
+| NVDA | NVIDIA • Robinhood Token | `0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC` | Yes | Yes | 242 | 0.0001 |
+| NVDAon | NVIDIA (Ondo Tokenized) | `0xf1b95AE4E7700b962714702EA53784Dc8492a856` | Yes | Yes | 200 | 0.0001 |
+| NVTS | Navitas Semiconductor • Robinhood Token | `0xbE6702d7b70315376dC48a3293f24f0982F86386` | Yes | Yes | 5,682 | 0.0001 |
+| OKLO | Oklo • Robinhood Token | `0x8B2f88497f15A18E9D4FFa1a8fFB8538399aE774` | Yes | Yes | 2,154 | 0.0001 |
+| ON | ON Semiconductor • Robinhood Token | `0xbBD09F72b025360FeE5C928053Dca6248d35be54` | Yes | Yes | 688 | 0.0001 |
+| ONTO | Onto Innovation • Robinhood Token | `0x8ff63eAeEe3fE54Ba450c4F5538064Ec5A893Aef` | Yes | Yes | 247 | 0.0001 |
+| ORBIO | Orbio.so | `0xAa07A0e9209e16aC99708C3EC70159c6eF3128A3` | Yes | Yes | 2,000,000 | 0.0001 |
+| ORCL | Oracle • Robinhood Token | `0xb0992820E760d836549ba69BC7598b4af75dEE03` | Yes | Yes | 401 | 0.0001 |
+| OUST | Ouster • Robinhood Token | `0x40E7a279850e443f582059ae5dC1c3b6563E6395` | Yes | Yes | 1,607 | 0.0001 |
+| P | Everpure • Robinhood Token | `0x1Cdad396DB64BDa184d5182A97Dd9B3C62100b7D` | Yes | Yes | 433 | 0.0001 |
+| PANW | Palo Alto Networks • Robinhood Token | `0xB039597eD45CBa7B6E2fb9E8BE51802969CEe5Be` | Yes | Yes | 144 | 0.0001 |
+| PATH | UiPath • Robinhood Token | `0xfb2664f07B6Aadd29ea7a59D8859b1AeB8645cDa` | Yes | Yes | 3,847 | 0.0001 |
+| PENDLE | Pendle | `0x5E49E1f85813F2B65858860A3FA231b4186f2e0E` | Yes | Yes | 30,000 | 0.0001 |
+| PENG | Penguin Solutions • Robinhood Token | `0x9b23573b156B52565012F5cE02CDF60AFBaa70Be` | Yes | Yes | 945 | 0.0001 |
+| PENGU | Pudgy Penguins | `0x74BE72AFFAFbC8de30F0C11247814036314D625f` | Yes | Yes | 10,000,000 | 0.0001 |
+| PFE | Pfizer • Robinhood Token | `0x7066A64c24e4206CD62E83bf198c1E7EB361F51e` | Yes | Yes | 1,672 | 0.0001 |
+| PL | Planet Labs • Robinhood Token | `0xAA4d64474c172010aB57719cb9951E6142a100d3` | Yes | Yes | 3,724 | 0.0001 |
+| PLTR | Palantir Technologies • Robinhood Token | `0x894E1EC2D74FFE5AEF8Dc8A9e84686acCB964F2A` | Yes | Yes | 291 | 0.0001 |
+| POET | POET Technologies • Robinhood Token | `0xcf6B2D875361be807EAfa57458c80f28521F9333` | Yes | Yes | 9,882 | 0.0001 |
+| PONS | Pons | `0x39dBED3a2bd333467115dE45665cC57F813C4571` | Yes | Yes | 200,000 | 0.0001 |
+| POWL | Powell Industries • Robinhood Token | `0x237c16D66590F67B886d978ACD362EAeaD8B18c7` | Yes | Yes | 314 | 0.0001 |
+| PR | Permian Resources • Robinhood Token | `0x4189F0c66EBBB0bfeF1C31f763131361EF32f77C` | Yes | Yes | 2,089 | 0.0001 |
+| PWR | Quanta • Robinhood Token | `0x9Ab02Ead789b6903c3c44d0ED32F9c707CDF12FD` | Yes | Yes | 78 | 0.0001 |
+| PYPL | PayPal • Robinhood Token | `0xa45aBDc77918F7B9199b022eEe400C0BC5712BD2` | Yes | Yes | 865 | 0.0001 |
+| QBTS | D-Wave Quantum Inc. Common Stock • Robinhood Token | `0xC583c60aeF9Dc401Da72cEC1B404743a93cea1Cc` | Yes | Yes | 4,883 | 0.0001 |
+| QCOM | Qualcomm • Robinhood Token | `0x0f17206447090e464C277571124dD2688E48AEA9` | Yes | Yes | 304 | 0.0001 |
+| QQQ | Invesco QQQ • Robinhood Token | `0xD5f3879160bc7c32ebb4dC785F8a4F505888de68` | Yes | Yes | 74 | 0.0001 |
+| QQQon | Invesco QQQ (Ondo Tokenized) | `0x300fE8a40701cE81460503fB886f9eD81A3B5e14` | Yes | Yes | 50 | 0.0001 |
+| QUBT | Quantum Computing • Robinhood Token | `0x59818904ab4cE163b3cE4FfB64f2D6Ca02c434B4` | Yes | Yes | 7,875 | 0.0001 |
+| RBLX | Roblox • Robinhood Token | `0xF0C4BF4C582cb3836e98394b1d4e7B7281101bE8` | Yes | Yes | 1,112 | 0.0001 |
+| RCAT | Red Cat • Robinhood Token | `0xFDE6b5d9BB419B10C23268c74e369AbFF39C0460` | Yes | Yes | 11,338 | 0.0001 |
+| RDDT | Reddit • Robinhood Token | `0x05b37Fb53A299a1b874A619e1c4C404D52C36F4C` | Yes | Yes | 529 | 0.0001 |
+| RDW | Redwire • Robinhood Token | `0x92Ef19E82bD8fF36661DE838D5eaE7e5CEF0EfFE` | Yes | Yes | 6,204 | 0.0001 |
+| RGTI | Rigetti Computing • Robinhood Token | `0x284358abc07F9359f19f4b5b4aC91901Be2597Ba` | Yes | Yes | 4,583 | 0.0001 |
+| RIVN | Rivian Automotive • Robinhood Token | `0xB1BF26c1D20ff267A4f93550d1E0d06ac40a114B` | Yes | Yes | 3,768 | 0.0001 |
+| RKLB | Rocket Lab Corporation • Robinhood Token | `0x3b14C39E89D60D627b42a1A4CA45b5bb45Fc12e2` | Yes | Yes | 922 | 0.0001 |
+| RUN | Sunrun • Robinhood Token | `0x756Bc80af765C82da966a788858d65aDF14f3793` | Yes | Yes | 5,477 | 0.0001 |
+| SATS | EchoStar • Robinhood Token | `0x95052ddcd5DC25641657424A8Cf04834997E1730` | Yes | Yes | 500 | 0.0001 |
+| SCHD | Schwab US Dividend Equity ETF • Robinhood Token | `0xd63ABB2C13d7a8421a8017a712802053568e3C1D` | Yes | Yes | 1,404 | 0.0001 |
+| SGOV | iShares 0-3 Month Treasury Bond • Robinhood Token | `0x92FD66527192E3e61d4DDd13322Aa222DE86F9B5` | Yes | Yes | 494 | 0.0001 |
+| SHOP | Shopify • Robinhood Token | `0xF53F66751B1Eff985311b693531E3290F600c410` | Yes | Yes | 357 | 0.0001 |
+| SHY | iShares 1-3 Year Treasury Bond ETF • Robinhood Token | `0xBE274710Bf3d9567e1B290eF6a5F9f90ca016FD8` | Yes | Yes | 612 | 0.0001 |
+| SIMO | Silicon Motion • Robinhood Token | `0x77E655E37F4d913fB9540e0d541D824171a60e81` | Yes | Yes | 250 | 0.0001 |
+| SKHY | SK hynix Inc. American Depositary Shares • Robinhood Token | `0x84CAb63bc87912E71ad199ff14A0bA45de68FeF8` | Yes | Yes | 335 | 0.0001 |
+| SLS | SELLAS Life Sciences • Robinhood Token | `0x285b231728c7E4333799183DF1094d775246a535` | Yes | Yes | 5,695 | 0.0001 |
+| SLV | iShares Silver Trust • Robinhood Token | `0x411eFb0E7f985935DAec3D4C3ebaEa0d0AD7D89f` | Yes | Yes | 1,080 | 0.0001 |
+| SMCI | Super Micro Computer • Robinhood Token | `0xc01aA1fECeC0605b13bc84874ff7256C0f5F562a` | Yes | Yes | 1,493 | 0.0001 |
+| SMH | VanEck Semiconductor ETF • Robinhood Token | `0x072f979c2CAc8e1391B0162a87Fee094bF8744a0` | Yes | Yes | 96 | 0.0001 |
+| SMR | NuScale Power • Robinhood Token | `0x1Eebee7F74517e0279dFb09d25B0407bEEc3FDd6` | Yes | Yes | 9,346 | 0.0001 |
+| SNAP | Snap • Robinhood Token | `0xF6589F11Bc40b669e584073F428B05562F568733` | Yes | Yes | 9,042 | 0.0001 |
+| SNDK | Sandisk Corporation • Robinhood Token | `0xB90A19fF0Af67f7779afF50A882A9CfF42446400` | Yes | Yes | 45 | 0.0001 |
+| SNOW | Snowflake • Robinhood Token | `0xBa0CAB75495255d0cB58E22B648bFED4ECD1F47E` | Yes | Yes | 173 | 0.0001 |
+| SOFI | SoFi Technologies • Robinhood Token | `0x98E75885157C80992A8D41b696D8c9C6Fb30A926` | Yes | Yes | 3,013 | 0.0001 |
+| SOUN | SoundHound AI • Robinhood Token | `0x6E3Dfd9f7e1649BaA14D25cac18C94d62dB10A54` | Yes | Yes | 12,166 | 0.0001 |
+| SOXX | iShares Semiconductor ETF • Robinhood Token | `0x75742c18BC1f1C5c5f448f4C9D9C6F66dafAAa38` | Yes | Yes | 107 | 0.0001 |
+| SPCX | Space Exploration Technologies Corp. Class A Common Stock • Robinhood Token | `0x4a0E65A3EcceC6dBe60AE065F2e7bb85Fae35eEa` | Yes | Yes | 371 | 0.0001 |
+| SPCXon | SpaceX (Ondo Tokenized) | `0x9B8294F24453379aa87C807ab82bf1d5722153Fc` | Yes | Yes | 400 | 0.0001 |
+| SPMO | Invesco S&P 500 Momentum ETF • Robinhood Token | `0xAd622320e520de39e72d41EF07438C3Fd3354875` | Yes | Yes | 375 | 0.0001 |
+| SPY | SPDR S&P 500 ETF Trust • Robinhood Token | `0x117cc2133c37B721F49dE2A7a74833232B3B4C0C` | Yes | Yes | 67 | 0.0001 |
+| SPYon | SPDR S&P 500 ETF (Ondo Tokenized) | `0x533C5571ae586985E1FDDFAa24304284d970C62a` | Yes | Yes | 50 | 0.0001 |
+| STONKBROKER | StonkBroker | `0xe934e36A439C94017B64a3FecE66AF12099aBF50` | Yes | Yes | 10,000,000 | 0.0001 |
+| SUSHI | SushiToken | `0x0bb40D7fbaE7f0C69Bc5910C601987dce697d85F` | Yes | Yes | 300,000 | 0.0001 |
+| TE | T1 Energy • Robinhood Token | `0xb1969f6604CA1AE7a2cD3F1827876e914594CA2D` | Yes | Yes | 16,667 | 0.0001 |
+| TEAM | Atlassian Corporation • Robinhood Token | `0x5B97476b922F3305131B8f0B9D333172E87f4aaE` | Yes | Yes | 265 | 0.0001 |
+| TEM | Tempus AI • Robinhood Token | `0xB1CC0EC7Db69Cf43539119814df40071b9d61793` | Yes | Yes | 651 | 0.0001 |
+| TER | Teradyne • Robinhood Token | `0x2778C5024D5cA2CdB0f8eAD671ffc69963AdCD9C` | Yes | Yes | 186 | 0.0001 |
+| TI | Test | `0x3849DcF9FA77EC5c21D57d841a268E77830800aF` | Yes | Yes | 10,000,000 | 0.0001 |
+| TSEM | Tower Semiconductor • Robinhood Token | `0x89776d4Cd68193597A2fC132cfaC1fDe36CCeA8a` | Yes | Yes | 307 | 0.0001 |
+| TSLA | Tesla • Robinhood Token | `0x322F0929c4625eD5bAd873c95208D54E1c003b2d` | Yes | Yes | 131 | 0.0001 |
+| TSLAon | Tesla (Ondo Tokenized) | `0xB197F36C25BA9b66960688882A4dC595C6b04309` | Yes | Yes | 100 | 0.0001 |
+| TSM | Taiwan Semiconductor Manufacturing • Robinhood Token | `0x58FfE4a942d3885bAa22D7520691F611EF09e7AA` | Yes | Yes | 124 | 0.0001 |
+| TTD | Trade Desk • Robinhood Token | `0x0b5fb4031cae9163db10B169Ee72685F0EdC8545` | Yes | Yes | 3,931 | 0.0001 |
+| TTWO | Take-Two Interactive Software • Robinhood Token | `0x5e81213613b6B86EaB4c6c50d718d34359459786` | Yes | Yes | 258 | 0.0001 |
+| UBER | Uber • Robinhood Token | `0xbd335Aa5A1693F0121A5c0Ef18A080E9958DA78b` | Yes | Yes | 751 | 0.0001 |
+| UMC | United Microelectronics • Robinhood Token | `0x0E6e67Ba88e7b5d9B67636A215c76779B948dE79` | Yes | Yes | 3,083 | 0.0001 |
+| UNH | UnitedHealth • Robinhood Token | `0xcF364ea52787e289De6F32077834056E3E70D6A8` | Yes | Yes | 122 | 0.0001 |
+| UPS | UPS • Robinhood Token | `0xf23250dac154D05Bb671CB0d0eBEf3c635c79CE2` | Yes | Yes | 460 | 0.0001 |
+| USAR | USA Rare Earth • Robinhood Token | `0xd917B029C761D264c6A312BBbcDA868658eF86a6` | Yes | Yes | 5,774 | 0.0001 |
+| USO | United States Oil Fund • Robinhood Token | `0xa30FA36Db767ad9eD3f7a60fC79526fB4d56D344` | Yes | Yes | 317 | 0.0001 |
+| V | Visa • Robinhood Token | `0x9BFF87700337babF5099e99F322F888DafB1d551` | Yes | Yes | 120 | 0.0001 |
+| VICR | Vicor • Robinhood Token | `0x6006ed4B2F94110851ff7509D97D034f0EeD9226` | Yes | Yes | 282 | 0.0001 |
+| VIRTUAL | Virtuals Protocol | `0xc6911796042b15d7Fa4F6CDe69e245DdCd3d9c31` | Yes | Yes | 20,000 | 0.0001 |
+| VRT | Vertiv • Robinhood Token | `0xFA78C12E6488814A0262E4e802749a4a737d5fB7` | Yes | Yes | 214 | 0.0001 |
+| VSAT | ViaSat • Robinhood Token | `0x26dCbfb34FC83CAbD6990f449674efDc6097fF85` | Yes | Yes | 676 | 0.0001 |
+| VST | Vistra • Robinhood Token | `0x561e2a49212b7cCF47f2744Ccb83e200722fADBc` | Yes | Yes | 361 | 0.0001 |
+| VTI | Vanguard Morningstar Total Stock Market ETF • Robinhood Token | `0x0594134DF3f171a354D9C85eBD65b7A6148F6D09` | Yes | Yes | 135 | 0.0001 |
+| WDAY | Workday • Robinhood Token | `0x82DA4646242e1D962e96e932269Dc644c94a9CaA` | Yes | Yes | 256 | 0.0001 |
+| WDC | Western Digital • Robinhood Token | `0xF52597345A8Edf418bc4071b4a35112472277D3e` | Yes | Yes | 146 | 0.0001 |
+| WULF | TeraWulf • Robinhood Token | `0x348Be1A8663f15edDe5CDf8A96BB69078f7aB6Fd` | Yes | Yes | 4,140 | 0.0001 |
+| WYFI | WhiteFiber, Inc. • Robinhood Token | `0x9e7ABD3C9139D14E4c86DcE0e455AAB7A0C2FB3E` | Yes | Yes | 4,976 | 0.0001 |
+| XLK | State Street Technology Select Sector SPDR ETF • Robinhood Token | `0x15Cd20759CE7F3285c29A319dE2D1A2e098c6f43` | Yes | Yes | 283 | 0.0001 |
+| XNDU | Xanadu Quantum • Robinhood Token | `0xA8eB3BCcbf2017eE7CBfb652eB51CF2E1B153289` | Yes | Yes | 19,012 | 0.0001 |
+| XOM | ExxonMobil Holdings Corporation • Robinhood Token | `0xf9B46d3D1B22199D4D1025a9cEDB540A33F1a2d5` | Yes | Yes | 284 | 0.0001 |
+| ZETA | Zeta Global • Robinhood Token | `0xE674C5c071821f48BB2d12CAdb83617Eff438f9e` | Yes | Yes | 1,639 | 0.0001 |
+| ZM | Zoom • Robinhood Token | `0x44c4F142009036cF477eD2d09932051843137CF1` | Yes | Yes | 550 | 0.0001 |
+| ZS | Zscaler • Robinhood Token | `0x7dc013eB55e436f30d7ED1AFE4E36d6e45e3c3f7` | Yes | Yes | 225 | 0.0001 |
+
+### Markets v1: 25 tokens
+
+| Symbol | Name | Address | Enabled | Puts | Exposure cap (tokens) | Min strike (ETH, total) |
+|---|---|---|---|---|---|---|
+| AAPLon | Apple (Ondo Tokenized) | `0x9Bf86418CaF2b7a939603d6c24219a77Bf7F9b33` | Yes | Yes | 100 | 0.0001 |
+| AI | Artificial Inu | `0x2E8c31162b855A2ffa90F6F8634643Ad6F111e18` | Yes | Yes | 1,000,000 | 0.0001 |
+| APE | ApeCoin | `0x8f86a15EC17cb3369d8b3E666dAdBC11daA82b79` | Yes | Yes | 400,000 | 0.0001 |
+| CASHCAT | Cash Cat | `0x020bfC650A365f8BB26819deAAbF3E21291018b4` | Yes | Yes | 500,000 | 0.0001 |
+| cbBTC | Coinbase Wrapped BTC | `0xCEC185eB182c47d1bA1EFc84e6959e18cd620Be4` | Yes | Yes | 1 | 0.0001 |
+| CRCLon | Circle Internet Group (Ondo Tokenized) | `0x369C4748E98C153e9B7aDeBc3E71e9e2a5f60Dc0` | Yes | Yes | 500 | 0.0001 |
+| GOOGLon | Alphabet Class A (Ondo Tokenized) | `0xe10cc5f0cd0C90322ebEB33e7757B2c9090146DC` | Yes | Yes | 200 | 0.0001 |
+| HOODon | Robinhood Markets (Ondo Tokenized) | `0x43Cac729218C62210D71D66B7F0eC93990D8d8cc` | Yes | Yes | 500 | 0.0001 |
+| LINK | ChainLink Token | `0x492641F648a4986844848E0beFE66D14817bCE34` | Yes | Yes | 1,000 | 0.0001 |
+| LIT | Lighter | `0xeeca2E7Dc194a320d349122d88259bB9595a4cB0` | Yes | Yes | 20,000 | 0.0001 |
+| METAon | Meta Platforms (Ondo Tokenized) | `0x7b5026cfcB4De0cF3d9a39FE2A541514b71437A2` | Yes | Yes | 100 | 0.0001 |
+| MSTRon | MicroStrategy (Ondo Tokenized) | `0x09dedC334fC47ab543e5D70C7FD9D2B1aea175bd` | Yes | Yes | 400 | 0.0001 |
+| NVDAon | NVIDIA (Ondo Tokenized) | `0xf1b95AE4E7700b962714702EA53784Dc8492a856` | Yes | Yes | 200 | 0.0001 |
+| ORBIO | Orbio.so | `0xAa07A0e9209e16aC99708C3EC70159c6eF3128A3` | Yes | Yes | 2,000,000 | 0.0001 |
+| PENDLE | Pendle | `0x5E49E1f85813F2B65858860A3FA231b4186f2e0E` | Yes | Yes | 30,000 | 0.0001 |
+| PENGU | Pudgy Penguins | `0x74BE72AFFAFbC8de30F0C11247814036314D625f` | Yes | Yes | 10,000,000 | 0.0001 |
+| PONS | Pons | `0x39dBED3a2bd333467115dE45665cC57F813C4571` | Yes | Yes | 200,000 | 0.0001 |
+| QQQon | Invesco QQQ (Ondo Tokenized) | `0x300fE8a40701cE81460503fB886f9eD81A3B5e14` | Yes | Yes | 50 | 0.0001 |
+| SPCXon | SpaceX (Ondo Tokenized) | `0x9B8294F24453379aa87C807ab82bf1d5722153Fc` | Yes | Yes | 400 | 0.0001 |
+| SPYon | SPDR S&P 500 ETF (Ondo Tokenized) | `0x533C5571ae586985E1FDDFAa24304284d970C62a` | Yes | Yes | 50 | 0.0001 |
+| STONKBROKER | StonkBroker | `0xe934e36A439C94017B64a3FecE66AF12099aBF50` | Yes | Yes | 10,000,000 | 0.0001 |
+| SUSHI | SushiToken | `0x0bb40D7fbaE7f0C69Bc5910C601987dce697d85F` | Yes | Yes | 300,000 | 0.0001 |
+| TI | Test | `0x3849DcF9FA77EC5c21D57d841a268E77830800aF` | Yes | Yes | 10,000,000 | 0.0001 |
+| TSLAon | Tesla (Ondo Tokenized) | `0xB197F36C25BA9b66960688882A4dC595C6b04309` | Yes | Yes | 100 | 0.0001 |
+| VIRTUAL | Virtuals Protocol | `0xc6911796042b15d7Fa4F6CDe69e245DdCd3d9c31` | Yes | Yes | 20,000 | 0.0001 |
+
+---
+
+## Appendix E: KyteHook deep dive
+
+KyteHook is a Uniswap v4 hook attached to the `$KYTE`/WETH pool. Think of it as a toll booth and a price camera
+built into the pool. It does two jobs on every swap.
+
+### Callbacks and the mined address
+
+| Callback | Used | What it does |
+|---|---|---|
+| `afterInitialize` | Yes | Writes the first price observation when the pool is created |
+| `afterSwap` | Yes | Records the new tick and takes the fee |
+| `afterSwapReturnDelta` | Yes | Lets the hook deduct the fee from the swap's output |
+| All others (`beforeInitialize`, `beforeSwap`, liquidity, donate) | No | `revert NotImplemented()` |
+
+In Uniswap v4, a hook's permissions are the low 14 bits of its address. KyteHook needs
+`afterInitialize (1<<12) | afterSwap (1<<6) | afterSwapReturnDelta (1<<2) = 0x1044`, so the address must satisfy
+`address & 0x3FFF == 0x1044`. `contracts/script/HookDeployer.sol` is a small CREATE2 factory: `mine(initCodeHash,
+maxTries)` tries salts until the predicted address has those bits (about 16,000 tries on average; the script allows
+400,000), and `deploy(salt, initCode)` deploys it. The constructor runs `Hooks.validateHookPermissions`, so a wrong
+address reverts.
+
+Constructor arguments: `poolManager`, `owner` (the timelock), `feeVault`, `feeBps` (10), `feeCurrencyOnly` (WETH).
+
+### Job 1: protocol fee
+
+After every swap:
+1. The hook looks at the swap's **unspecified currency**: the side the trader did not give an exact amount for.
+2. If that currency is WETH (`feeCurrencyOnly`), it takes `amount × feeBps / 10,000`.
+3. `poolManager.take(WETH, feeVault, fee)` sends it straight to the FeeVault, and `HookFee(poolId, currency, amount)`
+   is emitted.
+4. `afterSwap` returns the fee as its delta, so the PoolManager's accounting stays balanced.
+
+**Which swaps pay:** selling `$KYTE` for WETH, or asking for an exact WETH output, pays the fee (WETH is the
+unspecified side). Buying `$KYTE` with an exact WETH input does not, because the unspecified side is `$KYTE`. This
+is deliberate: the vault only ever receives WETH, which it can split.
+
+**Example:** a trader sells 1,000 `$KYTE` and the pool pays out about 1 WETH. The hook takes 0.001 WETH for the
+FeeVault. At the next split that becomes 0.0003 WETH to stakers, 0.0002 to buy-and-burn, and 0.0005 to ops.
+
+The Proof page shows `FeesSplit` and `Burned`. Hook fees are included in the FeeVault splits; individual `HookFee`
+events can be read from the hook contract on the explorer.
+
+### Job 2: TWAP oracle
+
+After every swap the hook stores `Observation { blockTimestamp, tickCumulative, tick }` in a 128-slot ring buffer
+per pool. Several swaps in one block keep only the last tick. `consult(poolId, secondsAgo)` returns the
+time-weighted mean tick over the window, clamped to the oldest observation if the history is shorter.
+`twapSqrtPriceX96(poolId, secondsAgo)` returns the price ready for quoting, and `observationAt(poolId, i)` exposes the
+raw buffer.
+
+The UniswapV4Adapter quotes buybacks from the **10-minute** TWAP. On a hooked pool it **never falls back to spot**:
+if the oracle can't answer, the quote reverts. The adapter's constructor also checks that the hook it is given is
+the one in the pool key (`BadPool` otherwise).
+
+### Trust properties
+
+| Point | Detail |
+|---|---|
+| Owner | The timelock. It can only change `feeBps` (≤ 1%) and `feeVault` |
+| Who calls the callbacks | Only the PoolManager (`onlyPoolManager`) |
+| Funds held | None: fees go to the vault in the same transaction |
+| Swap control | None: the hook can't block, pause or reroute swaps |
+| Upgradability | Not upgradeable |
+
+---
+
+## Appendix F: Option NFT metadata
+
+`OptionNFT.tokenURI(id)` returns a `data:application/json;base64,…` document built entirely on-chain from the
+position:
+
+| Field | Value |
+|---|---|
+| `name` | `<SYMBOL> CALL #<localId>` or `<SYMBOL> PUT #<localId>` |
+| `description` | "Physically settled option. Exercise before expiry." |
+| `attributes` | `Type` (CALL/PUT), `Underlying` (token address), `Amount` (raw units), `Strike` (wei WETH), `Expiry` (unix, date display) |
+| `image` | Base64 SVG, 400 × 400, dark background; title in mint (`#7cf2c9`) for calls or coral (`#ff9a7a`) for puts; lines for underlying, strike, premium and expiry |
+
+Amounts in the metadata are raw on-chain units (token base units, wei). The symbol is embedded only if it is 1–16
+plain alphanumeric characters; otherwise it shows `TOKEN`, so a token's `symbol()` can never inject JSON or SVG.
+`tokenURI` reverts for ids that don't exist (burned on exercise or expiry).
+
+---
+
+## Appendix G: Scripts reference
+
+### Foundry scripts (`contracts/script/`)
+
+| Script | What it does |
+|---|---|
+| `Deploy.s.sol` | Full protocol deploy: TimelockController (or reuse `TIMELOCK`), AssetRegistry, OptionNFT, FeeVault, CallMarket, PutMarket, StakingPool, BuybackBurner, Router, KyteHook. Env: `GUARDIAN`, `WETH`, `KYTE_TOKEN`, `KEEPER`, `OPS_SAFE`, `POOL_MANAGER`, `ADMIN_SAFE` or `TIMELOCK`; optional `FEE_BPS_PREMIUM` (300), `FEE_BPS_EXERCISE` (10), `TIMELOCK_DELAY` (172800). On mainnet every admin role must be a contract (EIP-7702 delegations are rejected) and rehearsal mode is refused. A simulation never overwrites the real deployment file |
+| `DeployAdapter.s.sol` | Initializes the `$KYTE`/WETH pool with KyteHook and deploys UniswapV4Adapter. Env: `POOL_MANAGER`, `KYTE_PER_ETH` (opening price); optional `POOL_FEE` (3000), `TICK_SPACING` (60), `SKIP_INIT`. Liquidity is added separately |
+| `DeployMarketsV2.s.sol` | Markets v2: new AssetRegistry (300 slots), OptionNFT, CallMarket, PutMarket, Router, wired to the live timelock, guardian, FeeVault and WETH. Writes the `v2` section of the deployment file |
+| `DeployDevnet.s.sol` | Local devnet: whole protocol, mock tokens, a real Uniswap v4 PoolManager with pools, swap router, seeded offers and stakes |
+| `CreateSafes.s.sol` | Creates the admin, guardian and ops Safes (Safe v1.4.1). Owners from `SAFE_OWNERS`; admin and ops need `ADMIN_THRESHOLD` (default 2) signatures, the guardian `GUARDIAN_THRESHOLD` (default 1) so a pause can be fast. Writes `deployments/safes-<chainId>.json` |
+| `HookDeployer.sol` | CREATE2 factory that mines and deploys KyteHook's address |
+
+### Node and shell scripts
+
+| Script | What it does |
+|---|---|
+| `scripts/sync-contracts.mjs` | Copies ABIs and deployed addresses into `src/lib/generated/` |
+| `scripts/export-service-abis.mjs` | Writes the ABIs the indexer and keeper read into `indexer/abis/` |
+| `scripts/e2e-devnet.mjs` | Runs all 19 user actions on the devnet and checks the indexer agrees |
+| `scripts/devnet-trader.mjs` | Random swaps on devnet v4 pools so charts move |
+| `scripts/check-hook.mjs` | Shows KyteHook fees landing in the FeeVault on devnet |
+| `scripts/mainnet/launch.sh` | One-command mainnet launch: Safes, protocol, pool + adapter, verification |
+| `scripts/mainnet/deploy.sh` | `core` / `adapter` / `verify` steps of the deploy |
+| `scripts/mainnet/verify.mjs` | Source verification on Sourcify/Blockscout (no API key needed) |
+| `scripts/mainnet/timelock-calldata.mjs` | Builds the timelock plan that opens the market (destinations, routers, adapter, bounds, listings) |
+| `scripts/mainnet/open-market.sh` | Imports owner keystores, then schedules and executes that plan through the admin Safe |
+| `scripts/mainnet/safe-run.mjs` | Runs any plan through the admin Safe and timelock: `status`, `schedule`, `execute`, `auto` |
+| `scripts/mainnet/markets-v2.sh` | One-command markets v2 deploy, listing and publish |
+| `scripts/mainnet/v2-plan.mjs` | `record` the v2 deploy block; `plan` the listing batches (cached in `scripts/mainnet/out/`) |
+| `scripts/mainnet/list-trending.sh` | Lists `v2-extra-tokens.json` in v2 after the main listing finished |
+| `scripts/mainnet/guardian-disable.mjs` | Disables tokens through the guardian Safe, instantly (`--dry` to simulate) |
+| `scripts/mainnet/set-keeper.sh` + `setkeeper-plan.mjs` | Hands the buyback keeper role to a new wallet through the timelock |
+| `ops/install-macos-services.sh` | Installs the indexer and keeper as launchd services (`--remove` to uninstall) |
+| `ops/set-keeper-key.sh` | Saves the keeper key to `~/.kyte/keeper.key` (hidden prompt, chmod 600) |
+| `ops/run-indexer.sh` / `ops/run-keeper.sh` | Entry points used by Docker, Render and launchd |
+
+---
+
+## Appendix H: Website components
+
+| Component | Role |
+|---|---|
+| `Nav` | Floating pill navigation bar; full-height mobile menu; devnet chip and Faucet |
+| `ConnectButton` | Privy wallet picker limited to installed wallets; the chosen wallet becomes wagmi's account |
+| `Faucet` | Devnet only: funds the wallet with ETH, WETH, `$KYTE` and test tokens |
+| `BuyDialog` | Buy confirmation: premium, fee, what you receive |
+| `TxStatus` | Bottom-right transaction card driven by `useTx()` |
+| `TokenChart` | Lightweight Charts price chart with strike lines and event markers |
+| `TokenPicker` | Token selector for Market and Sell |
+| `WalletHoldings` | Everything the connected wallet holds that the app knows about, in one multicall |
+| `LiveOffers` | Landing order book with 1h sparklines, distance to spot and expandable rows |
+| `MainnetTokens` | "Trending on Robinhood Chain": tokens ranked by last-hour swaps (`/api/rh-tokens`) |
+| `ActivityFeed` | Live on-chain events from the indexer |
+| `LivePanel` | Epoch progress (time to the next split) and chain pulse |
+| `Ticker`, `fx/KineticMarquee` | Scrolling strips of open offers |
+| `HeroCard`, `ProductFrame` | Landing hero card and live "product screenshot" frame |
+| `FeeSplitBar` | 30 / 20 / 50 split visual |
+| `FlowStory` | Scroll-driven animation of assets moving between parties |
+| `FAQ` | Accordion FAQ |
+| `TimeLeft`, `CountUp` | Ticking countdowns and animated numbers |
+| `DemoBanner` | Shown when demo data is in use |
+| `bento/Bento` | Proof bento tiles on the landing page |
+| `fx/AuroraCanvas`, `fx/HeroScroll`, `fx/SmoothScroll`, `fx/SplitHeading`, `fx/FooterAscii`, `AsciiField`, `WordReveal`, `Reveal`, `motion/primitives` | Visual effects: WebGL aurora, GSAP scroll scenes, Lenis smooth scroll, text reveals |
+| `landing/kit`, `landing/OutlineWord`, `Footer`, `PillButton`, `Logo`, `LogoStrip`, `ui` | Brand building blocks and shared UI |
+
+---
+
+## Appendix I: Terms of use
+
+*As shown on kyte.sh/terms. Last updated 30 October 2026.*
+
+**What Kyte is.** Kyte is a set of smart contracts on Robinhood Chain and a website that helps you interact with
+them. The contracts hold collateral and settle options. Nobody at Kyte can access, freeze or move your funds.
+
+**Who can use it.** You must be legally allowed to trade options in your jurisdiction. Residents of restricted or
+sanctioned jurisdictions may not use the protocol. You are responsible for your own compliance and taxes.
+
+**Risk.** Options can expire worthless. Sellers can be assigned at the strike and buyers can lose the entire
+premium. Listed tokens may be volatile, illiquid or controlled by third parties. Smart contracts can contain bugs.
+Only use funds you can afford to lose.
+
+**Settlement.** Settlement is physical and enforced by the contracts. A transaction that lands after expiry fails.
+Exercise well before expiry. Payouts arrive as WETH.
+
+**Fees.** Fees are 3% of the premium when an offer fills and 0.1% of the strike on exercise. They are recorded on
+each position when it is created and split by the FeeVault contract.
+
+**No advice.** Nothing on this site is investment, legal or tax advice. Kyte does not recommend any position.
+
+**Changes.** Protocol settings change only through a public 10 minute timelock. These terms may be updated; the
+version on this page applies.
+
+---
+
+## Appendix J: Privacy policy
+
+*As shown on kyte.sh/privacy. Last updated 30 October 2026.*
+
+**What we collect.** The website does not use accounts, cookies for tracking, or analytics. When you connect a
+wallet, your public address is used in your browser to read your positions. It is not stored by us.
+
+**Wallet connection.** The wallet picker is provided by Privy. Only wallets already installed in your browser are
+shown. Privy processes your public address under its own privacy policy.
+
+**On chain data.** Every transaction you send is public on Robinhood Chain and is indexed by our indexer to show the
+order book, proof of fee splits and burns. This data is public by nature and cannot be deleted.
+
+**Third parties.** The site talks to a Robinhood Chain RPC endpoint and to our indexer. No advertising networks are
+loaded.
+
+**Contact.** Questions about this policy can be sent to the Kyte team through the links in the footer.
+
+---
+
+## Appendix K: Status and roadmap
+
+**Done**
+
+| Area | Status |
+|---|---|
+| Core contracts (registry, NFT, markets, router, fee vault) | Live on mainnet |
+| Staking, buyback burner, Uniswap v4 adapter, KyteHook | Deployed on mainnet |
+| Markets v1 | Live, 25 tokens, settling |
+| Markets v2 | Live, 228 tokens (Robinhood Stock Tokens, Ondo stocks, crypto) |
+| Indexer and keeper | Running in production (Render Blueprint; Docker and macOS options) |
+| Website | Live: market, sell, positions, stake, proof, docs; strict CSP and security headers |
+| Tests | 106 Foundry tests incl. fuzz, invariants and real v4 swaps; CI on every push |
+
+**Open**
+
+| Item | Notes |
+|---|---|
+| Real `$KYTE` token and its pool | The configured token address is currently a test token ([Appendix C](#appendix-c-the-kyte-token)) |
+| Trending token listing | Prepared in `v2-extra-tokens.json`, not executed yet |
+| Audit and bug bounty | `[TO FILL: auditor, date, report link]` |
+| Terms acceptance and geoblocking | Planned in the build plan; not in the website yet |
+| Testnet deployment | Testnet WETH address not confirmed |
+| Timelock delay | Currently 10 minutes on-chain; `Deploy.s.sol` supports 48 hours |
+
+---
+
+## Appendix L: Changelog
+
+| Date | Change |
+|---|---|
+| 2026-10-30 | Contracts, indexer, keeper and website built and verified end to end on a local devnet |
+| 2026-11-01 | Mainnet production automation: Docker images, Compose, macOS services, Render Blueprint; keeper key handling hardened |
+| 2026-11-01 | Indexer prices cbBTC, LINK, VIRTUAL and PENGU from their Uniswap v4 ETH pools |
+| 2026-11-02 | Market shows only enabled tokens; guardian script to disable tokens; continuous candles |
+| 2026-11-02 | Price feeds for PONS, CASHCAT, AI, LIT, PENDLE, APE, STONKBROKER, ORBIO and 8 more listed tokens |
+| 2026-11-04 | Live prices for every listed stock token (Robinhood quote feed); smooth line chart with option markers |
+| 2026-11-04 | **Markets v2**: 300-asset registry for every Robinhood Stock Token; v1 and v2 run side by side in indexer, keeper and site |
+| 2026-11-04 | Trending Robinhood Chain tokens: DEX prices (DexScreener) and a prepared follow-up v2 listing |
+| 2026-11-04 | One-command keeper handover for the BuybackBurner; sane Sell premium default, faster token feed, CI on Node 24 |
+| 2026-11-05 | This documentation |
+
+---
+
+## Appendix M: Brand, links and contact
+
+| Item | Value |
+|---|---|
+| Name | Kyte |
+| Wordmark / domain | kyte.sh |
+| Token | `$KYTE` |
+| Tagline | Covered options on Robinhood Chain |
+| Hero line | Options, on your terms |
+| Colours | Black `#000000`, surface `#181818`, white text, mint accent `#4DFCA9`, cyan `#05EDFA` (puts) |
+| Type | Geist (sans and mono) |
+| Logo | Placeholder mark (three wind lines) in `src/components/Logo.tsx`: `[TO FILL: final logo files]` |
+
+| Channel | Link |
+|---|---|
+| Website | https://kyte.sh |
+| X (Twitter) | @useKyte |
+| Email | contact@kyte.sh |
+| Security reports | contact@kyte.sh, or a direct message to @useKyte |
+| Discord | `[TO FILL]` |
+| Telegram | `[TO FILL]` |
+| GitHub | `[TO FILL: public repository link, if any]` |
+| Explorer | https://robinhoodchain.blockscout.com |
+
+Kyte is built on Robinhood Chain and is not affiliated with or endorsed by Robinhood.
+
+---
+
+## Appendix N: Suggested GitBook SUMMARY.md
 
 To split this file into GitBook pages (Git Sync), cut it at each numbered heading into the files below:
 
@@ -1483,4 +2082,17 @@ To split this file into GitBook pages (Git Sync), cut it at each numbered headin
 * [Hosting](operations/hosting.md)
 * [Monitoring and incidents](operations/monitoring.md)
 * [Chain facts and constants](operations/appendix.md)
+
+## Appendix
+* [$KYTE token](appendix/kyte-token.md)
+* [Listed tokens](appendix/tokens.md)
+* [KyteHook deep dive](appendix/kytehook.md)
+* [Option NFT metadata](appendix/option-nft.md)
+* [Scripts reference](appendix/scripts.md)
+* [Website components](appendix/components.md)
+* [Terms of use](appendix/terms.md)
+* [Privacy policy](appendix/privacy.md)
+* [Status and roadmap](appendix/status.md)
+* [Changelog](appendix/changelog.md)
+* [Brand, links and contact](appendix/brand.md)
 ```
