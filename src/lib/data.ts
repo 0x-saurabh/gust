@@ -154,7 +154,7 @@ export function useAssets() {
       return list
     },
     staleTime: 10_000,
-    refetchInterval: 10_000,
+    refetchInterval: 20_000,
   })
 }
 
@@ -430,7 +430,7 @@ export function useActivity(limit = 30) {
       if (!INDEXER_URL) return []
       return api<Activity[]>(`/activity?limit=${limit}`)
     },
-    refetchInterval: live ? 3_000 : false,
+    refetchInterval: live ? 6_000 : false,
   })
 }
 
@@ -451,7 +451,7 @@ export function useHealth() {
       const b = await client!.getBlock()
       return { lastBlock: Number(b.number), chainTime: Number(b.timestamp), fetchedAt }
     },
-    refetchInterval: live ? 3_000 : false,
+    refetchInterval: live ? 10_000 : false,
   })
 }
 
@@ -469,7 +469,7 @@ export function useCandles(symbol: string, interval = 60) {
       if (!live || !INDEXER_URL) return []
       return api<Candle[]>(`/candles?token=${encodeURIComponent(symbol)}&interval=${interval}&limit=500`)
     },
-    refetchInterval: live ? 4_000 : false,
+    refetchInterval: live ? 10_000 : false,
     placeholderData: (prev) => prev,
   })
 }
@@ -488,7 +488,7 @@ export function usePrices() {
   return useQuery({
     queryKey: ['prices', live],
     queryFn: async (): Promise<Record<string, Quote>> => (!live || !INDEXER_URL ? {} : api<Record<string, Quote>>('/prices')),
-    refetchInterval: live ? 4_000 : false,
+    refetchInterval: live ? 10_000 : false,
   })
 }
 
