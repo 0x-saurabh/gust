@@ -38,7 +38,8 @@ if (!/^0x[0-9a-f]{64}$/.test(KEY)) throw new Error('keeper key must be 0x + 64 h
 if (!DEVNET && ANVIL_KEYS.has(KEY)) throw new Error('refusing to run with a public anvil key outside the devnet')
 delete process.env.KEEPER_PRIVATE_KEY // keep it out of child processes and crash dumps
 
-const dep = JSON.parse(fs.readFileSync(path.join(ROOT, `contracts/deployments/${CHAIN_ID}.json`), 'utf8'))
+// DEPLOYMENTS_FILE: rehearsals against a fork use their own copy of the deployment file.
+const dep = JSON.parse(fs.readFileSync(process.env.DEPLOYMENTS_FILE || path.join(ROOT, `contracts/deployments/${CHAIN_ID}.json`), "utf8"))
 // Fresh forge build when present (local dev), else the committed copies in indexer/abis (servers, Render).
 const abiOf = (file, name) => {
   const built = path.join(ROOT, `contracts/out/${file}/${name}.json`)
@@ -83,14 +84,16 @@ async function send(label, params) {
 }
 
 // Live filled ids per market, built from OfferCreated logs seen so far and pruned when settled.
-const tracked = { [getAddress(dep.callMarket)]: new Set(), [getAddress(dep.putMarket)]: new Set() }
+// v1 markets keep settling their open positions after markets v2 (deployments `v2`) goes live, so both are watched.
+const MARKETS = [dep.callMarket, dep.putMarket, dep.v2?.callMarket, dep.v2?.putMarket].filter(Boolean).map((a) => getAddress(a))
+const tracked = Object.fromEntries(MARKETS.map((m) => [m, new Set()]))
 let scanned = START_BLOCK - 1n
 async function refreshTracked() {
   const latest = await pub.getBlockNumber()
   // chunked, so a long history doesn't become one huge getLogs the RPC rejects
   while (scanned < latest) {
     const to = scanned + 5_000n < latest ? scanned + 5_000n : latest
-    const logs = await pub.getLogs({ address: [dep.callMarket, dep.putMarket], event: OFFER_CREATED, fromBlock: scanned + 1n, toBlock: to })
+    const logs = await pub.getLogs({ address: MARKETS, event: OFFER_CREATED, fromBlock: scanned + 1n, toBlock: to })
     for (const l of logs) tracked[getAddress(l.address)].add(l.args.id)
     scanned = to
   }
@@ -173,6 +176,7 @@ if (rpcChain !== CHAIN_ID) throw new Error(`RPC is chain ${rpcChain}, expected $
 for (const k of ['callMarket', 'putMarket', 'feeVault', 'weth']) {
   if (!dep[k] || (await pub.getCode({ address: dep[k] })) === undefined) throw new Error(`${k} has no code at ${dep[k]} on chain ${CHAIN_ID}`)
 }
+for (const m of MARKETS) if ((await pub.getCode({ address: m })) === undefined) throw new Error(`market ${m} has no code on chain ${CHAIN_ID}`)
 log(`chain ${CHAIN_ID}, keeper ${account.address}${MAX_GAS_WEI ? `, gas cap ${formatGwei(MAX_GAS_WEI)} gwei` : ''}`)
 await tick()
 if (process.env.ONCE) process.exit(0)

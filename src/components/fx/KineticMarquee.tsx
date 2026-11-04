@@ -52,7 +52,7 @@ export function KineticMarquee() {
           <Link key={`${o.id}-${i}`} href="/market" className="flex items-center gap-3 whitespace-nowrap font-mono text-sm text-muted transition-colors hover:text-ink">
             <span className={`size-1.5 rounded-full ${o.kind === 'call' ? 'bg-call' : 'bg-put'}`} />
             <span className={o.kind === 'call' ? 'text-call' : 'text-put'}>{o.kind.toUpperCase()}</span>
-            <span className="text-ink">{num(o.amount, 0)} {o.symbol}</span>
+            <span className="text-ink">{num(o.amount, 4)} {o.symbol}</span>
             <span>@ {(o.strike / o.amount).toPrecision(3)} ETH</span>
             <span className="text-ink">{eth(o.premium)}</span>
             <span className="text-faint">{timeLeft(o.expiry)}</span>

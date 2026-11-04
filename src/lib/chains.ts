@@ -56,7 +56,11 @@ export type ProtocolContracts = {
   tokens?: Record<string, Address>
   /** Block the protocol was deployed at; chain log reads start here. */
   deployBlock?: number
+  /** Markets v2: registry with room for every Robinhood Stock Token, plus new NFT, markets and router. */
+  v2?: Pick<ProtocolContracts, 'assetRegistry' | 'optionNft' | 'callMarket' | 'putMarket' | 'router'> & { fromBlock?: number }
 }
+
+export type MarketSet = Required<Pick<ProtocolContracts, 'assetRegistry' | 'optionNft' | 'callMarket' | 'putMarket' | 'router'>>
 
 // External addresses verified for Robinhood Chain (BUILD_PLAN.md §5). Our own contracts come from
 // contracts/deployments/<chainId>.json via `node scripts/sync-contracts.mjs`.
@@ -67,7 +71,16 @@ const EXTERNAL: Record<number, ProtocolContracts> = {
 }
 
 const deployed = (deployments as Record<string, ProtocolContracts>)[String(CHAIN_ID)] ?? {}
-export const contracts: ProtocolContracts = { ...EXTERNAL[CHAIN_ID], ...deployed }
+const pickMarkets = (c: ProtocolContracts) =>
+  ({ assetRegistry: c.assetRegistry!, optionNft: c.optionNft!, callMarket: c.callMarket!, putMarket: c.putMarket!, router: c.router! }) as MarketSet
+/** v1 markets: still settle (buy, exercise, cancel, expire) every position they hold after v2 goes live. */
+export const legacyMarkets: MarketSet | null = deployed.v2?.callMarket ? pickMarkets(deployed) : null
+/** `contracts.callMarket` etc. are the current markets (v2 once deployed): new offers and listings go there. */
+export const contracts: ProtocolContracts = { ...EXTERNAL[CHAIN_ID], ...deployed, ...(deployed.v2?.callMarket ? deployed.v2 : {}) }
+/** The market set a position lives in, from its id: v1 ids carry tags 1/2, v2 ids 3/4 (`id >> 248`). */
+export function marketsFor(id: bigint): MarketSet {
+  return legacyMarkets && id >> 248n < 3n ? legacyMarkets : pickMarkets(contracts)
+}
 export const contractsLive = Boolean(contracts.callMarket && contracts.putMarket && contracts.weth)
 export const DEPLOY_BLOCK = BigInt(contracts.deployBlock ?? 0)
 

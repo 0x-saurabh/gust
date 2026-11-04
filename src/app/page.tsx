@@ -11,7 +11,7 @@ import { Bleed, EASE as ease, Reveal, SectionHead, Wrap, XButton, scrollToId } f
 import { Tilt } from '@/components/motion/primitives'
 import { FlowStory } from '@/components/FlowStory'
 import { ProductFrame } from '@/components/ProductFrame'
-import { chain, isDevnet } from '@/lib/chains'
+import { chain, isDevnet, legacyMarkets } from '@/lib/chains'
 import { BRAND } from '@/lib/config'
 
 const AuroraCanvas = dynamic(() => import('@/components/fx/AuroraCanvas').then((m) => m.AuroraCanvas), { ssr: false })
@@ -364,7 +364,7 @@ function Security() {
 }
 
 function Params() {
-  const p = [['Expiry range', '1 hour to 90 days'], ['Minimum premium', '0.0005 ETH'], ['Listed tokens', 'Up to 25'], ['Per-token limits', 'Exposure cap and minimum strike'], ['Strike currency', 'ETH (WETH in contracts)'], ['Payouts', 'WETH, with unwrap to ETH'], ['Network', 'Robinhood Chain (Ethereum L2)'], ['Contracts', 'Solidity 0.8.28, OpenZeppelin 5']]
+  const p = [['Expiry range', '1 hour to 90 days'], ['Minimum premium', '0.0005 ETH'], ['Listed tokens', legacyMarkets ? 'Up to 300, incl. every Robinhood Stock Token' : 'Up to 25'], ['Per-token limits', 'Exposure cap and minimum strike'], ['Strike currency', 'ETH (WETH in contracts)'], ['Payouts', 'WETH, with unwrap to ETH'], ['Network', 'Robinhood Chain (Ethereum L2)'], ['Contracts', 'Solidity 0.8.28, OpenZeppelin 5']]
   return (
     <Bleed className="mt-32 md:mt-44">
       <Wrap>

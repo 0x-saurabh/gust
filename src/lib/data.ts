@@ -5,7 +5,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatUnits, parseAbiItem, type Address, type PublicClient } from 'viem'
 import { useAccount, usePublicClient } from 'wagmi'
-import { DEPLOY_BLOCK, contracts, contractsLive } from './chains'
+import { DEPLOY_BLOCK, contracts, contractsLive, legacyMarkets, marketsFor } from './chains'
 import { DEMO } from './config'
 import * as demo from './demo-data'
 import { ABIS } from './generated/abis'
@@ -109,7 +109,9 @@ const EV = {
 const HINTS: Record<string, { spotEth: number; vol: number }> = Object.fromEntries(
   demo.ASSETS.map((a) => [a.symbol, { spotEth: a.spotEth, vol: a.vol }]),
 )
-const hint = (symbol: string) => HINTS[symbol] ?? { spotEth: 0, vol: 1.2 }
+// Tokenized stocks and ETFs move far less than small-cap crypto: price their options with equity-like volatility.
+const STOCK = /Robinhood Token|Ondo Tokenized/i
+const hint = (symbol: string, name = '') => HINTS[symbol] ?? { spotEth: 0, vol: STOCK.test(name) ? 0.45 : 1.2 }
 
 type ApiAsset = { address: Address; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string }
 
@@ -128,7 +130,7 @@ async function assetsFromChain(client: PublicClient): Promise<Asset[]> {
         client.readContract({ address, abi: ABIS.ERC20, functionName: 'symbol' }),
         client.readContract({ address, abi: ABIS.ERC20, functionName: 'name' }),
       ])
-      return { symbol, name, address, decimals: a.decimals, enabled: a.enabled, putsEnabled: a.enabled && a.putsEnabled, cap: a.cap, minStrike: a.minStrike, ...hint(symbol) }
+      return { symbol, name, address, decimals: a.decimals, enabled: a.enabled, putsEnabled: a.enabled && a.putsEnabled, cap: a.cap, minStrike: a.minStrike, ...hint(symbol, name) }
     }),
   )
 }
@@ -141,7 +143,7 @@ export function useAssets() {
     queryFn: async (): Promise<Asset[]> => {
       if (!live || !client) return demo.ASSETS.map((a) => ({ ...a, enabled: true, cap: 0n, minStrike: 0n }))
       const list = await viaIndexer('/assets', () => assetsFromChain(client), (x) =>
-        (x as ApiAsset[]).map((a) => ({ ...a, cap: BigInt(a.cap), minStrike: BigInt(a.minStrike), ...hint(a.symbol) })),
+        (x as ApiAsset[]).map((a) => ({ ...a, cap: BigInt(a.cap), minStrike: BigInt(a.minStrike), ...hint(a.symbol, a.name) })),
       )
       if (INDEXER_URL) {
         try {
@@ -181,6 +183,12 @@ async function offersFromChain(client: PublicClient, assets: Asset[]): Promise<O
   const markets = [
     { address: contracts.callMarket!, kind: 'call' as Kind, abi: ABIS.CallMarket },
     { address: contracts.putMarket!, kind: 'put' as Kind, abi: ABIS.PutMarket },
+    ...(legacyMarkets
+      ? [
+          { address: legacyMarkets.callMarket, kind: 'call' as Kind, abi: ABIS.CallMarket },
+          { address: legacyMarkets.putMarket, kind: 'put' as Kind, abi: ABIS.PutMarket },
+        ]
+      : []),
   ]
   const byToken = new Map(assets.map((a) => [a.address.toLowerCase(), a]))
   const out: Offer[] = []
@@ -197,7 +205,7 @@ async function offersFromChain(client: PublicClient, assets: Asset[]): Promise<O
       let holder: Address | undefined
       if (status === 'filled') {
         try {
-          holder = await client.readContract({ address: contracts.optionNft!, abi: ABIS.OptionNFT, functionName: 'ownerOf', args: [id] })
+          holder = await client.readContract({ address: marketsFor(id).optionNft, abi: ABIS.OptionNFT, functionName: 'ownerOf', args: [id] })
         } catch {}
       }
       out.push({
@@ -282,6 +290,19 @@ export function useBalances() {
       return { eth: eth(ethWei), weth: eth(wethWei), kyte: eth(kyteWei), tokens }
     },
     refetchInterval: live ? 6_000 : false,
+  })
+}
+
+/** Balance of any one token (the sell form's selected asset, which may not be in `contracts.tokens`). */
+export function useTokenBalance(token?: Address, decimals = 18) {
+  const client = usePublicClient()
+  const { address } = useAccount()
+  const live = useLive()
+  return useQuery({
+    queryKey: ['tokenBalance', token, address, live],
+    enabled: Boolean(live && client && address && token),
+    queryFn: async () => Number(formatUnits(await client!.readContract({ address: token!, abi: ABIS.ERC20, functionName: 'balanceOf', args: [address!] }), decimals)),
+    refetchInterval: 8_000,
   })
 }
 

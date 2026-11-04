@@ -6,7 +6,7 @@ import { useAccount, usePublicClient } from 'wagmi'
 import { TimeLeft } from '@/components/TimeLeft'
 import { TxStatus } from '@/components/TxStatus'
 import { KindBadge, Note, PageHeader, Segmented } from '@/components/ui'
-import { contracts } from '@/lib/chains'
+import { contracts, marketsFor } from '@/lib/chains'
 import { useBalances, useLive, usePositions, type Offer } from '@/lib/data'
 import { eth, num } from '@/lib/format'
 import { ABIS } from '@/lib/generated/abis'
@@ -25,15 +25,16 @@ export default function PositionsPage() {
   const rows = tab === 'holding' ? pos.holding : tab === 'selling' ? pos.selling : pos.history
   const now = Date.now() / 1000
 
-  const market = (o: Offer) => (o.kind === 'call' ? { address: contracts.callMarket!, abi: ABIS.CallMarket } : { address: contracts.putMarket!, abi: ABIS.PutMarket })
+  // v1 and v2 positions settle in the market that holds them (marketsFor reads the id's version tag).
+  const market = (o: Offer) => (o.kind === 'call' ? { address: marketsFor(o.id).callMarket, abi: ABIS.CallMarket } : { address: marketsFor(o.id).putMarket, abi: ABIS.PutMarket })
 
   const exercise = async (o: Offer) => {
     if (o.kind === 'call') {
-      await tx.run([{ label: `Exercise: pay ${eth(o.strike)} for ${num(o.amount, 0)} ${o.symbol}`, address: contracts.router!, abi: ABIS.Router, functionName: 'exerciseWithETH', args: [o.id], value: o.strikeRaw }])
+      await tx.run([{ label: `Exercise: pay ${eth(o.strike)} for ${num(o.amount, 4)} ${o.symbol}`, address: marketsFor(o.id).router, abi: ABIS.Router, functionName: 'exerciseWithETH', args: [o.id], value: o.strikeRaw }])
     } else if (client && address) {
       await tx.run([
-        ...(await approvalIfNeeded(client, address, o.token, contracts.putMarket!, o.amountRaw, `Approve ${o.symbol}`)),
-        { label: `Exercise: deliver ${num(o.amount, 0)} ${o.symbol} for ${eth(o.strike)}`, address: contracts.putMarket!, abi: ABIS.PutMarket, functionName: 'exercisePut', args: [o.id] },
+        ...(await approvalIfNeeded(client, address, o.token, marketsFor(o.id).putMarket, o.amountRaw, `Approve ${o.symbol}`)),
+        { label: `Exercise: deliver ${num(o.amount, 4)} ${o.symbol} for ${eth(o.strike)}`, address: marketsFor(o.id).putMarket, abi: ABIS.PutMarket, functionName: 'exercisePut', args: [o.id] },
       ])
     }
   }
@@ -78,7 +79,7 @@ export default function PositionsPage() {
                 <div key={o.id.toString()} className="flex flex-wrap items-center gap-4 p-5">
                   <KindBadge kind={o.kind} />
                   <div className="min-w-40 flex-1">
-                    <div className="font-mono font-medium">{num(o.amount, 0)} {o.symbol} @ {eth(o.strike)}</div>
+                    <div className="font-mono font-medium">{num(o.amount, 4)} {o.symbol} @ {eth(o.strike)}</div>
                     <div className={`text-xs ${stale ? 'text-warn' : 'text-faint'}`}>{status}</div>
                   </div>
                   <div className="w-28 text-sm"><div className="label">Premium</div><div className="tabular font-mono">{eth(o.premium)}</div></div>

@@ -81,7 +81,7 @@ export function LiveOffers({ limit = 6 }: { limit?: number }) {
                 <Row i={i}>
                   <td className="px-5 py-3"><KindBadge kind={o.kind} /></td>
                   <td className="px-5 py-3 font-medium text-ink">{o.symbol}</td>
-                  <td className="px-5 py-3 font-mono tabular text-muted">{num(o.amount, 0)}</td>
+                  <td className="px-5 py-3 font-mono tabular text-muted">{num(o.amount, 4)}</td>
                   <td className="px-5 py-3 font-mono tabular">{strikePer.toPrecision(3)} ETH</td>
                   <td className="px-5 py-3">
                     {vs === null ? <span className="text-faint">–</span> : (
@@ -155,7 +155,7 @@ function Expanded({ open, offer, spot, breakEven }: { open: boolean; offer: Offe
               <div className="grid grid-cols-2 gap-x-8 gap-y-3 border-t border-white/[0.05] px-5 py-4 text-xs md:grid-cols-5">
                 {[
                   ['Seller', shortAddr(offer.seller)],
-                  ['Collateral', offer.kind === 'call' ? `${num(offer.amount, 0)} ${offer.symbol} in escrow` : `${eth(offer.strike)} in escrow`],
+                  ['Collateral', offer.kind === 'call' ? `${num(offer.amount, 4)} ${offer.symbol} in escrow` : `${eth(offer.strike)} in escrow`],
                   ['Break even / token', `${breakEven.toPrecision(3)} ETH`],
                   ['Spot now', spot ? `${spot.toPrecision(3)} ETH` : '–'],
                   ['Protocol fee', `${eth(fee, 5)} (${FEES.premiumBps / 100}%)`],

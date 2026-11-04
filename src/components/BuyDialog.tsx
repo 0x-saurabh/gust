@@ -2,7 +2,7 @@
 
 import { X } from '@phosphor-icons/react'
 import { useAccount } from 'wagmi'
-import { contracts, contractsLive } from '@/lib/chains'
+import { contracts, contractsLive, marketsFor } from '@/lib/chains'
 import { FEES } from '@/lib/config'
 import { useLive, type Offer } from '@/lib/data'
 import { date, eth, num } from '@/lib/format'
@@ -20,7 +20,7 @@ export function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => voi
   const breakEvenPer = offer.kind === 'call' ? (offer.strike + offer.premium) / offer.amount : (offer.strike - offer.premium) / offer.amount
 
   const buy = async () => {
-    const router = contracts.router!
+    const router = marketsFor(offer.id).router
     const ok = await tx.run([
       {
         label: `Buy ${offer.kind} for ${eth(offer.premium)}`,
@@ -40,7 +40,7 @@ export function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => voi
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <KindBadge kind={offer.kind} />
-            <span className="font-mono font-semibold">{num(offer.amount, 0)} {offer.symbol}</span>
+            <span className="font-mono font-semibold">{num(offer.amount, 4)} {offer.symbol}</span>
           </div>
           <button onClick={onClose} className="text-muted hover:text-ink" aria-label="Close"><X size={16} /></button>
         </div>
@@ -62,7 +62,7 @@ export function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => voi
           <Row k="You pay now (ETH)" v={eth(offer.premium)} strong />
           <Row k="Of which protocol fee" v={eth(fee, 6)} />
           <Row k={offer.kind === 'call' ? 'To exercise you pay' : 'On exercise you receive'} v={eth(offer.strike)} />
-          <Row k={offer.kind === 'call' ? 'On exercise you receive' : 'To exercise you deliver'} v={`${num(offer.amount, 0)} ${offer.symbol}`} />
+          <Row k={offer.kind === 'call' ? 'On exercise you receive' : 'To exercise you deliver'} v={`${num(offer.amount, 4)} ${offer.symbol}`} />
           <Row k="Break-even per token" v={`${breakEvenPer.toPrecision(3)} ETH`} />
           <Row k="Expires" v={date(offer.expiry)} />
           <Row k="Fill by" v={date(offer.offerDeadline)} />

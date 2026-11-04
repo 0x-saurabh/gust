@@ -161,7 +161,7 @@ export function FlowStory() {
     const strikeFee = (o.strike * FEES.exerciseBps) / 10_000
     const fees = premFee + strikeFee
     const f = {
-      amount: `${num(o.amount, 0)} ${o.symbol}`, premium: eth(o.premium), premSeller: eth(o.premium - premFee, 4), premFee: eth(premFee, 4),
+      amount: `${num(o.amount, 4)} ${o.symbol}`, premium: eth(o.premium), premSeller: eth(o.premium - premFee, 4), premFee: eth(premFee, 4),
       strike: eth(o.strike), strikeSeller: eth(o.strike - strikeFee, 4), strikeFee: eth(strikeFee, 4), fees: eth(fees, 4),
       stakers: eth((fees * SPLIT.stakersBps) / 10_000, 5), burn: eth((fees * SPLIT.buybackBps) / 10_000, 5), ops: eth((fees * SPLIT.opsBps) / 10_000, 5),
     }

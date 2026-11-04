@@ -4,12 +4,13 @@ import { useMemo, useState } from 'react'
 import { parseEther, parseUnits } from 'viem'
 import { useAccount, usePublicClient } from 'wagmi'
 import { TokenChart } from '@/components/TokenChart'
+import { TokenPicker } from '@/components/TokenPicker'
 import { TxStatus } from '@/components/TxStatus'
 import { WalletHoldings } from '@/components/WalletHoldings'
 import { Note, PageHeader, Segmented } from '@/components/ui'
 import { contracts } from '@/lib/chains'
 import { FEES, LIMITS } from '@/lib/config'
-import { useAssets, useBalances, useLive, type Kind } from '@/lib/data'
+import { useAssets, useBalances, useLive, useTokenBalance, type Kind } from '@/lib/data'
 import { eth, num } from '@/lib/format'
 import { ABIS } from '@/lib/generated/abis'
 import { blackScholes } from '@/lib/pricing'
@@ -32,7 +33,7 @@ export default function SellPage() {
   const balances = useBalances()
   const [kind, setKind] = useState<Kind>('call')
   const [symbol, setSymbol] = useState('')
-  const [amount, setAmount] = useState('100000')
+  const [amount, setAmount] = useState('1')
   const [strikePer, setStrikePer] = useState('')
   const [premium, setPremium] = useState('')
   const [durationSec, setDurationSec] = useState(DURATIONS[2].sec)
@@ -51,7 +52,9 @@ export default function SellPage() {
   const premiumFee = (prem * FEES.premiumBps) / 10_000
   const exerciseFee = (totalStrike * FEES.exerciseBps) / 10_000
   const fillBy = Math.min(fillSec, durationSec)
-  const myTokens = a ? balances.data?.tokens[a.symbol] : undefined
+  // Read straight from the token: any of the listed assets, not only the ones in the deployment file.
+  const tokenBal = useTokenBalance(a?.address, a?.decimals)
+  const myTokens = a ? tokenBal.data ?? balances.data?.tokens[a.symbol] : undefined
 
   // Mirrors the contract checks (SPEC.md §3.3) so users see the reason before signing.
   const errors: string[] = []
@@ -60,7 +63,7 @@ export default function SellPage() {
   if (strikeEach <= 0) errors.push('Enter a strike per token.')
   if (prem < LIMITS.minPremiumEth) errors.push(`Premium must be at least ${LIMITS.minPremiumEth} ETH.`)
   if (durationSec < LIMITS.minDurationSec || durationSec > LIMITS.maxDurationSec) errors.push('Expiry must be 1 hour to 90 days away.')
-  if (kind === 'call' && live && myTokens !== undefined && amt > myTokens) errors.push(`You hold ${num(myTokens, 0)} ${a?.symbol}.`)
+  if (kind === 'call' && live && myTokens !== undefined && amt > myTokens) errors.push(`You hold ${num(myTokens, 4)} ${a?.symbol}.`)
   if (kind === 'put' && live && balances.data && totalStrike > balances.data.eth) errors.push(`You need ${eth(totalStrike)} in your wallet to lock.`)
 
   const submit = async () => {
@@ -75,7 +78,7 @@ export default function SellPage() {
       kind === 'call'
         ? await tx.run([
             ...(await approvalIfNeeded(client, address, a.address, contracts.callMarket!, amountRaw, `Approve ${a.symbol}`)),
-            { label: `Lock ${num(amt, 0)} ${a.symbol} and list the call`, address: contracts.callMarket!, abi: ABIS.CallMarket, functionName: 'createOffer', args: [a.address, amountRaw, strikeRaw, premiumRaw, expiry, deadline] },
+            { label: `Lock ${num(amt, 4)} ${a.symbol} and list the call`, address: contracts.callMarket!, abi: ABIS.CallMarket, functionName: 'createOffer', args: [a.address, amountRaw, strikeRaw, premiumRaw, expiry, deadline] },
           ])
         : await tx.run([
             { label: `Lock ${eth(totalStrike)} and list the put`, address: contracts.router!, abi: ABIS.Router, functionName: 'createPutOfferWithETH', args: [a.address, amountRaw, strikeRaw, premiumRaw, expiry, deadline], value: strikeRaw },
@@ -113,19 +116,17 @@ export default function SellPage() {
           <Segmented value={kind} onChange={(k) => { setKind(k); setStrikePer(''); setPremium('') }} options={[{ value: 'call', label: 'Covered call' }, { value: 'put', label: 'Cash-secured put' }]} />
 
           <Field label="Token">
-            <select className="input" value={a?.symbol ?? ''} onChange={(e) => { setSymbol(e.target.value); setStrikePer(''); setPremium('') }}>
-              {assets.map((x) => <option key={x.symbol} value={x.symbol}>{x.symbol}: {x.name}</option>)}
-            </select>
+            <TokenPicker assets={assets} value={a?.symbol ?? ''} onChange={(sym) => { setSymbol(sym); setStrikePer(''); setPremium('') }} />
             <Hint>
               {a?.spotEth ? <>Spot ≈ {a.spotEth.toPrecision(3)} ETH. </> : null}
-              {myTokens !== undefined && <>You hold {num(myTokens, 0)} {a?.symbol}. </>}
+              {myTokens !== undefined && <>You hold {num(myTokens, 4)} {a?.symbol}. </>}
               Only listed tokens can be used.
             </Hint>
           </Field>
 
           <Field label={`Amount (${a?.symbol ?? ''})`}>
             <input className="input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <Hint>{kind === 'call' ? `You lock ${num(amt, 0)} ${a?.symbol}.` : `Buyer may sell you ${num(amt, 0)} ${a?.symbol}.`}</Hint>
+            <Hint>{kind === 'call' ? `You lock ${num(amt, 4)} ${a?.symbol}.` : `Buyer may sell you ${num(amt, 4)} ${a?.symbol}.`}</Hint>
           </Field>
 
           <Field label="Strike per token (ETH)">
@@ -157,7 +158,7 @@ export default function SellPage() {
           {errors.length > 0 && <Note tone="warn">{errors.map((e) => <div key={e}>{e}</div>)}</Note>}
 
           <button type="submit" className="btn btn-accent h-12 w-full" disabled={!isConnected || !live || errors.length > 0 || tx.busy}>
-            {!isConnected ? 'Connect a wallet to sell' : !live ? 'Demo mode' : tx.busy ? 'Working…' : kind === 'call' ? `Approve & lock ${num(amt, 0)} ${a?.symbol}` : `Lock ${eth(totalStrike)}`}
+            {!isConnected ? 'Connect a wallet to sell' : !live ? 'Demo mode' : tx.busy ? 'Working…' : kind === 'call' ? `Approve & lock ${num(amt, 4)} ${a?.symbol}` : `Lock ${eth(totalStrike)}`}
           </button>
         </form>
 
@@ -175,14 +176,14 @@ export default function SellPage() {
           <div className="card p-6">
             <div className="label">Summary</div>
             <dl className="mt-4 space-y-3 text-sm">
-              <Row k="You lock" v={kind === 'call' ? `${num(amt, 0)} ${a?.symbol ?? ''}` : eth(totalStrike)} />
+              <Row k="You lock" v={kind === 'call' ? `${num(amt, 4)} ${a?.symbol ?? ''}` : eth(totalStrike)} />
               <Row k="Premium if filled" v={eth(prem, 6)} />
               <Row k={`Premium fee (${FEES.premiumBps / 100}%)`} v={`−${eth(premiumFee, 6)}`} />
               <Row k="You receive when filled" v={eth(prem - premiumFee, 6)} strong />
               <div className="border-t border-line" />
-              <Row k="If exercised you receive" v={kind === 'call' ? eth(totalStrike - exerciseFee, 6) : `${num(amt, 0)} ${a?.symbol ?? ''}`} />
+              <Row k="If exercised you receive" v={kind === 'call' ? eth(totalStrike - exerciseFee, 6) : `${num(amt, 4)} ${a?.symbol ?? ''}`} />
               {kind === 'call' && <Row k={`Exercise fee (${FEES.exerciseBps / 100}%)`} v={`−${eth(exerciseFee, 6)}`} />}
-              <Row k="If it expires" v={kind === 'call' ? `${num(amt, 0)} ${a?.symbol ?? ''} back` : `${eth(totalStrike)} back`} />
+              <Row k="If it expires" v={kind === 'call' ? `${num(amt, 4)} ${a?.symbol ?? ''} back` : `${eth(totalStrike)} back`} />
               <Row k="Fill window" v={fillBy === durationSec ? 'until expiry' : `${fillBy / 3600} h`} />
             </dl>
           </div>

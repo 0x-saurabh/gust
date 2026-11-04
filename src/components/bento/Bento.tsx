@@ -156,7 +156,7 @@ export const StreamTile = memo(function StreamTile() {
                   <span className={`font-mono text-xs uppercase tracking-wider ${o.kind === 'call' ? 'text-accent' : 'text-accent-2'}`}>{o.kind}</span>
                   <span className="font-mono text-xs text-faint">{timeLeft(o.expiry)}</span>
                 </div>
-                <div className="mt-2 text-sm font-medium">{num(o.amount, 0)} {o.symbol}</div>
+                <div className="mt-2 text-sm font-medium">{num(o.amount, 4)} {o.symbol}</div>
                 <div className="mt-1 flex justify-between font-mono text-xs text-muted"><span>strike {eth(o.strike, 3)}</span><span className="text-ink">{eth(o.premium)}</span></div>
               </div>
             ))}

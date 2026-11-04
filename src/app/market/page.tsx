@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { BuyDialog } from '@/components/BuyDialog'
 import { TimeLeft } from '@/components/TimeLeft'
 import { TokenChart, type PriceLine } from '@/components/TokenChart'
+import { TokenPicker } from '@/components/TokenPicker'
 import { KindBadge, Note, PageHeader, Segmented } from '@/components/ui'
 import { isFillable, useAssets, useOffers, usePrices, type Kind, type Offer } from '@/lib/data'
 import { eth, num, shortAddr } from '@/lib/format'
@@ -21,11 +22,18 @@ export default function MarketPage() {
   const assets = useAssets()
   const prices = usePrices()
 
-  // Only tokens the AssetRegistry has enabled: one the guardian disables leaves the market tabs on its own.
-  const symbols = (assets.data ?? []).filter((a) => a.enabled).map((a) => a.symbol)
+  // Only tokens the AssetRegistry has enabled: one the guardian disables leaves the market on its own.
+  const enabled = useMemo(() => (assets.data ?? []).filter((a) => a.enabled), [assets.data])
+  const symbols = enabled.map((a) => a.symbol)
+  // Tokens with something to buy right now, busiest first: quick tabs beside the search, and the default token.
+  const active = useMemo(() => {
+    const n = new Map<string, number>()
+    for (const o of offers.data ?? []) if (isFillable(o)) n.set(o.symbol, (n.get(o.symbol) ?? 0) + 1)
+    return [...n.entries()].filter(([s]) => symbols.includes(s)).sort((a, b) => b[1] - a[1]).map(([s]) => s)
+  }, [offers.data, symbols])
   useEffect(() => {
-    if (symbols.length && !symbols.includes(symbol)) setSymbol(symbols[0])
-  }, [symbol, symbols])
+    if (symbols.length && !symbols.includes(symbol)) setSymbol(active[0] ?? ['NVDA', 'AAPL', 'TSLA'].find((s) => symbols.includes(s)) ?? symbols[0])
+  }, [symbol, symbols, active])
   const asset = (assets.data ?? []).find((a) => a.symbol === symbol)
   const quote = prices.data?.[symbol]
 
@@ -55,7 +63,10 @@ export default function MarketPage() {
 
       <div className="card overflow-hidden">
         <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
-          <Segmented value={symbol} onChange={setSymbol} options={symbols.map((s) => ({ value: s, label: s }))} />
+          <TokenPicker assets={enabled} value={symbol} onChange={setSymbol} prices={prices.data} className="w-full sm:w-72" />
+          {active.length > 0 && (
+            <Segmented value={active.slice(0, 6).includes(symbol) ? symbol : ''} onChange={setSymbol} options={active.slice(0, 6).map((s) => ({ value: s, label: s }))} />
+          )}
           <div className="flex items-baseline gap-3 font-mono text-sm">
             <span className="text-xl text-ink tabular">{quote ? `${quote.price.toPrecision(4)} ETH` : asset?.spotEth ? `${asset.spotEth.toPrecision(4)} ETH` : '…'}</span>
             {quote && <span className={quote.change1h >= 0 ? 'text-accent' : 'text-danger'}>{quote.change1h >= 0 ? '+' : ''}{(quote.change1h * 100).toFixed(2)}% 1h</span>}
@@ -94,7 +105,7 @@ export default function MarketPage() {
                 <tr key={o.id.toString()} className="border-b border-line/60 last:border-0 hover:bg-card-2">
                   <td className="px-4 py-4"><KindBadge kind={o.kind} /></td>
                   <td className="px-4 py-4 font-mono font-medium">{o.symbol}</td>
-                  <td className="px-4 py-4 tabular">{num(o.amount, 0)}</td>
+                  <td className="px-4 py-4 tabular">{num(o.amount, 4)}</td>
                   <td className="px-4 py-4 font-mono tabular">{strikePer.toPrecision(3)} ETH</td>
                   <td className={`px-4 py-4 font-mono tabular ${vs === null ? 'text-faint' : vs >= 0 ? 'text-accent' : 'text-danger'}`}>{vs === null ? '–' : `${vs >= 0 ? '+' : ''}${vs.toFixed(0)}%`}</td>
                   <td className="px-4 py-4 font-mono tabular font-medium">{eth(o.premium)}</td>

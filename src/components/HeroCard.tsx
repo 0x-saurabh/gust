@@ -49,7 +49,7 @@ export function HeroCard() {
           <>
             <div className="mt-5 flex items-center gap-3">
               <KindBadge kind={o.kind} />
-              <span className="font-mono text-2xl font-semibold">{num(o.amount, 0)} {o.symbol}</span>
+              <span className="font-mono text-2xl font-semibold">{num(o.amount, 4)} {o.symbol}</span>
             </div>
             <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
               <div><dt className="label">Strike</dt><dd className="mt-1 font-mono tabular">{eth(o.strike)}</dd></div>

@@ -39,9 +39,9 @@ export default function StakePage() {
       mode === 'stake'
         ? await tx.run([
             ...(await approvalIfNeeded(client, address, contracts.kyteToken!, pool, raw, `Approve ${BRAND.token}`)),
-            { label: `Stake ${num(amt, 0)} ${BRAND.token}`, address: pool, abi: ABIS.StakingPool, functionName: 'stake', args: [raw] },
+            { label: `Stake ${num(amt, 4)} ${BRAND.token}`, address: pool, abi: ABIS.StakingPool, functionName: 'stake', args: [raw] },
           ])
-        : await tx.run([{ label: `Unstake ${num(amt, 0)} ${BRAND.token}`, address: pool, abi: ABIS.StakingPool, functionName: 'unstake', args: [raw] }])
+        : await tx.run([{ label: `Unstake ${num(amt, 4)} ${BRAND.token}`, address: pool, abi: ABIS.StakingPool, functionName: 'unstake', args: [raw] }])
     if (ok) setAmount('')
   }
   const claim = () => tx.run([{ label: `Claim ${eth(s?.claimable ?? 0, 6)}`, address: pool, abi: ABIS.StakingPool, functionName: 'claim' }])
@@ -73,7 +73,7 @@ export default function StakePage() {
               : 'Unstaking is immediate. Pending stake is removed first, then active stake. Rewards you have already earned stay claimable.'}
           </Note>
           <button className="btn btn-accent h-12 w-full" disabled={!isConnected || !live || amt <= 0 || amt > max || tx.busy} onClick={submit}>
-            {!isConnected ? 'Connect a wallet' : !live ? 'Demo mode' : tx.busy ? 'Working…' : mode === 'stake' ? `Stake ${num(amt, 0)}` : `Unstake ${num(amt, 0)}`}
+            {!isConnected ? 'Connect a wallet' : !live ? 'Demo mode' : tx.busy ? 'Working…' : mode === 'stake' ? `Stake ${num(amt, 4)}` : `Unstake ${num(amt, 4)}`}
           </button>
         </div>
 
