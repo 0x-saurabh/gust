@@ -14,9 +14,16 @@ type Snap = (typeof snapshot.tokens)[number]
 function useLiveSwaps() {
   return useQuery({
     queryKey: ['rh-tokens'],
-    queryFn: async () => (await (await fetch('/api/rh-tokens')).json()) as Live,
+    queryFn: async () => {
+      const r = await fetch('/api/rh-tokens')
+      // 503 = the route's first RPC scan is still running ("warming up"): fail so the retry below checks back.
+      if (!r.ok) throw new Error(`rh-tokens ${r.status}`)
+      return (await r.json()) as Live
+    },
     staleTime: 5 * 60_000,
     refetchInterval: 5 * 60_000,
+    retry: 20,
+    retryDelay: 30_000,
   })
 }
 
