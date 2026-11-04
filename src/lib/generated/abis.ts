@@ -2504,6 +2504,34 @@ export const ABIS = {
     },
     {
       "type": "function",
+      "name": "addAssets",
+      "inputs": [
+        {
+          "name": "tokens",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "caps",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        },
+        {
+          "name": "minStrikes",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        },
+        {
+          "name": "putsOn",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "assetCount",
       "inputs": [],
       "outputs": [
@@ -2941,6 +2969,11 @@ export const ABIS = {
     {
       "type": "error",
       "name": "AssetExists",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LengthMismatch",
       "inputs": []
     },
     {
