@@ -51,7 +51,7 @@ export default function StakePage() {
       <PageHeader title={`Stake ${BRAND.token}`} sub={`Stakers earn ${bps(SPLIT.stakersBps)} of every protocol fee, paid in WETH. New stake starts earning at the next epoch.`} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Total staked" value={compact(s?.totalStaked ?? 0)} hint={stats.data?.stakers ? `${stats.data.stakers.toLocaleString('en-US')} stakers` : undefined} />
+        <Stat label="Total staked" value={compact(s?.totalStaked ?? 0)} hint={stats.data?.stakers ? `${stats.data.stakers.toLocaleString('en-US')} ${stats.data.stakers === 1 ? 'staker' : 'stakers'}` : undefined} />
         <Stat label="Last epoch to stakers" value={eth(s?.lastEpochRewards ?? 0, 4)} />
         <Stat label="Epoch" value={s ? `#${s.epoch}` : '…'} />
         <div className="card p-5"><div className="label">Next epoch in</div><div className="mt-2 font-mono text-2xl font-semibold">{s ? <TimeLeft at={s.epochEndsAt} /> : '…'}</div></div>
@@ -89,7 +89,7 @@ export default function StakePage() {
             <Row k="Claimable" v={eth(s?.claimable ?? 0, 6)} strong />
           </dl>
           <button className="btn btn-accent mt-6 w-full" disabled={!isConnected || !live || !canClaim || tx.busy} onClick={claim}>Claim WETH</button>
-          <p className="mt-2 text-xs text-faint">Minimum claim {eth(s?.minClaim ?? 0)}.</p>
+          {(s?.minClaim ?? 0) > 0 && <p className="mt-2 text-xs text-faint">Minimum claim {eth(s!.minClaim)}.</p>}
         </div>
         <WalletHoldings />
         </div>

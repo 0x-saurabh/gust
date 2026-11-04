@@ -41,11 +41,10 @@ let inflight: Promise<Response> | null = null
 export async function GET() {
   if (cache && Date.now() - cache.at < TTL_MS) return NextResponse.json(cache.data)
   // One refresh at a time: a burst of requests on a cold cache must not fan out into a burst of RPC scans.
-  if (inflight) {
-    if (cache) return NextResponse.json(cache.data)
-    return (await inflight).clone()
-  }
-  inflight = refresh().finally(() => { inflight = null })
+  if (!inflight) inflight = refresh().finally(() => { inflight = null })
+  // Stale-while-revalidate: the RPC scan takes ~30 s, so once anything is cached, answer with it right away and
+  // let the refresh finish in the background. Only the very first request after a boot waits.
+  if (cache) return NextResponse.json(cache.data)
   return (await inflight).clone()
 }
 

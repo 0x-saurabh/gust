@@ -48,7 +48,10 @@ export default function SellPage() {
     () => (a ? amt * blackScholes({ spot: a.spotEth, strike: strikeEach, years: durationSec / (365 * 86400), vol: a.vol, kind }) : 0),
     [amt, a, strikeEach, durationSec, kind],
   )
-  const prem = premium === '' ? suggested : Number(premium) || 0
+  // Far out-of-the-money or cheap tokens price below the contract minimum: default to the minimum instead of
+  // opening the form on an error. A typed premium is still checked as typed.
+  const defaultPremium = suggested > 0 ? Math.max(suggested, LIMITS.minPremiumEth) : 0
+  const prem = premium === '' ? defaultPremium : Number(premium) || 0
   const premiumFee = (prem * FEES.premiumBps) / 10_000
   const exerciseFee = (totalStrike * FEES.exerciseBps) / 10_000
   const fillBy = Math.min(fillSec, durationSec)
@@ -151,8 +154,14 @@ export default function SellPage() {
           </div>
 
           <Field label="Premium (total, ETH)">
-            <input className="input" inputMode="decimal" placeholder={suggested ? suggested.toPrecision(3) : '0.01'} value={premium} onChange={(e) => setPremium(e.target.value)} />
-            <Hint>{suggested > 0 ? <>Suggested {eth(suggested, 6)} (Black-Scholes, {num((a?.vol ?? 0) * 100, 0)}% vol). A hint only.</> : 'Set the price a buyer pays you up front.'}</Hint>
+            <input className="input" inputMode="decimal" placeholder={defaultPremium ? defaultPremium.toPrecision(3) : '0.01'} value={premium} onChange={(e) => setPremium(e.target.value)} />
+            <Hint>
+              {suggested <= 0
+                ? 'Set the price a buyer pays you up front.'
+                : suggested < LIMITS.minPremiumEth
+                  ? <>Black-Scholes suggests {eth(suggested, 6)} ({num((a?.vol ?? 0) * 100, 0)}% vol), below the {LIMITS.minPremiumEth} ETH minimum, so the minimum is used.</>
+                  : <>Suggested {eth(suggested, 6)} (Black-Scholes, {num((a?.vol ?? 0) * 100, 0)}% vol). A hint only.</>}
+            </Hint>
           </Field>
 
           {errors.length > 0 && <Note tone="warn">{errors.map((e) => <div key={e}>{e}</div>)}</Note>}
