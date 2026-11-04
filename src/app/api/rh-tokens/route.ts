@@ -26,6 +26,7 @@ const CHUNK = 9_000n
 const INIT_CHUNK = 1_000_000n
 const INIT_MAX_CHUNKS = 8
 const TTL_MS = 5 * 60_000
+const COLD_WAIT_MS = 20_000
 
 export type RhToken = { symbol: string; name: string; address: Address; pair: string; price: number | null; swaps: number; volumeBase: number }
 type Payload = { updatedAt: number; fromBlock: string; toBlock: string; windowBlocks: number; tokens: RhToken[]; source: string }
@@ -45,13 +46,18 @@ export async function GET() {
   // Stale-while-revalidate: the RPC scan takes ~30 s, so once anything is cached, answer with it right away and
   // let the refresh finish in the background. Only the very first request after a boot waits.
   if (cache) return NextResponse.json(cache.data)
-  return (await inflight).clone()
+  // Cold cache: wait a bounded time. A slow RPC can stretch the scan to many minutes; past the deadline answer
+  // "warming up" (the scan keeps running and fills the cache) so the page never hangs on this request.
+  const timedOut = Symbol('timeout')
+  const first = await Promise.race([inflight, new Promise<typeof timedOut>((r) => setTimeout(() => r(timedOut), COLD_WAIT_MS))])
+  if (first === timedOut) return NextResponse.json({ error: 'warming up', tokens: [] }, { status: 503, headers: { 'retry-after': '30' } })
+  return first.clone()
 }
 
 async function refresh(): Promise<Response> {
   try {
     // The public RPC rate-limits bursts: pace every log query and back off on 429.
-    const client = createPublicClient({ transport: fallback(RPCS.map((u) => http(u, { timeout: 25_000, retryCount: 3, retryDelay: 1_500 })), { rank: false }) })
+    const client = createPublicClient({ transport: fallback(RPCS.map((u) => http(u, { timeout: 10_000, retryCount: 2, retryDelay: 1_500 })), { rank: false }) })
     const paced = async <T,>(fn: () => Promise<T>): Promise<T> => { await new Promise((r) => setTimeout(r, 350)); return fn() }
     const latest = await client.getBlockNumber()
     const from = latest - SWAP_WINDOW
