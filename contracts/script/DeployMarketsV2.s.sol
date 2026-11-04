@@ -50,17 +50,33 @@ contract DeployMarketsV2 is Script {
         uint16 feeExercise = uint16(vm.envOr("FEE_BPS_EXERCISE", uint256(10)));
         require(timelock.code.length > 0 && guardian.code.length > 0, "timelock/guardian must be contracts");
         require(weth.code.length > 0 && vault.code.length > 0, "WETH/FeeVault have no code on this chain");
-        if (block.chainid == MAINNET) require(TimelockController(payable(timelock)).getMinDelay() >= 10 minutes, "timelock delay");
+        if (block.chainid == MAINNET) {
+            require(TimelockController(payable(timelock)).getMinDelay() >= 10 minutes, "timelock delay");
+        }
 
         V2 memory o;
         vm.startBroadcast();
         o.registry = new AssetRegistry(timelock, guardian);
         o.nft = new OptionNFT();
         o.calls = new CallMarket(
-            IAssetRegistry(address(o.registry)), IOptionNFT(address(o.nft)), IERC20(weth), vault, timelock, guardian, feePremium, feeExercise
+            IAssetRegistry(address(o.registry)),
+            IOptionNFT(address(o.nft)),
+            IERC20(weth),
+            vault,
+            timelock,
+            guardian,
+            feePremium,
+            feeExercise
         );
         o.puts = new PutMarket(
-            IAssetRegistry(address(o.registry)), IOptionNFT(address(o.nft)), IERC20(weth), vault, timelock, guardian, feePremium, feeExercise
+            IAssetRegistry(address(o.registry)),
+            IOptionNFT(address(o.nft)),
+            IERC20(weth),
+            vault,
+            timelock,
+            guardian,
+            feePremium,
+            feeExercise
         );
         o.nft.setMarkets(address(o.calls), address(o.puts)); // locked from here on
         o.router = new Router(IWETH(weth), o.calls, o.puts);
