@@ -38,8 +38,26 @@ contract ForkRobinhoodStocksTest is Test {
         vm.createSelectFork("robinhood");
         registry = new AssetRegistry(timelock, guardian);
         OptionNFT nft = new OptionNFT();
-        calls = new CallMarket(IAssetRegistry(address(registry)), IOptionNFT(address(nft)), IERC20(WETH), FEE_VAULT, timelock, guardian, 300, 10);
-        puts = new PutMarket(IAssetRegistry(address(registry)), IOptionNFT(address(nft)), IERC20(WETH), FEE_VAULT, timelock, guardian, 300, 10);
+        calls = new CallMarket(
+            IAssetRegistry(address(registry)),
+            IOptionNFT(address(nft)),
+            IERC20(WETH),
+            FEE_VAULT,
+            timelock,
+            guardian,
+            300,
+            10
+        );
+        puts = new PutMarket(
+            IAssetRegistry(address(registry)),
+            IOptionNFT(address(nft)),
+            IERC20(WETH),
+            FEE_VAULT,
+            timelock,
+            guardian,
+            300,
+            10
+        );
         nft.setMarkets(address(calls), address(puts));
         router = new Router(IWETH(WETH), calls, puts);
 
@@ -81,7 +99,9 @@ contract ForkRobinhoodStocksTest is Test {
         if (!on) return;
         uint64 expiry = uint64(block.timestamp + 1 days);
         vm.prank(seller);
-        uint256 id = router.createPutOfferWithETH{value: 0.09 ether}(NVDA, 1e18, 0.09 ether, 0.001 ether, expiry, uint64(block.timestamp + 1 hours));
+        uint256 id = router.createPutOfferWithETH{value: 0.09 ether}(
+            NVDA, 1e18, 0.09 ether, 0.001 ether, expiry, uint64(block.timestamp + 1 hours)
+        );
         assertEq(id >> 248, 4, "v2 put tag");
 
         deal(NVDA, buyer, 1e18);
@@ -99,7 +119,9 @@ contract ForkRobinhoodStocksTest is Test {
         deal(AAPL, seller, 1e18);
         vm.startPrank(seller);
         IERC20(AAPL).approve(address(calls), 1e18);
-        uint256 id = calls.createOffer(AAPL, 1e18, 0.2 ether, 0.001 ether, uint64(block.timestamp + 2 hours), uint64(block.timestamp + 1 hours));
+        uint256 id = calls.createOffer(
+            AAPL, 1e18, 0.2 ether, 0.001 ether, uint64(block.timestamp + 2 hours), uint64(block.timestamp + 1 hours)
+        );
         vm.stopPrank();
         vm.prank(buyer);
         router.buyWithETH{value: 0.001 ether}(id, 0.001 ether);
