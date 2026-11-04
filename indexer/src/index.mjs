@@ -388,11 +388,29 @@ async function pollQuotes() {
     for (const d of qt.deployments ?? []) if (Number(d.chainId) === CHAIN_ID) byAddr.set(d.contractAddress.toLowerCase(), mid)
   }
   const now = Math.floor(Date.now() / 1000)
+  const rest = []
   for (const a of assets) {
     const usdPrice = byAddr.get(a.address.toLowerCase()) ?? (a.symbol.endsWith('on') ? bySym.get(a.symbol.slice(0, -2)) : undefined)
-    if (!usdPrice) continue
+    if (!usdPrice) { rest.push(a); continue }
     quoteSource.set(a.symbol, 'robinhood')
     q.upsertPrice.run(`q:${a.symbol}:${now}`, a.symbol, 0, now, usdPrice / usd, 0, null)
+  }
+  // Crypto tokens without a pool of ours (any DEX, any pair): DexScreener's price from the token's deepest pair.
+  for (let i = 0; i < rest.length && CHAIN_ID === 4663; i += 30) {
+    const chunk = rest.slice(i, i + 30)
+    let pairs = []
+    try { pairs = await fetchJson(`https://api.dexscreener.com/tokens/v1/robinhood/${chunk.map((a) => a.address).join(',')}`) } catch (e) { console.error('[indexer] dexscreener:', e.message); continue }
+    const best = new Map()
+    for (const p of Array.isArray(pairs) ? pairs : []) {
+      const k = p.baseToken?.address?.toLowerCase()
+      if (k && Number(p.priceUsd) > 0 && (!best.has(k) || (p.liquidity?.usd ?? 0) > (best.get(k).liquidity?.usd ?? 0))) best.set(k, p)
+    }
+    for (const a of chunk) {
+      const p = best.get(a.address.toLowerCase())
+      if (!p) continue
+      quoteSource.set(a.symbol, 'dexscreener')
+      q.upsertPrice.run(`q:${a.symbol}:${now}`, a.symbol, 0, now, Number(p.priceUsd) / usd, 0, null)
+    }
   }
   db.prepare("DELETE FROM prices WHERE key LIKE 'q:%' AND at < ?").run(now - QUOTE_DAYS * 86_400)
 }

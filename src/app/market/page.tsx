@@ -70,7 +70,7 @@ export default function MarketPage() {
           <div className="flex items-baseline gap-3 font-mono text-sm">
             <span className="text-xl text-ink tabular">{quote ? `${quote.price.toPrecision(4)} ETH` : asset?.spotEth ? `${asset.spotEth.toPrecision(4)} ETH` : '…'}</span>
             {quote && <span className={quote.change1h >= 0 ? 'text-accent' : 'text-danger'}>{quote.change1h >= 0 ? '+' : ''}{(quote.change1h * 100).toFixed(2)}% 1h</span>}
-            {quote && <span className="text-[10px] uppercase tracking-wider text-muted">{quote.source === 'robinhood' ? 'Robinhood quote' : 'Uniswap v4'}</span>}
+            {quote && <span className="text-[10px] uppercase tracking-wider text-muted">{quote.source === 'robinhood' ? 'Robinhood quote' : quote.source === 'dexscreener' ? 'DEX price' : 'Uniswap v4'}</span>}
           </div>
           <div className="ml-auto"><Segmented value={interval} onChange={setInterval} options={INTERVALS.map((i) => ({ value: i.sec, label: i.label }))} /></div>
         </div>

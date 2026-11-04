@@ -1,0 +1,20 @@
+{
+  "_comment": "Trending Robinhood Chain crypto tokens listed in markets v2 beside the Robinhood Stock Tokens (GeckoTerminal 24h trending + volume, screened 2026-11-04 on DexScreener: real liquidity, matched buys/sells, no wash-traded or copycat contracts). capUsd = exposure cap per market at listing price; new launches (< 7 days) get less. Already listed via v1 and kept: PONS (0x39dB..., the original; 0x737d... is a 1-day-old copycat), CASHCAT, STONKBROKER, ORBIO, AI.",
+  "tokens": [
+    { "symbol": "MOW", "address": "0x0b7c6c138dc75622f4200d157b13fb93e6bd94fa", "capUsd": 25000 },
+    { "symbol": "AnsemCat", "address": "0x67c51c928d5d8383f3a58fc591a4e6f6463949ed", "capUsd": 25000 },
+    { "symbol": "TORCH", "address": "0x000050e18ffa3f8f7ad170eb9cef160eb3ed1111", "capUsd": 25000 },
+    { "symbol": "PRIORS", "address": "0xedbf91223639800bcd5756815caf908df3b890be", "capUsd": 15000 },
+    { "symbol": "HOOKR", "address": "0x18e674231a58c239dc7daedcffe15ec3a24cff5c", "capUsd": 20000 },
+    { "symbol": "DELTA", "address": "0xe8ffd7e24187f72afb08d75b1bb13088a989a791", "capUsd": 15000 },
+    { "symbol": "Index", "address": "0x56910d4409f3a0c78c64dd8d0545ff0705389870", "capUsd": 10000 },
+    { "symbol": "FOBO", "address": "0x000de658153f47f23e92973c8eb1e89762703676", "capUsd": 15000 },
+    { "symbol": "LOBIN", "address": "0x75d874378ae31b33ab9e7a40b4dca96134221111", "capUsd": 7500 },
+    { "symbol": "RAETO", "address": "0x72be1277e198d0c476869253cb4e62807e14533c", "capUsd": 5000 },
+    { "symbol": "GRIFT", "address": "0x9f4ba41f91a59a34e17ee8c9eb3a51363b11abd5", "capUsd": 4000 },
+    { "symbol": "REBATE", "address": "0xb7ff57631b97000d950236ef63bd463da5beba7e", "capUsd": 4000 },
+    { "symbol": "BLORB", "address": "0x4d14284afe559b7c6b9e6fad6ebaeaa0f6051818", "capUsd": 10000 },
+    { "symbol": "HPHONE", "address": "0xd167df6670106e9292177144beb70d9a376b6010", "capUsd": 7500 },
+    { "symbol": "RYFT", "address": "0xb0007d59fe4050a1636c2fa19038973d16481337", "capUsd": 5000 }
+  ]
+}

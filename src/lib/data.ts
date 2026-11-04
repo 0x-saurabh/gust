@@ -459,7 +459,7 @@ export function useHealth() {
 
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number }
 export type Marker = { time: number; name: 'OfferCreated' | 'OptionBought' | 'Exercised' | 'Expired' | 'OfferCancelled'; kind: Kind; tx: string; strikePerToken: number }
-export type Quote = { price: number; at: number; change1h: number; source?: 'uniswap-v4' | 'robinhood' }
+export type Quote = { price: number; at: number; change1h: number; source?: 'uniswap-v4' | 'robinhood' | 'dexscreener' }
 
 export function useCandles(symbol: string, interval = 60) {
   const live = useLive()

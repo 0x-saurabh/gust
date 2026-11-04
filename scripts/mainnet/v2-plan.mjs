@@ -6,7 +6,9 @@
 // What gets listed in the v2 AssetRegistry (one `addAssets` per batch of BATCH tokens, puts on):
 //   * every active Robinhood Stock Token deployed on this chain (api.robinhood.com/rhj/assets), with an exposure cap
 //     worth CAP_USD at the current quote and a minimum total strike of MIN_STRIKE_ETH;
-//   * every token still enabled in the v1 registry, with its v1 cap, minimum strike and puts flag.
+//   * every token still enabled in the v1 registry, with its v1 cap, minimum strike and puts flag;
+//   * the trending crypto tokens in scripts/mainnet/v2-extra-tokens.json, capped at their capUsd (DexScreener price).
+// Two listed tokens may not share an on-chain symbol (prices, charts and offers are keyed by symbol): the plan refuses.
 // Plus callMarket.setRouter / putMarket.setRouter. Tokens already listed in v2 are skipped. The plan is computed once
 // and cached (scripts/mainnet/out/v2-plans-<chain>.json) so a re-run resumes the same timelock operations instead of
 // making new ones from moved prices; delete that file to recompute.
@@ -52,6 +54,7 @@ const abi = parseAbi([
   'function listedTokens(uint256) view returns (address)',
   'function getAsset(address) view returns ((bool listed, bool enabled, bool putsEnabled, uint8 decimals, uint256 cap, uint256 minStrike))',
   'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
   'function getMinDelay() view returns (uint256)',
   'function schedule(address target, uint256 value, bytes data, bytes32 predecessor, bytes32 salt, uint256 delay)',
   'function execute(address target, uint256 value, bytes payload, bytes32 predecessor, bytes32 salt)',
@@ -104,6 +107,36 @@ async function computeCalls() {
     const price = usd.get(a.tokenSymbol) || 100 // unquoted (new listing): assume $100 until the timelock adjusts it
     const tokens = Math.max(1, Math.ceil(CAP_USD / price))
     want.set(addr.toLowerCase(), { symbol: a.tokenSymbol, cap: BigInt(tokens) * 10n ** BigInt(dec), minStrike: MIN_STRIKE, puts: true })
+  }
+  // Trending crypto tokens (screened list), capped at capUsd of exposure at the DexScreener price.
+  const extras = JSON.parse(fs.readFileSync(process.env.EXTRA_TOKENS || 'scripts/mainnet/v2-extra-tokens.json', 'utf8')).tokens ?? []
+  if (extras.length) {
+    const addrs = extras.map((e) => getAddress(e.address))
+    const usdOf = new Map()
+    for (let i = 0; i < addrs.length; i += 30) {
+      const pairs = await fetch(`https://api.dexscreener.com/tokens/v1/robinhood/${addrs.slice(i, i + 30).join(',')}`).then((r) => r.json())
+      for (const p of pairs) {
+        const k = p.baseToken.address.toLowerCase()
+        if (!usdOf.has(k) || (p.liquidity?.usd ?? 0) > usdOf.get(k).liq) usdOf.set(k, { usd: Number(p.priceUsd), liq: p.liquidity?.usd ?? 0 })
+      }
+    }
+    for (const e of extras) {
+      const addr = getAddress(e.address)
+      if (want.has(addr.toLowerCase())) continue
+      const price = usdOf.get(addr.toLowerCase())?.usd
+      if (!(price > 0)) throw new Error(`no DexScreener price for ${e.symbol} (${addr}): fix or remove it in v2-extra-tokens.json`)
+      const dec = Number(await read(addr, 'decimals'))
+      const raw = BigInt(Math.ceil((e.capUsd / price) * 1e6)) * 10n ** BigInt(dec) / 1_000_000n
+      want.set(addr.toLowerCase(), { symbol: e.symbol, cap: raw > 0n ? raw : 1n, minStrike: MIN_STRIKE, puts: true })
+    }
+  }
+
+  // One symbol, one token: the indexer, charts and offers are keyed by the on-chain symbol.
+  const bySymbol = new Map()
+  for (const t of [...want.keys(), ...listed]) {
+    const sym = await read(getAddress(t), 'symbol')
+    if (bySymbol.has(sym) && bySymbol.get(sym) !== t) throw new Error(`two tokens use the symbol ${sym}: ${bySymbol.get(sym)} and ${t}. List only one.`)
+    bySymbol.set(sym, t)
   }
   for (const t of listed) want.delete(t)
 
