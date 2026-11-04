@@ -50,6 +50,7 @@ library Errors {
     error NotMarket();
     error NotDeployer();
     error MarketsAlreadySet();
+    error LengthMismatch();
     error ZeroAddress();
     error AssetExists();
     error UnknownAsset();

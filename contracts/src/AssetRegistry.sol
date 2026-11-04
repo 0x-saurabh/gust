@@ -28,6 +28,26 @@ contract AssetRegistry is IAssetRegistry, Governed {
     // ---------------------------------------------------------------- admin
 
     function addAsset(address token, uint256 cap_, uint256 minStrike_) external onlyTimelock {
+        _add(token, cap_, minStrike_);
+    }
+
+    /// @notice Lists many tokens in one timelock operation (v2: the Robinhood Stock Token catalogue), optionally
+    /// with puts enabled. Same checks as `addAsset` for every entry; one bad entry reverts the whole batch.
+    function addAssets(address[] calldata tokens, uint256[] calldata caps, uint256[] calldata minStrikes, bool putsOn)
+        external
+        onlyTimelock
+    {
+        if (tokens.length != caps.length || tokens.length != minStrikes.length) revert Errors.LengthMismatch();
+        for (uint256 i; i < tokens.length; ++i) {
+            _add(tokens[i], caps[i], minStrikes[i]);
+            if (putsOn) {
+                _assets[tokens[i]].putsEnabled = true;
+                emit Events.PutsEnabled(tokens[i], true);
+            }
+        }
+    }
+
+    function _add(address token, uint256 cap_, uint256 minStrike_) internal {
         if (token == address(0)) revert Errors.ZeroAddress();
         if (_assets[token].listed) revert Errors.AssetExists();
         if (listedTokens.length >= Constants.MAX_ASSETS) revert Errors.TooManyAssets();

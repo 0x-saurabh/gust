@@ -15,11 +15,12 @@ library Constants {
 
     uint256 internal constant MAX_OPEN_PER_SELLER = 200;
     uint256 internal constant MAX_BATCH = 50;
-    uint256 internal constant MAX_ASSETS = 25;
+    uint256 internal constant MAX_ASSETS = 300; // v2: room for every Robinhood Stock Token (25 in v1)
 
     uint256 internal constant EPOCH = 1 days;
 
-    /// @dev OptionNFT ids are `(tag << 248) | localId`, so call and put ids never collide.
-    uint256 internal constant CALL_TAG = 1;
-    uint256 internal constant PUT_TAG = 2;
+    /// @dev OptionNFT ids are `(tag << 248) | localId`, so call and put ids never collide. v1 used tags 1 and 2;
+    /// v2 uses 3 and 4 so its ids never collide with v1 positions either (indexer, keeper and UI key by id).
+    uint256 internal constant CALL_TAG = 3;
+    uint256 internal constant PUT_TAG = 4;
 }

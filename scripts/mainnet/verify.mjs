@@ -39,11 +39,17 @@ const targets = [
   ['router', 'src/Router.sol:Router'],
   ['kyteHook', 'src/hooks/KyteHook.sol:KyteHook', hookArgs],
   ['swapAdapter', 'src/adapters/UniswapV4Adapter.sol:UniswapV4Adapter'],
+  // Markets v2 (DeployMarketsV2.s.sol)
+  ['v2.assetRegistry', 'src/AssetRegistry.sol:AssetRegistry'],
+  ['v2.optionNft', 'src/OptionNFT.sol:OptionNFT'],
+  ['v2.callMarket', 'src/CallMarket.sol:CallMarket'],
+  ['v2.putMarket', 'src/PutMarket.sol:PutMarket'],
+  ['v2.router', 'src/Router.sol:Router'],
 ]
 
 let failed = 0
 for (const [key, path, args] of targets) {
-  const addr = dep[key]
+  const addr = key.split('.').reduce((o, k) => o?.[k], dep)
   if (!addr || addr === ZERO) { console.log(`${key.padEnd(14)} skipped (not deployed)`); continue }
   let m = await status(addr)
   for (let i = 0; !m && i < 3; i++) {

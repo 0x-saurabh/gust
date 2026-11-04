@@ -9,6 +9,7 @@ import {PutMarket} from "../src/PutMarket.sol";
 import {Router} from "../src/Router.sol";
 import {IWETH} from "../src/interfaces/IWETH.sol";
 import {OptionMarketBase} from "../src/OptionMarketBase.sol";
+import {Constants} from "../src/lib/Constants.sol";
 import {Position, Status} from "../src/lib/Types.sol";
 import {MockERC20, MockWETH} from "./mocks/Mocks.sol";
 
@@ -82,7 +83,7 @@ contract Handler is Test {
         uint256 id = ids[idSeed % ids.length];
         uint256 premium = _market(id).getPosition(id).premium;
         vm.prank(actors[actorSeed % actors.length]);
-        if (id >> 248 == 1) {
+        if (id >> 248 == Constants.CALL_TAG) {
             try router.buyWithETH{value: premium + 1}(id, type(uint256).max) {} catch {}
         } else {
             try router.buyPutWithETH{value: premium + 1}(id, type(uint256).max) {} catch {}
@@ -93,7 +94,7 @@ contract Handler is Test {
     function exerciseWithEth(uint256 idSeed) external {
         if (ids.length == 0) return;
         uint256 id = ids[idSeed % ids.length];
-        if (id >> 248 != 1) return;
+        if (id >> 248 != Constants.CALL_TAG) return;
         address holder;
         try nft.ownerOf(id) returns (address h) {
             holder = h;
@@ -117,7 +118,7 @@ contract Handler is Test {
             return;
         }
         vm.prank(holder);
-        if (id >> 248 == 1) {
+        if (id >> 248 == Constants.CALL_TAG) {
             try calls.exercise(id) {} catch {}
         } else {
             try puts.exercisePut(id) {} catch {}
@@ -154,7 +155,7 @@ contract Handler is Test {
     }
 
     function _market(uint256 id) internal view returns (OptionMarketBase) {
-        return id >> 248 == 1 ? OptionMarketBase(address(calls)) : OptionMarketBase(address(puts));
+        return id >> 248 == Constants.CALL_TAG ? OptionMarketBase(address(calls)) : OptionMarketBase(address(puts));
     }
 
     function _track(uint256 id) internal {
@@ -227,13 +228,13 @@ contract InvariantsTest is BaseTest {
         uint256 n = handler.idCount();
         for (uint256 i; i < n; ++i) {
             uint256 id = handler.ids(i);
-            if ((id >> 248 == 1) != isCall) continue;
+            if ((id >> 248 == Constants.CALL_TAG) != isCall) continue;
             Position memory p = _get(id);
             if (p.status == Status.Open || p.status == Status.Filled) sum += isCall ? p.amount : p.strike;
         }
     }
 
     function _get(uint256 id) internal view returns (Position memory) {
-        return id >> 248 == 1 ? calls.getPosition(id) : puts.getPosition(id);
+        return id >> 248 == Constants.CALL_TAG ? calls.getPosition(id) : puts.getPosition(id);
     }
 }

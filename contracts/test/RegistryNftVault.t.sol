@@ -44,6 +44,52 @@ contract AssetRegistryTest is BaseTest {
         vm.stopPrank();
     }
 
+    function test_addAssets_batch() public {
+        address[] memory toks = new address[](3);
+        uint256[] memory caps = new uint256[](3);
+        uint256[] memory mins = new uint256[](3);
+        for (uint256 i; i < 3; ++i) {
+            toks[i] = address(new MockERC20("S", "S", 18));
+            caps[i] = 100e18 + i;
+            mins[i] = 0.0001 ether;
+        }
+        vm.prank(stranger);
+        vm.expectRevert(Errors.NotTimelock.selector);
+        registry.addAssets(toks, caps, mins, true);
+
+        vm.prank(timelock);
+        registry.addAssets(toks, caps, mins, true);
+        assertEq(registry.assetCount(), 4);
+        for (uint256 i; i < 3; ++i) {
+            AssetRegistry.Asset memory a = registry.getAsset(toks[i]);
+            assertTrue(a.listed && a.enabled && a.putsEnabled);
+            assertEq(a.cap, caps[i]);
+            assertTrue(registry.putsEnabled(toks[i]));
+        }
+
+        // duplicates and length mismatches revert the whole batch
+        vm.startPrank(timelock);
+        vm.expectRevert(Errors.AssetExists.selector);
+        registry.addAssets(toks, caps, mins, false);
+        uint256[] memory short = new uint256[](2);
+        vm.expectRevert(Errors.LengthMismatch.selector);
+        registry.addAssets(toks, short, mins, false);
+        vm.stopPrank();
+    }
+
+    function test_addAssets_putsOff() public {
+        address[] memory toks = new address[](1);
+        uint256[] memory caps = new uint256[](1);
+        uint256[] memory mins = new uint256[](1);
+        toks[0] = address(new MockERC20("S", "S", 18));
+        caps[0] = 1;
+        mins[0] = 1;
+        vm.prank(timelock);
+        registry.addAssets(toks, caps, mins, false);
+        assertFalse(registry.putsEnabled(toks[0]));
+        assertTrue(registry.isEnabled(toks[0]));
+    }
+
     function test_guardianCanOnlyDisable() public {
         vm.startPrank(guardian);
         registry.setEnabled(address(token), false);
