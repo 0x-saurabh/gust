@@ -4,7 +4,7 @@ import { useConnectWallet, useWallets } from '@privy-io/react-auth'
 import { useSetActiveWallet } from '@privy-io/wagmi'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { useAccount, useConnect, useConnectors, useDisconnect, useSwitchChain } from 'wagmi'
+import { useAccount, useConnect, useConnectors, useDisconnect, useReconnect, useSwitchChain } from 'wagmi'
 import { chain } from '@/lib/chains'
 import { PRIVY_APP_ID } from '@/lib/config'
 import { shortAddr } from '@/lib/format'
@@ -56,13 +56,16 @@ function PrivyConnect() {
   }, [target, wallets, setActiveWallet, path, router])
   // After a reload: Privy has silently re-detected the wallet (eth_accounts, no prompt) but wagmi has no account.
   // Re-activate the wallet we saved, once per address, so the session survives navigation and refreshes.
-  // Only once Privy has registered the wallet's wagmi connector and that connector already sees the address
-  // (eth_accounts, no prompt). Calling setActiveWallet before that makes Privy fall back to a fresh connect,
-  // which opens its "Waiting for MetaMask" dialog on every page load.
+  // Once Privy has registered the wallet's wagmi connector, bring the connection back through wagmi's
+  // reconnect, which only reads eth_accounts and never prompts. Privy's setActiveWallet is not used here:
+  // when it decides the connector is not ready it starts a fresh connect, and MetaMask then asks for
+  // permissions again on every page load. Retried briefly because Privy may still be setting up.
   const connectors = useConnectors()
+  const { reconnectAsync } = useReconnect()
   const [restored, setRestored] = useState<string | null>(null)
+  const [tries, setTries] = useState(0)
   useEffect(() => {
-    if (!ready || isConnected || target) return
+    if (!ready || isConnected || target || tries > 20) return
     const saved = localStorage.getItem(SAVED_WALLET)
     if (!saved || saved === restored) return
     const w = wallets.find((x) => x.address.toLowerCase() === saved)
@@ -70,16 +73,15 @@ function PrivyConnect() {
     const connector = connectors.find((c) => c.id === w.meta.id)
     if (!connector) return
     let cancelled = false
-    connector
-      .getAccounts()
-      .then((accounts) => {
-        if (cancelled || !accounts.some((a) => a.toLowerCase() === saved)) return
-        setRestored(saved)
-        return setActiveWallet(w)
+    reconnectAsync({ connectors: [connector] })
+      .then((connections) => {
+        if (cancelled) return
+        if (connections.some((c) => c.accounts.some((a) => a.toLowerCase() === saved))) setRestored(saved)
+        else setTimeout(() => !cancelled && setTries((n) => n + 1), 500)
       })
-      .catch((e) => setError(String(e)))
+      .catch(() => { if (!cancelled) setTimeout(() => !cancelled && setTries((n) => n + 1), 500) })
     return () => { cancelled = true }
-  }, [ready, wallets, connectors, isConnected, target, restored, setActiveWallet])
+  }, [ready, wallets, connectors, isConnected, target, restored, tries, reconnectAsync])
 
   const forget = () => {
     localStorage.removeItem(SAVED_WALLET)
