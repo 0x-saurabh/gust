@@ -112,6 +112,9 @@ const HINTS: Record<string, { spotEth: number; vol: number }> = Object.fromEntri
 // Tokenized stocks and ETFs move far less than small-cap crypto: price their options with equity-like volatility.
 const STOCK = /Robinhood Token|Ondo Tokenized/i
 const hint = (symbol: string, name = '') => HINTS[symbol] ?? { spotEth: 0, vol: STOCK.test(name) ? 0.45 : 1.2 }
+// Ondo Tokenized stocks (…on) are off the site: the Robinhood Stock Tokens replace them. Marked disabled rather than
+// dropped, so pickers hide them (they list enabled assets only) while old positions still find their token.
+const HIDDEN = /Ondo Tokenized/i
 
 type ApiAsset = { address: Address; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string }
 
@@ -151,6 +154,7 @@ export function useAssets() {
           for (const a of list) if (prices[a.symbol]?.price) a.spotEth = prices[a.symbol].price
         } catch {}
       }
+      for (const a of list) if (HIDDEN.test(a.name)) a.enabled = a.putsEnabled = false
       return list
     },
     staleTime: 10_000,
