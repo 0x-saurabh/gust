@@ -61,15 +61,15 @@ export function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => voi
         <dl className="mt-5 space-y-3 text-sm">
           <Row k="You pay now (ETH)" v={eth(offer.premium)} strong />
           <Row k="Of which protocol fee" v={eth(fee, 6)} />
-          <Row k={offer.kind === 'call' ? 'To exercise you pay' : 'On exercise you receive'} v={eth(offer.strike)} />
-          <Row k={offer.kind === 'call' ? 'On exercise you receive' : 'To exercise you deliver'} v={`${num(offer.amount, 0)} ${offer.symbol}`} />
+          <Row k={offer.kind === 'call' ? 'To settle you pay' : 'On settlement you receive'} v={eth(offer.strike)} />
+          <Row k={offer.kind === 'call' ? 'On settlement you receive' : 'To settle you deliver'} v={`${num(offer.amount, 0)} ${offer.symbol}`} />
           <Row k="Break-even per token" v={`${breakEvenPer.toPrecision(3)} ETH`} />
           <Row k="Expires" v={date(offer.expiry)} />
           <Row k="Fill by" v={date(offer.offerDeadline)} />
         </dl>
 
         <div className="mt-6 space-y-3">
-          <Note tone="warn">Exercise well before expiry. A transaction that lands after expiry fails.</Note>
+          <Note tone="warn">Settle well before expiry. A transaction that lands after expiry fails.</Note>
           <button className="btn btn-accent w-full" disabled={!isConnected || !contractsLive || !live || tx.busy} onClick={buy}>
             {!isConnected ? 'Connect a wallet to buy' : !live ? 'Demo mode' : tx.busy ? 'Working…' : `Buy for ${eth(offer.premium)}`}
           </button>

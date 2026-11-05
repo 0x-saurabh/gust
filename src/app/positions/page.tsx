@@ -27,13 +27,13 @@ export default function PositionsPage() {
 
   const market = (o: Offer) => (o.kind === 'call' ? { address: contracts.callMarket!, abi: ABIS.CallMarket } : { address: contracts.putMarket!, abi: ABIS.PutMarket })
 
-  const exercise = async (o: Offer) => {
+  const settle = async (o: Offer) => {
     if (o.kind === 'call') {
-      await tx.run([{ label: `Exercise: pay ${eth(o.strike)} for ${num(o.amount, 0)} ${o.symbol}`, address: contracts.router!, abi: ABIS.Router, functionName: 'exerciseWithETH', args: [o.id], value: o.strikeRaw }])
+      await tx.run([{ label: `Settle: pay ${eth(o.strike)} for ${num(o.amount, 0)} ${o.symbol}`, address: contracts.router!, abi: ABIS.Router, functionName: 'exerciseWithETH', args: [o.id], value: o.strikeRaw }])
     } else if (client && address) {
       await tx.run([
         ...(await approvalIfNeeded(client, address, o.token, contracts.putMarket!, o.amountRaw, `Approve ${o.symbol}`)),
-        { label: `Exercise: deliver ${num(o.amount, 0)} ${o.symbol} for ${eth(o.strike)}`, address: contracts.putMarket!, abi: ABIS.PutMarket, functionName: 'exercisePut', args: [o.id] },
+        { label: `Settle: deliver ${num(o.amount, 0)} ${o.symbol} for ${eth(o.strike)}`, address: contracts.putMarket!, abi: ABIS.PutMarket, functionName: 'exercisePut', args: [o.id] },
       ])
     }
   }
@@ -67,13 +67,13 @@ export default function PositionsPage() {
               const expired = o.expiry <= now
               const stale = o.status === 'open' && o.offerDeadline < now
               let action: { label: string; primary?: boolean; run?: () => unknown } | null = null
-              if (tab === 'holding') action = expired ? { label: 'Expired' } : { label: 'Exercise', primary: true, run: () => exercise(o) }
+              if (tab === 'holding') action = expired ? { label: 'Expired' } : { label: 'Settle', primary: true, run: () => settle(o) }
               else if (o.status === 'open') action = { label: stale ? 'Reclaim' : 'Cancel', primary: stale, run: () => cancel(o) }
               else if (o.status === 'filled' && expired) action = { label: 'Expire & reclaim', primary: true, run: () => expire(o) }
               const status =
                 o.status === 'open' ? (stale ? 'Not filled: reclaim your collateral' : 'Waiting for a buyer')
                 : o.status === 'filled' ? (tab === 'holding' ? 'You hold this option' : 'Sold: collateral locked')
-                : o.status
+                : o.status === 'exercised' ? 'settled' : o.status
               return (
                 <div key={o.id.toString()} className="flex flex-wrap items-center gap-4 p-5">
                   <KindBadge kind={o.kind} />
@@ -96,7 +96,7 @@ export default function PositionsPage() {
             )}
           </div>
 
-          <Note tone="warn">Exercising close to expiry is risky: if your transaction lands after expiry it fails, and the collateral goes back to the seller.</Note>
+          <Note tone="warn">Settling close to expiry is risky: if your transaction lands after expiry it fails, and the collateral goes back to the seller.</Note>
         </div>
       )}
       <TxStatus state={tx.state} onClose={tx.reset} />

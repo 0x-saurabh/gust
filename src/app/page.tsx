@@ -112,7 +112,7 @@ function Notice() {
                 <h3 className="font-display text-[20px] md:text-[22px]">You are on the official {BRAND.name} app, connected to {chain.name}.</h3>
                 <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink/60">
                   {chain.testnet
-                    ? 'Everything here runs against real contracts on a test network, so you can sell, buy, exercise and stake without real money. Audits, testnet and mainnet are announced on X first.'
+                    ? 'Everything here runs against real contracts on a test network, so you can sell, buy, settle and stake without real money. Audits, testnet and mainnet are announced on X first.'
                     : 'Every action here is a real transaction on Robinhood Chain. Start small, read the risks, and follow X for listings and parameter changes.'}
                 </p>
               </div>
@@ -127,15 +127,15 @@ function Notice() {
 
 function Intro() {
   const roles = [
-    { k: 'Call seller', d: 'Locks ERC-20 tokens, sets a strike in ETH, an expiry and a premium.', g: 'Earns the premium. If exercised, receives the strike. Otherwise the tokens come back.' },
-    { k: 'Put seller', d: 'Locks the full strike in WETH, chooses the token, expiry and premium.', g: 'Earns the premium. If exercised, receives the tokens. Otherwise the WETH comes back.' },
-    { k: 'Buyer', d: 'Pays the premium and receives an Option NFT (ERC-721).', g: 'The right to exercise any time before expiry. The NFT can be held, transferred or sold.' },
+    { k: 'Call seller', d: 'Locks ERC-20 tokens, sets a strike in ETH, an expiry and a premium.', g: 'Earns the premium. If settled, receives the strike. Otherwise the tokens come back.' },
+    { k: 'Put seller', d: 'Locks the full strike in WETH, chooses the token, expiry and premium.', g: 'Earns the premium. If settled, receives the tokens. Otherwise the WETH comes back.' },
+    { k: 'Buyer', d: 'Pays the premium and receives an Option NFT (ERC-721).', g: 'The right to settle any time before expiry. The NFT can be held, transferred or sold.' },
   ]
   return (
     <Bleed className="mt-32 md:mt-44">
       <Wrap>
         <div className="grid gap-14 lg:grid-cols-[1fr_1.25fr]">
-          <SectionHead eyebrow={`What ${BRAND.name} is`} title={<>Options where every position is <span className="grad-text">paid for up front.</span></>} sub={`${BRAND.name} is a peer-to-peer options market on Robinhood Chain, an Ethereum L2. Sellers lock the full collateral when they create an offer. Buyers pay a premium for the right to exercise. Nothing is borrowed, so nothing can be liquidated.`} />
+          <SectionHead eyebrow={`What ${BRAND.name} is`} title={<>Options where every position is <span className="grad-text">paid for up front.</span></>} sub={`${BRAND.name} is a peer-to-peer options market on Robinhood Chain, an Ethereum L2. Sellers lock the full collateral when they create an offer. Buyers pay a premium for the right to settle. Nothing is borrowed, so nothing can be liquidated.`} />
           <div className="hair border-t">
             {roles.map((r, i) => (
               <Reveal key={r.k} delay={i * 0.06}>
@@ -163,7 +163,7 @@ function How() {
   return (
     <Bleed id="how" className="mt-32 md:mt-44">
       <Wrap>
-        <SectionHead eyebrow="How it works" title="Four steps. One direction." sub="Lock, fill, exercise or expire, then the fee split. Scroll and watch the collateral, the premium, the Option NFT and the fees move between seller, escrow, buyer and the fee vault, using a live offer from the chain." />
+        <SectionHead eyebrow="How it works" title="Four steps. One direction." sub="Lock, fill, settle or expire, then the fee split. Scroll and watch the collateral, the premium, the Option NFT and the fees move between seller, escrow, buyer and the fee vault, using a live offer from the chain." />
         <div className="mt-12"><FlowStory /></div>
         <Lifecycle />
       </Wrap>
@@ -209,7 +209,7 @@ function Example() {
   const rows = [
     { when: 'Day 0', who: 'Alice creates', what: 'Locks 100,000 ZEPH. Strike 5 ETH, premium 0.2 ETH, expiry 7 days.', flows: [['Alice', 'to escrow', '100,000 ZEPH']] },
     { when: 'Day 0', who: 'Bob buys', what: 'Bob pays the 0.2 ETH premium and receives the Option NFT.', flows: [['Alice', 'receives', '0.194 ETH'], ['Fee vault', '3%', '0.006 ETH']] },
-    { when: 'Day 5', who: 'Bob exercises', what: 'Bob pays the 5 ETH strike and receives the underlying tokens.', flows: [['Alice', 'receives', '4.995 ETH'], ['Fee vault', '0.1%', '0.005 ETH'], ['Bob', 'receives', '100,000 ZEPH']] },
+    { when: 'Day 5', who: 'Bob settles', what: 'Bob pays the 5 ETH strike and receives the underlying tokens.', flows: [['Alice', 'receives', '4.995 ETH'], ['Fee vault', '0.1%', '0.005 ETH'], ['Bob', 'receives', '100,000 ZEPH']] },
   ]
   return (
     <Bleed className="mt-32 md:mt-44">
@@ -236,7 +236,7 @@ function Example() {
             </Reveal>
           ))}
           <div className="hair border-t p-6 text-[14px] leading-relaxed text-ink/60 md:p-8" style={{ background: 'rgba(110,255,170,.025)' }}>
-            <span className="text-ink">If Bob does not exercise:</span> after day 7, anyone can call <span className="mono text-[#8fffe0]">expire</span> and Alice gets her 100,000 ZEPH back. She keeps the premium either way.
+            <span className="text-ink">If Bob does not settle:</span> after day 7, anyone can call <span className="mono text-[#8fffe0]">expire</span> and Alice gets her 100,000 ZEPH back. She keeps the premium either way.
           </div>
         </div>
       </Wrap>
@@ -248,8 +248,8 @@ function Features() {
   const f = [
     ['Fully collateralised', 'Every option is 100% backed at creation. There is no leverage, no margin and no liquidation engine to fail.'],
     ['Non-custodial', 'Collateral sits in the market contract and can only go to its seller or the option holder. No admin function can move it.'],
-    ['Options as NFTs', 'Each filled option is an ERC-721 with on-chain metadata. Hold it, transfer it or sell it; the holder exercises.'],
-    ['Exit is always open', 'A pause can stop new offers and buys. It never blocks cancel, exercise or expire.'],
+    ['Options as NFTs', 'Each filled option is an ERC-721 with on-chain metadata. Hold it, transfer it or sell it; the holder settles.'],
+    ['Exit is always open', 'A pause can stop new offers and buys. It never blocks cancel, settle or expire.'],
     ['Fees locked per position', 'Fees are snapshotted when a position is created. Later changes never touch open positions.'],
     ['Seller-set pricing', 'Premiums are chosen by sellers and accepted by buyers. No oracle sits between you and the price you agreed to.'],
   ]
@@ -284,7 +284,7 @@ function Fees() {
       <Wrap>
         <SectionHead eyebrow="Fees" title="Two fees. Split by the contract." sub="No other protocol fees exist. Network gas is separate." />
         <div className="mt-14 grid gap-6 md:grid-cols-2">
-          {[['3%', 'of the premium', 'Charged when an option is bought.'], ['0.1%', 'of the strike', 'Charged when an option is exercised.']].map(([n, u, d], i) => (
+          {[['3%', 'of the premium', 'Charged when an option is bought.'], ['0.1%', 'of the strike', 'Charged when an option is settled.']].map(([n, u, d], i) => (
             <Reveal key={n} delay={i * 0.08}>
               <div className="panel rounded-2xl p-8 md:p-10">
                 <div className="font-display text-[72px] leading-none md:text-[96px]"><span className="grad-text">{n}</span></div>
@@ -312,7 +312,7 @@ function Fees() {
               ))}
             </div>
             <div className="hair mt-10 grid gap-3 border-t pt-7 text-[14px] sm:grid-cols-3">
-              {[['Premium fee ceiling', 'never above 10%'], ['Exercise fee ceiling', 'never above 1%'], ['Stakers share floor', 'never below 20%']].map(([a, b]) => (
+              {[['Premium fee ceiling', 'never above 10%'], ['Settlement fee ceiling', 'never above 1%'], ['Stakers share floor', 'never below 20%']].map(([a, b]) => (
                 <div key={a} className="hair flex items-center justify-between gap-3 rounded-lg border px-4 py-3 sm:block">
                   <div className="text-ink/50">{a}</div>
                   <div className="mono text-ink sm:mt-1">{b}</div>
@@ -333,7 +333,7 @@ function Security() {
     'Contracts are not upgradeable.',
     'Settings change only through a 10-minute timelock run by a multisig, within hard-coded ceilings.',
     'A guardian can only pause new offers and buys or disable a token. It cannot unpause, enable or touch funds.',
-    'Pause never blocks cancel, exercise or expire.',
+    'Pause never blocks cancel, settle or expire.',
     'Buybacks must clear a 10-minute TWAP floor checked on-chain, so even a stolen keeper key cannot sell cheap.',
     'New stake is locked for its first earning epoch, so nobody can snipe a fee split and leave.',
   ]

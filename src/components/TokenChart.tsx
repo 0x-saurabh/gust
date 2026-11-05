@@ -152,7 +152,7 @@ export const TokenChart = memo(function TokenChart({
       position: m.name === 'Exercised' ? 'aboveBar' : 'belowBar',
       color: m.kind === 'call' ? '#4dfca9' : '#05edfa',
       shape: m.name === 'Exercised' ? 'arrowDown' : m.name === 'Expired' ? 'square' : 'circle',
-      text: m.name === 'OptionBought' ? 'fill' : m.name.toLowerCase(),
+      text: m.name === 'OptionBought' ? 'fill' : m.name === 'Exercised' ? 'settle' : m.name.toLowerCase(),
     }))
     const api = createSeriesMarkers(s, ms)
     // If the chart was torn down first (interval/height change), the series and its markers are already disposed.

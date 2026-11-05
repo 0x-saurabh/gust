@@ -87,7 +87,7 @@ export default function SellPage() {
   if (assetsQ.isSuccess && (assetsQ.data?.length ?? 0) === 0) {
     return (
       <>
-        <PageHeader title="Sell an option" sub="Your collateral is locked until the option is exercised, expires, or you cancel an unfilled offer." />
+        <PageHeader title="Sell an option" sub="Your collateral is locked until the option is settled, expires, or you cancel an unfilled offer." />
         <div className="grid gap-6 lg:grid-cols-5">
           <div className="card p-8 lg:col-span-3">
             <div className="label">Market not open yet</div>
@@ -106,7 +106,7 @@ export default function SellPage() {
 
   return (
     <>
-      <PageHeader title="Sell an option" sub="Your collateral is locked until the option is exercised, expires, or you cancel an unfilled offer." />
+      <PageHeader title="Sell an option" sub="Your collateral is locked until the option is settled, expires, or you cancel an unfilled offer." />
 
       <div className="grid gap-6 lg:grid-cols-5">
         <form className="card space-y-6 p-6 lg:col-span-3" onSubmit={(e) => { e.preventDefault(); submit() }}>
@@ -180,16 +180,16 @@ export default function SellPage() {
               <Row k={`Premium fee (${FEES.premiumBps / 100}%)`} v={`−${eth(premiumFee, 6)}`} />
               <Row k="You receive when filled" v={eth(prem - premiumFee, 6)} strong />
               <div className="border-t border-line" />
-              <Row k="If exercised you receive" v={kind === 'call' ? eth(totalStrike - exerciseFee, 6) : `${num(amt, 0)} ${a?.symbol ?? ''}`} />
-              {kind === 'call' && <Row k={`Exercise fee (${FEES.exerciseBps / 100}%)`} v={`−${eth(exerciseFee, 6)}`} />}
+              <Row k="If settled you receive" v={kind === 'call' ? eth(totalStrike - exerciseFee, 6) : `${num(amt, 0)} ${a?.symbol ?? ''}`} />
+              {kind === 'call' && <Row k={`Settlement fee (${FEES.exerciseBps / 100}%)`} v={`−${eth(exerciseFee, 6)}`} />}
               <Row k="If it expires" v={kind === 'call' ? `${num(amt, 0)} ${a?.symbol ?? ''} back` : `${eth(totalStrike)} back`} />
               <Row k="Fill window" v={fillBy === durationSec ? 'until expiry' : `${fillBy / 3600} h`} />
             </dl>
           </div>
           <Note>
             {kind === 'call'
-              ? 'If the price ends above your strike, the buyer will likely exercise and you sell your tokens at the strike. You keep the premium either way.'
-              : 'If the price ends below your strike, the buyer will likely exercise and you buy their tokens at the strike. You keep the premium either way.'}
+              ? 'If the price ends above your strike, the buyer will likely settle and you sell your tokens at the strike. You keep the premium either way.'
+              : 'If the price ends below your strike, the buyer will likely settle and you buy their tokens at the strike. You keep the premium either way.'}
           </Note>
           <Note>Payouts arrive as WETH. Unwrap to ETH on the Positions page.</Note>
         </aside>

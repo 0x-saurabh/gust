@@ -26,14 +26,14 @@ export default function DocsPage() {
             <h2>How it works</h2>
             <p>A <strong>covered call</strong> seller locks tokens and sets a strike price in ETH, an expiry and a premium. A buyer pays the premium and receives an Option NFT. Until expiry, whoever holds the NFT can pay the strike and receive the tokens. After expiry, anyone can call <code>expire</code> and the tokens return to the seller.</p>
             <p className="mt-3">A <strong>cash-secured put</strong> is the mirror image: the seller locks ETH (as WETH), and the holder can sell them the tokens at the strike before expiry.</p>
-            <p className="mt-3">Settlement is physical. No price oracle is involved, and the holder decides whether exercising is worth it. The Option NFT can be transferred, and whoever holds it at exercise time gets the payout.</p>
+            <p className="mt-3">Settlement is physical. No price oracle is involved, and the holder decides whether settling is worth it. The Option NFT can be transferred, and whoever holds it at settlement gets the payout.</p>
           </section>
 
           <section id="fees">
             <h2>Fees</h2>
             <ul className="space-y-1">
               <li><strong>{bps(FEES.premiumBps)}</strong> of the premium, when an offer is filled.</li>
-              <li><strong>{bps(FEES.exerciseBps)}</strong> of the strike, when an option is exercised.</li>
+              <li><strong>{bps(FEES.exerciseBps)}</strong> of the strike, when an option is settled.</li>
               <li>Cancelling an unfilled offer and expiring are free, apart from gas.</li>
             </ul>
             <p className="mt-3">Fees are recorded on each position when it&apos;s created, so a later fee change never affects an open position. The FeeVault splits fees once per epoch: <strong>{bps(SPLIT.stakersBps)}</strong> to {BRAND.token} stakers, <strong>{bps(SPLIT.buybackBps)}</strong> to buy and burn {BRAND.token} on Uniswap v4, and <strong>{bps(SPLIT.opsBps)}</strong> to operations.</p>
@@ -57,7 +57,7 @@ export default function DocsPage() {
               <li>Each offer has its own fill deadline, which can&apos;t be later than expiry. After it passes, the seller can reclaim the collateral.</li>
               <li>The minimum premium is {LIMITS.minPremiumEth} ETH.</li>
               <li>Only listed tokens can be used. Fee-on-transfer and rebasing tokens are rejected.</li>
-              <li>Pausing only blocks new offers and fills. Cancel, exercise, expire, unstake and claim always work.</li>
+              <li>Pausing only blocks new offers and fills. Cancel, settle, expire, unstake and claim always work.</li>
               <li>Payouts arrive as WETH. Unwrap to ETH from the Positions page.</li>
             </ul>
           </section>
@@ -66,8 +66,8 @@ export default function DocsPage() {
             <h2>Risks</h2>
             <ul className="space-y-1">
               <li><strong>Sellers</strong> give up upside above the strike (calls), or must buy tokens that may keep falling (puts).</li>
-              <li><strong>Buyers</strong> can lose the entire premium if the option isn&apos;t worth exercising.</li>
-              <li><strong>Exercise early.</strong> Robinhood Chain has a single sequencer. A transaction that lands after expiry fails.</li>
+              <li><strong>Buyers</strong> can lose the entire premium if the option isn&apos;t worth settling.</li>
+              <li><strong>Settle early.</strong> Robinhood Chain has a single sequencer. A transaction that lands after expiry fails.</li>
               <li>Listed tokens can be volatile, illiquid, or have admin controls such as blocklists.</li>
               <li>Smart contracts can have bugs. Only use funds you can afford to lose.</li>
             </ul>

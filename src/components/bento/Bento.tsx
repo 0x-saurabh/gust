@@ -58,7 +58,7 @@ export const ActivityTile = memo(function ActivityTile() {
 })
 
 // ------------------------------------------------------------------ 2. the command input (typewriter)
-const PROMPTS = ['sell call · 200,000 ZEPH @ 10 ETH · 7d · premium 0.3', 'buy put · 1,500 GALE @ 1.7 ETH', 'exercise #3 · pay 3 ETH · receive 100,000 ZEPH', 'stake 1,000,000 KYTE']
+const PROMPTS = ['sell call · 200,000 ZEPH @ 10 ETH · 7d · premium 0.3', 'buy put · 1,500 GALE @ 1.7 ETH', 'settle #3 · pay 3 ETH · receive 100,000 ZEPH', 'stake 1,000,000 KYTE']
 
 export const CommandTile = memo(function CommandTile() {
   const [i, setI] = useState(0)
