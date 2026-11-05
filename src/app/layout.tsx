@@ -9,27 +9,18 @@ import { Nav } from '@/components/Nav'
 import { Providers } from '@/components/Providers'
 import { SmoothScroll } from '@/components/fx/SmoothScroll'
 import { BRAND } from '@/lib/config'
+import { description, ogImage, shortDescription, siteUrl, title } from '@/lib/seo'
 import './globals.css'
 
 // Landing page display faces (from the Kyte brand site): self-hosted by next/font, so the CSP stays 'self'.
 const interTight = Inter_Tight({ subsets: ['latin'], weight: ['300', '400'], variable: '--font-hero', display: 'swap' })
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-display', display: 'swap' })
 
-// Link previews (Telegram, X, Discord, iMessage...): same card as the Kyte brand site.
-const title = `${BRAND.name} | Options, on Your terms`
-const description = 'A non-custodial, fully collateralised options market on Robinhood Chain. Covered calls, cash-secured puts, Option NFTs.'
-const shortDescription = 'A non-custodial, fully collateralised options market on Robinhood Chain.'
-const ogImage = {
-  url: '/og-image.jpg',
-  type: 'image/jpeg',
-  width: 2400,
-  height: 1260,
-  alt: `${BRAND.name}: Options, on Your terms. A non-custodial options market on Robinhood Chain.`,
-}
-
+// Link previews (Telegram, X, Discord, iMessage...): card text and image live in src/lib/seo.ts, shared with the
+// plain page src/proxy.ts serves to link-preview crawlers.
 export const metadata: Metadata = {
   // Absolute base for og:image etc. Render sets RENDER_EXTERNAL_URL, so previews work even without NEXT_PUBLIC_SITE_URL.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3010'),
+  metadataBase: new URL(siteUrl()),
   title,
   description,
   openGraph: { title, description, url: '/', siteName: BRAND.name, type: 'website', images: [ogImage] },
