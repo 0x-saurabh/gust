@@ -5,8 +5,11 @@
 //   node scripts/mainnet/guardian-disable.mjs --dry            # what would be disabled + simulation, sends nothing
 //   node scripts/mainnet/guardian-disable.mjs                  # sign (one owner) + send (deployer pays gas)
 //   node scripts/mainnet/guardian-disable.mjs 0xToken 0xToken  # other tokens than the default list
+//   node scripts/mainnet/guardian-disable.mjs --ondo [--dry]   # the Ondo Tokenized stocks (…on), Robinhood Stock Tokens stay
 //
 // Default list: the bridged tokens (cbBTC, LINK, VIRTUAL, PENGU), so only Robinhood Chain native tokens stay.
+// Every registry in the deployment (v1 and, when deployed, v2) is covered in the same Safe transaction: the site lists
+// from v2, but v1's markets would otherwise still take new offers on a token.
 // env (scripts/mainnet/.env): GUARDIAN, OWNERS (keystore names, default owner1), SENDER (default deployer), RPC_URL.
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -25,7 +28,7 @@ const CHAIN_ID = env.CHAIN_ID || '4663'
 const RPC = env.RPC_URL || 'https://rpc.mainnet.chain.robinhood.com'
 const dep = JSON.parse(fs.readFileSync(`contracts/deployments/${CHAIN_ID}.json`, 'utf8'))
 const SAFE = getAddress(env.GUARDIAN || dep.guardian)
-const REGISTRY = getAddress(dep.assetRegistry)
+const REGISTRIES = [dep.assetRegistry, dep.v2?.assetRegistry].filter(Boolean).map((a) => getAddress(a))
 const OWNERS = (env.OWNERS || 'owner1').split(',')
 const SENDER = env.SENDER || 'deployer'
 const CAST = `${os.homedir()}/.foundry/bin/cast`
@@ -37,7 +40,21 @@ const BRIDGED = [
   '0xc6911796042b15d7Fa4F6CDe69e245DdCd3d9c31', // VIRTUAL
   '0x74BE72AFFAFbC8de30F0C11247814036314D625f', // PENGU
 ]
-const tokens = (args.filter((a) => a.startsWith('0x')).length ? args.filter((a) => a.startsWith('0x')) : BRIDGED).map((a) => getAddress(a.toLowerCase()))
+const ONDO = [
+  '0x9Bf86418CaF2b7a939603d6c24219a77Bf7F9b33', // AAPLon
+  '0x369C4748E98C153e9B7aDeBc3E71e9e2a5f60Dc0', // CRCLon
+  '0xe10cc5f0cd0C90322ebEB33e7757B2c9090146DC', // GOOGLon
+  '0x43Cac729218C62210D71D66B7F0eC93990D8d8cc', // HOODon
+  '0x7b5026cfcB4De0cF3d9a39FE2A541514b71437A2', // METAon
+  '0x09dedC334fC47ab543e5D70C7FD9D2B1aea175bd', // MSTRon
+  '0xf1b95AE4E7700b962714702EA53784Dc8492a856', // NVDAon
+  '0x300fE8a40701cE81460503fB886f9eD81A3B5e14', // QQQon
+  '0x9B8294F24453379aa87C807ab82bf1d5722153Fc', // SPCXon
+  '0x533C5571ae586985E1FDDFAa24304284d970C62a', // SPYon
+  '0xB197F36C25BA9b66960688882A4dC595C6b04309', // TSLAon
+]
+const explicit = args.filter((a) => a.startsWith('0x'))
+const tokens = (explicit.length ? explicit : args.includes('--ondo') ? ONDO : BRIDGED).map((a) => getAddress(a.toLowerCase()))
 
 const client = createPublicClient({ transport: http(RPC, { retryCount: 6, retryDelay: 2000 }) })
 const safeAbi = parseAbi([
@@ -56,24 +73,27 @@ const cast = (a, capture = true) => execFileSync(CAST, a, { stdio: ['inherit', c
 
 async function main() {
   const todo = []
-  for (const t of tokens) {
-    const [a, sym] = await Promise.all([
-      client.readContract({ address: REGISTRY, abi: regAbi, functionName: 'getAsset', args: [t] }),
-      client.readContract({ address: t, abi: ercAbi, functionName: 'symbol' }).catch(() => '?'),
-    ])
-    if (!a.listed) console.log(`skip ${sym} ${t}: not listed`)
-    else if (!a.enabled) console.log(`skip ${sym} ${t}: already disabled`)
-    else todo.push({ token: t, sym, data: encodeFunctionData({ abi: regAbi, functionName: 'setEnabled', args: [t, false] }) })
+  for (const [i, registry] of REGISTRIES.entries()) {
+    const tag = REGISTRIES.length > 1 ? `v${i + 1}` : 'registry'
+    for (const t of tokens) {
+      const [a, sym] = await Promise.all([
+        client.readContract({ address: registry, abi: regAbi, functionName: 'getAsset', args: [t] }),
+        client.readContract({ address: t, abi: ercAbi, functionName: 'symbol' }).catch(() => '?'),
+      ])
+      if (!a.listed) console.log(`skip ${tag} ${sym} ${t}: not listed`)
+      else if (!a.enabled) console.log(`skip ${tag} ${sym} ${t}: already disabled`)
+      else todo.push({ registry, tag, token: t, sym, data: encodeFunctionData({ abi: regAbi, functionName: 'setEnabled', args: [t, false] }) })
+    }
   }
   if (!todo.length) return console.log('nothing to disable.')
-  console.log(`guardian Safe ${SAFE} will disable: ${todo.map((x) => x.sym).join(', ')}`)
+  console.log(`guardian Safe ${SAFE} will disable: ${todo.map((x) => `${x.sym} (${x.tag})`).join(', ')}`)
   // Each inner call must succeed when sent by the guardian Safe.
-  for (const x of todo) await client.call({ account: SAFE, to: REGISTRY, data: x.data })
+  for (const x of todo) await client.call({ account: SAFE, to: x.registry, data: x.data })
   console.log('simulation ok (each setEnabled(false) as the guardian).')
   if (DRY) return console.log('--dry: nothing sent.')
 
   const [nonce, threshold, owners] = await Promise.all(['nonce', 'getThreshold', 'getOwners'].map((f) => client.readContract({ address: SAFE, abi: safeAbi, functionName: f })))
-  const packed = concatHex(todo.map((x) => encodePacked(['uint8', 'address', 'uint256', 'uint256', 'bytes'], [0, REGISTRY, 0n, BigInt(size(x.data)), x.data])))
+  const packed = concatHex(todo.map((x) => encodePacked(['uint8', 'address', 'uint256', 'uint256', 'bytes'], [0, x.registry, 0n, BigInt(size(x.data)), x.data])))
   const msData = encodeFunctionData({ abi: parseAbi(['function multiSend(bytes transactions) payable']), functionName: 'multiSend', args: [packed] })
   const txArgs = [MULTISEND, 0n, msData, 1, 0n, 0n, 0n, ZERO, ZERO]
   const hash = await client.readContract({ address: SAFE, abi: safeAbi, functionName: 'getTransactionHash', args: [...txArgs, nonce] })
@@ -92,8 +112,8 @@ async function main() {
   console.log(`\nSafe simulation ok. Sending (keystore "${SENDER}" pays the gas, enter its password):`)
   cast(['send', SAFE, call, '--rpc-url', RPC, '--account', SENDER], false)
   for (const x of todo) {
-    const a = await client.readContract({ address: REGISTRY, abi: regAbi, functionName: 'getAsset', args: [x.token] })
-    console.log(`${x.sym}: ${a.enabled ? 'STILL ENABLED' : 'disabled'}`)
+    const a = await client.readContract({ address: x.registry, abi: regAbi, functionName: 'getAsset', args: [x.token] })
+    console.log(`${x.sym} (${x.tag}): ${a.enabled ? 'STILL ENABLED' : 'disabled'}`)
   }
 }
 
