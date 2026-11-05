@@ -10,12 +10,13 @@ Three services. Each restarts on its own after a crash or a reboot.
 
 ## Option R: Render (recommended, nothing to run yourself)
 
-`render.yaml` in the repo root is a Render Blueprint with all three services:
+`render.yaml` in the repo root is a Render Blueprint with the indexer and the website. The keeper is a separate,
+hand-made Node background worker (`kyte-keeper-v2`), kept out of the Blueprint so a sync never creates a second one:
 
 | Service | Render type | Plan | Why |
 |---|---|---|---|
 | kyte-indexer | Private service + 1 GB disk | Starter | Free instances sleep; a sleeping indexer stops scanning. The disk keeps its progress across deploys |
-| kyte-keeper | Background worker | Starter | Runs every minute, forever |
+| kyte-keeper-v2 | Background worker (Node 24, not in the Blueprint) | Starter | Runs every minute, forever. Build: `corepack enable && corepack prepare pnpm@10.23.0 --activate && pnpm install --frozen-lockfile`, start: `bash ops/run-keeper.sh`, env `KEEPER_PRIVATE_KEY`, `ALERT_WEBHOOK_URL`, `CHAIN_ID=4663` |
 | kyte-web | Web service | Starter | Talks to the private indexer through `/api/indexer` |
 
 1. Open https://dashboard.render.com/blueprint/new and connect the GitHub repo `0x-saurabh/gust`.

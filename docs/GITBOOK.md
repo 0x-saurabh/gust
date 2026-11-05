@@ -1354,7 +1354,7 @@ Three services, each restarting on its own:
 | Service | Type | Notes |
 |---|---|---|
 | `kyte-indexer` | Private service + 1 GB disk at `/app/indexer/data` | Paid plan (free instances sleep and stop scanning). Rate limit 1200/min, poll 3 s |
-| `kyte-keeper` | Background worker | `KEEPER_PRIVATE_KEY`, `ALERT_WEBHOOK_URL` entered in Render |
+| `kyte-keeper-v2` | Background worker (Node 24), created by hand, not in the Blueprint | Start `bash ops/run-keeper.sh`; `KEEPER_PRIVATE_KEY`, `ALERT_WEBHOOK_URL`, `CHAIN_ID=4663` entered in Render. Only one keeper may hold the key |
 | `kyte-web` | Web service (Node 24) | `NEXT_PUBLIC_INDEXER_URL=/api/indexer`, `INDEXER_INTERNAL_HOSTPORT` from the indexer service; started with `node_modules/.bin/next start` |
 
 Connect the repository as a Blueprint, fill in the secret values, and apply. Every push to the tracked branch
