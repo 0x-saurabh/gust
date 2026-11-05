@@ -39,7 +39,10 @@ contract DeployKyteLaunch is Script {
         require(IERC20Metadata(kyte).decimals() == 18, "KYTE_TOKEN must have 18 decimals");
         require(IERC20(kyte).totalSupply() > 0, "KYTE_TOKEN has no supply");
         if (vm.keyExistsJson(dep, ".launch")) {
-            require(vm.parseJsonAddress(dep, ".launch.kyteToken") != kyte, "launch already deployed for this token (remove `launch` to redeploy)");
+            require(
+                vm.parseJsonAddress(dep, ".launch.kyteToken") != kyte,
+                "launch already deployed for this token (remove `launch` to redeploy)"
+            );
         }
         require(timelock.code.length > 0 && guardian.code.length > 0, "timelock/guardian must be contracts");
         require(weth.code.length > 0 && vault.code.length > 0, "missing code");
