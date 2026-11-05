@@ -9,7 +9,7 @@ import { eth, num } from '@/lib/format'
 import snapshot from '@/lib/rh-mainnet-tokens.json'
 
 /**
- * Scroll-driven story of one option's life, drawn as a node graph on a white sheet. Parties are paper nodes
+ * Scroll-driven story of one option's life, drawn as a node graph on a dark sheet. Parties are card nodes
  * joined by hairline connectors; every asset is a chip (with its real logo) owned by one party. When a step
  * moves an asset, the chip travels along the connector (CSS offset-path) and docks into the receiver's
  * inventory. Numbers come from a live offer.
@@ -41,15 +41,18 @@ const TRAVEL_MS = 1100
 const FRAME_MS = 1400
 const EASE = [0.22, 1, 0.36, 1] as const
 
-// Light palette for this section only. The rest of the page stays dark.
+// Same dark tokens as globals.css, so the section sits flush with the rest of the page.
 const C = {
-  ink: '#0b0b0c',
-  muted: '#6f6f73',
-  faint: '#a3a3a8',
-  line: '#e6e6e9',
-  lineStrong: '#d4d4d9',
-  green: '#00c805', // Robinhood green: dots, rails, the active path
-  greenInk: '#0a7a2f', // readable green for text on white
+  bg: '#000000',
+  card: '#181818',
+  card2: '#1f1f1f',
+  ink: '#ffffff',
+  muted: '#9b9b9b',
+  faint: '#6b6b6b',
+  line: '#272727',
+  lineStrong: '#313131',
+  green: '#4dfca9', // site accent: dots, rails, the active path
+  greenInk: '#4dfca9', // accent for text on dark
   eth: '#627eea', // Ethereum brand blue
 } as const
 
@@ -96,7 +99,7 @@ function TokenLogo({ symbol, size = 16 }: { symbol: string; size?: number }) {
   }
   const hue = MONO_HUES[symbol.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % MONO_HUES.length]
   return (
-    <span className="flex shrink-0 items-center justify-center rounded-full font-sans font-semibold" style={{ width: size, height: size, fontSize: size * 0.5, background: hue, color: C.ink, boxShadow: `inset 0 0 0 1px rgba(0,0,0,0.06)` }}>
+    <span className="flex shrink-0 items-center justify-center rounded-full font-sans font-semibold" style={{ width: size, height: size, fontSize: size * 0.5, background: hue, color: "#0b0b0c", boxShadow: `inset 0 0 0 1px rgba(0,0,0,0.08)` }}>
       {symbol.slice(0, 1)}
     </span>
   )
@@ -120,15 +123,16 @@ function ChipIcon({ tone, symbol, size = 16 }: { tone: Tone; symbol: string; siz
   return <NftArt size={size} />
 }
 
-/** One asset chip: white paper, hairline border, a soft drop shadow, logo + mono value. */
+/** One asset chip: dark card, hairline border, a soft drop shadow, logo + mono value. */
 function Chip({ asset, symbol, lifted = false }: { asset: Asset; symbol: string; lifted?: boolean }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white py-[3px] pl-[3px] pr-2.5 font-mono text-[11px] tabular md:text-xs"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full py-[3px] pl-[3px] pr-2.5 font-mono text-[11px] tabular md:text-xs"
       style={{
         color: C.ink,
+        background: lifted ? C.card2 : C.card,
         border: `1px solid ${lifted ? C.lineStrong : C.line}`,
-        boxShadow: lifted ? '0 10px 28px -8px rgba(11,11,12,0.28), 0 2px 6px rgba(11,11,12,0.08)' : '0 1px 2px rgba(11,11,12,0.05)',
+        boxShadow: lifted ? '0 10px 28px -8px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.4)' : '0 1px 2px rgba(0,0,0,0.3)',
       }}
     >
       <ChipIcon tone={asset.tone} symbol={symbol} size={18} />
@@ -243,18 +247,18 @@ export function FlowStory() {
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 24 })
 
   return (
-    <div ref={sectionRef} className="rounded-[28px] bg-[#f4f4f2] p-3 md:p-5" style={{ color: C.ink, colorScheme: 'light' }}>
+    <div ref={sectionRef} className="rounded-[28px] p-3 md:p-5" style={{ background: C.bg, color: C.ink }}>
       <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-10">
         {/* ------------------------------------------------------------ pinned canvas */}
         <div ref={pin} className="lg:sticky lg:self-start" style={{ top: `max(88px, calc(50vh - ${pinH / 2}px))` }}>
-          <div className="relative overflow-hidden rounded-[22px] bg-white" style={{ border: `1px solid ${C.line}`, boxShadow: '0 1px 2px rgba(11,11,12,0.04), 0 24px 60px -30px rgba(11,11,12,0.18)' }}>
+          <div className="relative overflow-hidden rounded-[22px]" style={{ background: C.card, border: `1px solid ${C.line}`, boxShadow: '0 1px 2px rgba(0,0,0,0.3), 0 24px 60px -30px rgba(0,0,0,0.6)' }}>
             {/* fine engineering grid, faded at the edges */}
-            <div className="pointer-events-none absolute inset-0 [background-image:linear-gradient(rgba(11,11,12,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(11,11,12,0.045)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_center,black_55%,transparent_100%)]" />
+            <div className="pointer-events-none absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_center,black_55%,transparent_100%)]" />
 
             <div className="relative flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${C.line}` }}>
               <div className="flex items-center gap-3 font-mono text-xs" style={{ color: C.muted }}>
                 <span style={{ color: C.ink }}>{s.n}</span><span style={{ color: C.faint }}>/ {String(steps.length).padStart(2, '0')}</span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white px-2.5 py-0.5" style={{ border: `1px solid ${C.line}`, color: C.ink }}>
+                <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-0.5" style={{ background: C.card2, border: `1px solid ${C.line}`, color: C.ink }}>
                   <motion.span className="size-1.5 rounded-full" style={{ background: C.green }} animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 2 }} />
                   {live ? 'live offer' : 'example offer'}
                   <span className="inline-flex items-center gap-1" style={{ color: C.muted }}><TokenLogo symbol={o.symbol} size={13} />{o.symbol}</span>
@@ -296,19 +300,20 @@ export function FlowStory() {
                       <motion.div
                         animate={{ scale: on ? 1.05 : 1 }}
                         transition={{ type: 'spring', stiffness: 220, damping: 18 }}
-                        className="relative flex size-14 items-center justify-center rounded-full bg-white transition-colors duration-500 md:size-16"
+                        className="relative flex size-14 items-center justify-center rounded-full transition-colors duration-500 md:size-16"
                         style={{
+                          background: C.card2,
                           border: `1px solid ${on ? C.ink : C.line}`,
                           color: burning ? C.greenInk : on ? C.ink : C.muted,
                           boxShadow: on
-                            ? `0 0 0 5px ${burning ? 'rgba(0,200,5,0.12)' : 'rgba(11,11,12,0.06)'}, 0 12px 28px -12px rgba(11,11,12,0.3)`
-                            : '0 1px 2px rgba(11,11,12,0.05), 0 8px 20px -14px rgba(11,11,12,0.2)',
+                            ? `0 0 0 5px ${burning ? 'rgba(77,252,169,0.14)' : 'rgba(255,255,255,0.08)'}, 0 12px 28px -12px rgba(0,0,0,0.7)`
+                            : '0 1px 2px rgba(0,0,0,0.3), 0 8px 20px -14px rgba(0,0,0,0.5)',
                         }}
                       >
                         <NodeIcon size={22} weight={on ? 'fill' : 'regular'} />
                         <AnimatePresence>
                           {badge && (
-                            <motion.span key={badge} initial={{ opacity: 0, y: 6, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 font-mono text-[11px]" style={{ background: C.ink, color: '#fff', boxShadow: '0 6px 16px -6px rgba(11,11,12,0.5)' }}>
+                            <motion.span key={badge} initial={{ opacity: 0, y: 6, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 font-mono text-[11px]" style={{ background: C.ink, color: C.bg, boxShadow: '0 6px 16px -6px rgba(0,0,0,0.6)' }}>
                               {badge}
                             </motion.span>
                           )}
@@ -360,12 +365,12 @@ export function FlowStory() {
             const active = i === step
             return (
               <div key={st.n} ref={(el) => { stepRefs.current[i] = el }} data-step={i} className="relative flex min-h-[60vh] items-center pl-8 lg:min-h-screen">
-                <span className="absolute left-0 top-1/2 size-[15px] -translate-y-1/2 rounded-full border-2 transition-colors duration-500" style={{ borderColor: active ? C.ink : C.lineStrong, background: active ? C.ink : '#f4f4f2' }} />
+                <span className="absolute left-0 top-1/2 size-[15px] -translate-y-1/2 rounded-full border-2 transition-colors duration-500" style={{ borderColor: active ? C.ink : C.lineStrong, background: active ? C.ink : C.bg }} />
                 <motion.div
                   animate={{ opacity: active ? 1 : 0.45, x: active ? 0 : -6 }}
                   transition={{ duration: 0.5, ease: EASE }}
                   className="w-full rounded-2xl p-6 transition-[background-color,border-color,box-shadow] duration-500 md:p-8"
-                  style={{ background: active ? '#fff' : 'transparent', border: `1px solid ${active ? C.line : 'transparent'}`, boxShadow: active ? '0 1px 2px rgba(11,11,12,0.04), 0 20px 50px -30px rgba(11,11,12,0.2)' : 'none' }}
+                  style={{ background: active ? C.card : 'transparent', border: `1px solid ${active ? C.line : 'transparent'}`, boxShadow: active ? '0 1px 2px rgba(0,0,0,0.3), 0 20px 50px -30px rgba(0,0,0,0.6)' : 'none' }}
                 >
                   <div className="flex items-baseline gap-4">
                     <span className="font-mono text-4xl" style={{ color: active ? C.greenInk : C.faint }}>{st.n}</span>
