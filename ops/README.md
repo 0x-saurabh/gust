@@ -55,6 +55,9 @@ ops/install-macos-services.sh     # once: indexer + keeper become background ser
 ops/set-keeper-key.sh             # once: hidden prompt for the keeper key, saved to ~/.kyte/keeper.key (chmod 600)
 ```
 
+Moving ETH out of the keeper wallet: `ops/keeper-withdraw.sh --check` shows its address and balance,
+`ops/keeper-withdraw.sh <to> <amount-eth>` (or `all`) sends from it; the key stays in `~/.kyte/keeper.key`.
+
 After that no Terminal is needed. Logs are in `~/Library/Logs/kyte-indexer.log` and `~/Library/Logs/kyte-keeper.log`.
 Remove the services with `ops/install-macos-services.sh --remove`.
 
