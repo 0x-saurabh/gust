@@ -1,0 +1,22 @@
+{
+  "name": "kyte-film",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "still": "remotion still src/index.ts",
+    "render": "remotion render src/index.ts Film ../out/kyte-demo-90s.mp4 --codec h264 --pixel-format yuv420p --crf 16 --audio-codec aac --audio-bitrate 320k"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.340",
+    "@remotion/google-fonts": "^4.0.340",
+    "@remotion/media-utils": "^4.0.340",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "remotion": "^4.0.340"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,26 @@
+diff --git a/next.config.ts b/next.config.ts
+index 39ae6c7..520fd8e 100644
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -13,6 +13,7 @@ const securityHeaders = [
+ 
+ const config: NextConfig = {
+   poweredByHeader: false,
++  devIndicators: false, // local demo clone: no Next.js badge in recordings
+   productionBrowserSourceMaps: false,
+   async headers() {
+     return [{ source: '/:path*', headers: securityHeaders }]
+diff --git a/src/proxy.ts b/src/proxy.ts
+index befa8e1..786d0da 100644
+--- a/src/proxy.ts
++++ b/src/proxy.ts
+@@ -69,7 +69,8 @@ export function proxy(request: NextRequest) {
+     "base-uri 'self'",
+     "form-action 'self'",
+     "frame-ancestors 'none'", // no clickjacking: the app can't be framed to trick users into signing
+-    ...(dev || CHAIN_ID === 31337 ? [] : ['upgrade-insecure-requests']),
++    // Local demo build (video/env): the RPC and indexer are plain http on 127.0.0.1, so no upgrade.
++    ...(dev || CHAIN_ID === 31337 || /^http:\/\/(127\.0\.0\.1|localhost)/.test(process.env.NEXT_PUBLIC_RPC_URL || '') ? [] : ['upgrade-insecure-requests']),
+   ].join('; ')
+ 
+   const requestHeaders = new Headers(request.headers)

@@ -1,0 +1,36 @@
+{
+  "name": "NVDA CALL #22",
+  "description": "Kyte option: the right to buy 2 NVDA for 0.1698 ETH until 2026-11-12 08:43 UTC. Physically settled on Robinhood Chain. Exercise before expiry.",
+  "external_url": "https://kyte.sh",
+  "attributes": [
+    {
+      "trait_type": "Type",
+      "value": "CALL"
+    },
+    {
+      "trait_type": "Underlying",
+      "value": "NVDA"
+    },
+    {
+      "trait_type": "Underlying address",
+      "value": "0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec"
+    },
+    {
+      "trait_type": "Amount",
+      "value": "2"
+    },
+    {
+      "trait_type": "Strike (ETH)",
+      "value": "0.1698"
+    },
+    {
+      "trait_type": "Premium (ETH)",
+      "value": "0.0022"
+    },
+    {
+      "display_type": "date",
+      "trait_type": "Expiry",
+      "value": 1794473024
+    }
+  ]
+}
