@@ -22,7 +22,8 @@ const ERC20 = [
 ] as const
 
 const SWAP_WINDOW = 36_000n // ~1 hour at 100 ms blocks
-const CHUNK = 9_000n
+const CHUNK = 4_000n // ~1 swap per block now; the RPC refuses any query that matches over 10,000 logs
+const MIN_SPLIT = 250n
 const INIT_CHUNK = 1_000_000n
 const INIT_MAX_CHUNKS = 8
 const TTL_MS = 5 * 60_000
@@ -59,6 +60,17 @@ async function refresh(): Promise<Response> {
     // The public RPC rate-limits bursts: pace every log query and back off on 429.
     const client = createPublicClient({ transport: fallback(RPCS.map((u) => http(u, { timeout: 10_000, retryCount: 2, retryDelay: 1_500 })), { rank: false }) })
     const paced = async <T,>(fn: () => Promise<T>): Promise<T> => { await new Promise((r) => setTimeout(r, 350)); return fn() }
+    // A busy range can still go over the RPC's 10,000-log cap (and the fallback RPC then turns that into a plain
+    // fetch failure), so on any error split the range in half and retry, down to MIN_SPLIT blocks.
+    const logsIn = async <E extends typeof SWAP | typeof INIT>(event: E, fromBlock: bigint, toBlock: bigint): Promise<Awaited<ReturnType<typeof client.getLogs<E>>>> => {
+      try {
+        return await paced(() => client.getLogs({ address: POOL_MANAGER, event, fromBlock, toBlock }))
+      } catch (e) {
+        if (toBlock - fromBlock < MIN_SPLIT) throw e
+        const mid = fromBlock + (toBlock - fromBlock) / 2n
+        return [...(await logsIn(event, fromBlock, mid)), ...(await logsIn(event, mid + 1n, toBlock))] as Awaited<ReturnType<typeof client.getLogs<E>>>
+      }
+    }
     const latest = await client.getBlockNumber()
     const from = latest - SWAP_WINDOW
 
@@ -66,7 +78,7 @@ async function refresh(): Promise<Response> {
     const perPool = new Map<string, { swaps: number; last: bigint; lastBlock: bigint; vol0: bigint; vol1: bigint }>()
     for (let a = from; a <= latest; a += CHUNK) {
       const b = a + CHUNK - 1n > latest ? latest : a + CHUNK - 1n
-      const logs = await paced(() => client.getLogs({ address: POOL_MANAGER, event: SWAP, fromBlock: a, toBlock: b }))
+      const logs = await logsIn(SWAP, a, b)
       for (const l of logs) {
         const id = String(l.args.id)
         const p = perPool.get(id) ?? { swaps: 0, last: 0n, lastBlock: 0n, vol0: 0n, vol1: 0n }
@@ -84,7 +96,7 @@ async function refresh(): Promise<Response> {
     for (let i = 0; i < INIT_MAX_CHUNKS && unresolved.size; i++) {
       const b = latest - INIT_CHUNK * BigInt(i)
       const a = b - INIT_CHUNK + 1n > 0n ? b - INIT_CHUNK + 1n : 0n
-      const logs = await paced(() => client.getLogs({ address: POOL_MANAGER, event: INIT, fromBlock: a, toBlock: b }))
+      const logs = await logsIn(INIT, a, b)
       for (const l of logs) {
         const id = String(l.args.id)
         if (unresolved.has(id)) { poolKeys.set(id, { c0: l.args.currency0!, c1: l.args.currency1! }); unresolved.delete(id) }
