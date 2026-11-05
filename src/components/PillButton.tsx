@@ -7,8 +7,9 @@ import type { ReactNode } from 'react'
  * Pill CTA in the Optivio style: label on the left, a dark circle with a dotted arrow on the right.
  * Hover: the label rolls up and its duplicate rolls in from below (with a slight skew), the arrow slides
  * out of the circle to the top right while a second one slides in from the bottom left.
+ * `premium`: the brand gradient with a glossy top light, a soft glow and a dark circle with a gradient ring (footer).
  */
-export function PillButton({ href, children, tone = 'accent', className = '', onClick }: { href?: string; children: ReactNode; tone?: 'accent' | 'light' | 'dark'; className?: string; onClick?: () => void }) {
+export function PillButton({ href, children, tone = 'accent', className = '', onClick }: { href?: string; children: ReactNode; tone?: 'accent' | 'light' | 'dark' | 'premium'; className?: string; onClick?: () => void }) {
   const cls = `pill pill-${tone} ${className}`
   const inner = (
     <>

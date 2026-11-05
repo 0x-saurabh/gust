@@ -8,7 +8,6 @@ import { BRAND } from '@/lib/config'
 import { useHealth } from '@/lib/data'
 import { XButton, X_URL } from './landing/kit'
 import { OutlineWord } from './landing/OutlineWord'
-import { Logo } from './Logo'
 import { PillButton } from './PillButton'
 
 const COLS: { t: string; l: { h: string; n: string }[] }[] = [
@@ -43,18 +42,20 @@ export function Footer() {
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-56" style={{ background: 'linear-gradient(180deg, rgba(160,255,220,.035), transparent)' }} />
       <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(70% 45% at 50% 100%, rgba(74,255,236,.13), transparent 70%), radial-gradient(45% 40% at 15% 100%, rgba(110,255,133,.12), transparent 70%), radial-gradient(40% 35% at 88% 100%, rgba(74,255,236,.08), transparent 70%)' }} />
       <div className="relative mx-auto max-w-[1240px] px-5 py-16 md:px-8 md:py-20">
-        <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div className="grid gap-12 md:grid-cols-[2fr_1fr_1fr_1fr]">
           <div>
+            {/* The "Kyte" wordmark lifted out of the brand mark (public/brand/kyte-wordmark.png), no tile around it. */}
             <Link href="/" aria-label={`${BRAND.name} home`} className="inline-block">
-              <Logo size={44} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/kyte-wordmark.png" alt="" aria-hidden width={344} height={124} className="h-9 w-auto select-none" draggable={false} />
             </Link>
             <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-ink/60">
               Options, on Your terms. A non-custodial, fully collateralised options market on Robinhood Chain.
             </p>
-            {/* Two calls to action: the brand-site X button and the app's rolling pill (label and arrow switch on hover). */}
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <PillButton href="/market" tone="light">Start trading</PillButton>
-              <XButton variant="ghost" />
+            {/* Two calls to action at one height: the gradient pill (label and arrow roll on hover) and the glass X button. */}
+            <div className="mt-8 flex flex-wrap items-center gap-3 whitespace-nowrap">
+              <PillButton href="/market" tone="premium">Start trading</PillButton>
+              <XButton variant="glass" />
             </div>
             <a href="mailto:contact@kyte.sh" className="lnk mono mt-6 inline-block text-[13px] text-ink/60 hover:text-ink">contact@kyte.sh</a>
           </div>

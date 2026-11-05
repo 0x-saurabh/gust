@@ -33,12 +33,11 @@ export function FAQ({ items }: { items: QA[] }) {
                 <motion.div
                   key="a"
                   initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.5, ease: EASE }}
+                  animate={{ opacity: 1, height: 'auto', transition: { height: { duration: 0.6, ease: EASE }, opacity: { duration: 0.45, ease: EASE, delay: 0.08 } } }}
+                  exit={{ opacity: 0, height: 0, transition: { height: { duration: 0.45, ease: EASE }, opacity: { duration: 0.25, ease: EASE } } }}
                   className="overflow-hidden"
                 >
-                  <p className="max-w-[680px] pb-6 text-base leading-relaxed text-muted">{it.a}</p>
+                  <motion.p initial={{ y: 10 }} animate={{ y: 0 }} exit={{ y: 6 }} transition={{ duration: 0.6, ease: EASE }} className="max-w-[680px] pb-6 text-base leading-relaxed text-muted">{it.a}</motion.p>
                 </motion.div>
               )}
             </AnimatePresence>

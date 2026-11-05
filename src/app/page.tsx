@@ -441,21 +441,38 @@ function Faq() {
         <div className="grid gap-12 lg:grid-cols-[1fr_1.5fr]">
           <SectionHead eyebrow="Questions" title="Plain answers." />
           <div className="hair border-t">
-            {q.map(([a, b], i) => (
-              <div key={a} className="hair border-b">
-                <button type="button" onClick={() => setOpen(open === i ? null : i)} className="flex w-full items-center justify-between gap-6 py-6 text-left" aria-expanded={open === i}>
-                  <span className="font-display text-[18px] md:text-[20px]">{a}</span>
-                  <span className="hair grid h-8 w-8 shrink-0 place-items-center rounded-full border">{open === i ? <Minus size={14} /> : <Plus size={14} />}</span>
-                </button>
-                <AnimatePresence initial={false}>
-                  {open === i && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.4, ease }} className="overflow-hidden">
-                      <p className="max-w-2xl pb-6 text-[15px] leading-relaxed text-ink/60">{b}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))}
+            {q.map(([a, b], i) => {
+              const on = open === i
+              return (
+                <div key={a} className="hair border-b">
+                  {/* Question: label brightens and nudges right on hover; the plus spins into a minus in a ring that fills with the accent. */}
+                  <button type="button" onClick={() => setOpen(on ? null : i)} className="group flex w-full items-center justify-between gap-6 py-6 text-left" aria-expanded={on}>
+                    <span className={`font-display text-[18px] transition-[color,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)] group-hover:translate-x-1 md:text-[20px] ${on ? 'text-ink' : 'text-ink/80 group-hover:text-ink'}`}>{a}</span>
+                    <motion.span
+                      animate={{ rotate: on ? 180 : 0, backgroundColor: on ? 'rgba(110,255,170,0.12)' : 'rgba(110,255,170,0)', borderColor: on ? 'rgba(160,255,220,0.35)' : 'rgba(160,255,220,0.09)' }}
+                      transition={{ duration: 0.6, ease }}
+                      className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-colors group-hover:border-[rgba(160,255,220,.3)]"
+                    >
+                      <motion.span animate={{ opacity: on ? 0 : 1, scale: on ? 0.5 : 1 }} transition={{ duration: 0.35, ease }} className="absolute inset-0 grid place-items-center"><Plus size={14} /></motion.span>
+                      <motion.span animate={{ opacity: on ? 1 : 0, scale: on ? 1 : 0.5 }} transition={{ duration: 0.35, ease }} className="absolute inset-0 grid place-items-center text-accent"><Minus size={14} /></motion.span>
+                    </motion.span>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {on && (
+                      <motion.div
+                        key="a"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1, transition: { height: { duration: 0.6, ease }, opacity: { duration: 0.45, ease, delay: 0.08 } } }}
+                        exit={{ height: 0, opacity: 0, transition: { height: { duration: 0.45, ease }, opacity: { duration: 0.25, ease } } }}
+                        className="overflow-hidden"
+                      >
+                        <motion.p initial={{ y: 10 }} animate={{ y: 0 }} exit={{ y: 6 }} transition={{ duration: 0.6, ease }} className="max-w-2xl pb-6 text-[15px] leading-relaxed text-ink/60">{b}</motion.p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
           </div>
         </div>
       </Wrap>

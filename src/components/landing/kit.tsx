@@ -4,15 +4,18 @@
 import { ArrowUpRight } from '@phosphor-icons/react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
+import { getLenis } from '@/components/fx/SmoothScroll'
 
 export const X_URL = 'https://x.com/useKyte'
 export const EASE = [0.16, 1, 0.3, 1] as const
 
-/** Smooth scroll to a section; Lenis follows native smooth scrolling. */
+/** Smooth scroll to a section through Lenis (one eased glide, no fight with the smooth scroller). */
 export function scrollToId(id: string) {
   const el = document.getElementById(id)
   if (!el) return
-  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 88, behavior: 'smooth' })
+  const l = getLenis()
+  if (l) l.scrollTo(el, { offset: -88, duration: 1.4 })
+  else window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 88, behavior: 'smooth' })
 }
 
 export function XLogo({ className = 'h-4 w-4' }: { className?: string }) {
@@ -23,10 +26,12 @@ export function XLogo({ className = 'h-4 w-4' }: { className?: string }) {
   )
 }
 
-export function XButton({ size = 'md', label = 'Follow @useKyte', variant = 'grad' }: { size?: 'sm' | 'md' | 'lg'; label?: string; variant?: 'grad' | 'ghost' }) {
+/** `glass`: 48px tall frosted pill with a hairline gradient ring, sized to sit next to a PillButton (footer). */
+export function XButton({ size = 'md', label = 'Follow @useKyte', variant = 'grad' }: { size?: 'sm' | 'md' | 'lg'; label?: string; variant?: 'grad' | 'ghost' | 'glass' }) {
   const pad = size === 'sm' ? '!py-2 !px-4 text-[13px]' : size === 'lg' ? '!py-4 !px-7 text-[15px]' : ''
+  const look = variant === 'grad' ? 'btn-x' : variant === 'glass' ? 'btn-glass' : 'btn-ghost'
   return (
-    <a href={X_URL} target="_blank" rel="noopener noreferrer" className={`btn ${variant === 'grad' ? 'btn-x' : 'btn-ghost'} ${pad}`}>
+    <a href={X_URL} target="_blank" rel="noopener noreferrer" className={`btn ${look} ${pad}`}>
       <XLogo className={size === 'lg' ? 'h-[18px] w-[18px]' : 'h-4 w-4'} />
       <span>{label}</span>
       <ArrowUpRight size={16} className="opacity-70" />
