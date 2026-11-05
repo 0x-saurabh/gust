@@ -5,7 +5,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatUnits, parseAbiItem, type Address, type PublicClient } from 'viem'
 import { useAccount, usePublicClient } from 'wagmi'
-import { DEPLOY_BLOCK, contracts, contractsLive, legacyMarkets, marketsFor } from './chains'
+import { DEPLOY_BLOCK, contracts, contractsLive, marketsFor, settlingMarkets } from './chains'
 import { DEMO } from './config'
 import * as demo from './demo-data'
 import { ABIS } from './generated/abis'
@@ -187,12 +187,11 @@ async function offersFromChain(client: PublicClient, assets: Asset[]): Promise<O
   const markets = [
     { address: contracts.callMarket!, kind: 'call' as Kind, abi: ABIS.CallMarket },
     { address: contracts.putMarket!, kind: 'put' as Kind, abi: ABIS.PutMarket },
-    ...(legacyMarkets
-      ? [
-          { address: legacyMarkets.callMarket, kind: 'call' as Kind, abi: ABIS.CallMarket },
-          { address: legacyMarkets.putMarket, kind: 'put' as Kind, abi: ABIS.PutMarket },
-        ]
-      : []),
+    // Older market sets (v1, v2) still hold positions that settle there.
+    ...settlingMarkets.flatMap(({ markets }) => [
+      { address: markets.callMarket, kind: 'call' as Kind, abi: ABIS.CallMarket },
+      { address: markets.putMarket, kind: 'put' as Kind, abi: ABIS.PutMarket },
+    ]),
   ]
   const byToken = new Map(assets.map((a) => [a.address.toLowerCase(), a]))
   const out: Offer[] = []

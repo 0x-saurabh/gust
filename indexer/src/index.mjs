@@ -51,17 +51,24 @@ const A = Object.fromEntries(
     burner: dep.buybackBurner, pool: dep.stakingPool, registry: dep.assetRegistry, poolManager: dep.uniswapV4PoolManager,
     // Markets v2 (deployments `v2`): new registry, NFT and markets beside v1, which keeps settling its positions.
     calls2: dep.v2?.callMarket, puts2: dep.v2?.putMarket, nft2: dep.v2?.optionNft, registry2: dep.v2?.assetRegistry,
+    // Markets v3 (deployments `v3`): new NFT (readable art) and markets. It reuses the v2 registry, so registry3 is
+    // only set if a later v3 ever brings its own.
+    calls3: dep.v3?.callMarket, puts3: dep.v3?.putMarket, nft3: dep.v3?.optionNft,
+    registry3: dep.v3?.assetRegistry && dep.v3.assetRegistry.toLowerCase() !== String(dep.v2?.assetRegistry).toLowerCase() ? dep.v3.assetRegistry : undefined,
   }).map(([k, v]) => [k, v ? getAddress(v) : undefined]),
 )
-// Listings come from the newest registry; v1's AssetAdded/Enabled events are ignored once v2 exists.
-const REG = A.registry2 ?? A.registry
+// Listings come from the newest registry; older registries' AssetAdded/Enabled events are ignored.
+const REG = A.registry3 ?? A.registry2 ?? A.registry
 const V2 = new Set([A.calls2, A.puts2, A.nft2, A.registry2].filter(Boolean))
-const isCallMarket = (m) => m === A.calls || m === A.calls2
-const nftFor = (market) => (market === A.calls2 || market === A.puts2 ? A.nft2 : A.nft)
+const V3 = new Set([A.calls3, A.puts3, A.nft3, A.registry3].filter(Boolean))
+const NFTS = new Set([A.nft, A.nft2, A.nft3].filter(Boolean))
+const isCallMarket = (m) => m === A.calls || m === A.calls2 || m === A.calls3
+const nftFor = (market) => (market === A.calls3 || market === A.puts3 ? A.nft3 : market === A.calls2 || market === A.puts2 ? A.nft2 : A.nft)
 // Only addresses that exist in the deployment file (a missing one would otherwise become the key "undefined").
 const abiFor = Object.fromEntries(
   [[A.calls, ABI.market], [A.puts, ABI.put], [A.nft, ABI.nft], [A.vault, ABI.vault], [A.burner, ABI.burner], [A.pool, ABI.pool], [A.registry, ABI.registry], [A.poolManager, ABI.poolManager],
-   [A.calls2, ABI.market], [A.puts2, ABI.put], [A.nft2, ABI.nft], [A.registry2, ABI.registry]]
+   [A.calls2, ABI.market], [A.puts2, ABI.put], [A.nft2, ABI.nft], [A.registry2, ABI.registry],
+   [A.calls3, ABI.market], [A.puts3, ABI.put], [A.nft3, ABI.nft], [A.registry3, ABI.registry]]
     .filter(([addr]) => addr),
 )
 for (const k of ['calls', 'puts', 'nft', 'registry']) if (!A[k]) throw new Error(`deployments/${CHAIN_ID}.json is missing ${k}`)
@@ -280,7 +287,7 @@ async function syncRange(from, to, only = null) {
         touched.set(String(args.id), { ...(touched.get(String(args.id)) ?? { market: addr }), block: log.blockNumber })
         break
       case 'Transfer': // OptionNFT: holder changed (mint/burn are covered by the market events)
-        if (addr === A.nft || addr === A.nft2) {
+        if (NFTS.has(addr)) {
           const id = String(args.tokenId)
           const row = q.getOffer.get(id)
           if (row) touched.set(id, { market: row.market, block: log.blockNumber })
@@ -309,7 +316,7 @@ async function syncRange(from, to, only = null) {
   }
   for (const [id, t] of touched) {
     // Position status comes from the chain, so the same log applied twice is harmless.
-    const market = t.market === A.nft || t.market === A.nft2 ? q.getOffer.get(id)?.market : t.market
+    const market = NFTS.has(t.market) ? q.getOffer.get(id)?.market : t.market
     if (market) await refreshOffer(BigInt(id), market, t.block, t.created)
   }
 }
@@ -331,19 +338,20 @@ async function syncOnce() {
   }
 }
 
-// Markets v2 deployed while the indexer was already past its block: read the v2 contracts' history once, from
-// v2.fromBlock to the live cursor (the live sync covers everything after). Marked done in meta `v2:caughtUp`.
-async function catchUpV2() {
-  if (!V2.size || q.getMeta.get('v2:caughtUp')?.value) return
+// A market set (v2, v3) deployed while the indexer was already past its block: read its contracts' history once,
+// from <version>.fromBlock to the live cursor (the live sync covers everything after). Marked done in meta
+// `<version>:caughtUp`.
+async function catchUp(version, set) {
+  if (!set.size || q.getMeta.get(`${version}:caughtUp`)?.value) return
   const last = BigInt(q.getMeta.get('lastBlock')?.value ?? '-1')
-  let from = BigInt(dep.v2.fromBlock ?? START_BLOCK)
-  console.log(`[indexer] v2 catch-up ${from}..${last}`)
+  let from = BigInt(dep[version].fromBlock ?? START_BLOCK)
+  console.log(`[indexer] ${version} catch-up ${from}..${last}`)
   while (from <= last) {
     const to = from + CHUNK * 10n - 1n > last ? last : from + CHUNK * 10n - 1n
-    await syncRange(from, to, [...V2])
+    await syncRange(from, to, [...set])
     from = to + 1n
   }
-  q.setMeta.run('v2:caughtUp', '1')
+  q.setMeta.run(`${version}:caughtUp`, '1')
 }
 
 // Runs beside the live sync (offers keep updating while history loads); retried until every pool is done.
@@ -692,7 +700,8 @@ const rpcChain = await client.getChainId()
 if (rpcChain !== CHAIN_ID) throw new Error(`RPC is chain ${rpcChain}, expected ${CHAIN_ID}`)
 
 await refreshAllAssets()
-await catchUpV2()
+await catchUp('v2', V2)
+await catchUp('v3', V3)
 await syncOnce()
 server.listen(PORT, HOST, () => console.log(`[indexer] chain ${CHAIN_ID} → http://${HOST}:${PORT}`))
 loop()

@@ -2,7 +2,7 @@ import { ArrowRight, ArrowUpRight } from '@phosphor-icons/react/dist/ssr'
 import Link from 'next/link'
 import { Callout, Figure, H2, H3, P, Steps, Table, Tile } from '@/components/docs/Blocks'
 import { CopyButton, DocsShell, type DocSection } from '@/components/docs/DocsShell'
-import { chain, contracts, explorerAddress, legacyMarkets } from '@/lib/chains'
+import { chain, contracts, explorerAddress, marketsVersion, settlingMarkets } from '@/lib/chains'
 import { BRAND, FEES, LIMITS, SPLIT } from '@/lib/config'
 import { bps } from '@/lib/format'
 
@@ -60,7 +60,6 @@ function Address({ addr }: { addr?: string }) {
 
 export default function DocsPage() {
   const name = BRAND.name
-  const legacy = legacyMarkets
   return (
     <div className="pt-10">
       <div className="mb-10 border-b border-line pb-10">
@@ -229,7 +228,7 @@ export default function DocsPage() {
 
           <section>
             <H2 id="contracts" eyebrow="Reference">Contract addresses</H2>
-            <P>All addresses are on <strong>{chain.name}</strong> (chain id {chain.id}). The current markets are the v2 set; v1 markets only settle the positions they already hold.</P>
+            <P>All addresses are on <strong>{chain.name}</strong> (chain id {chain.id}). {settlingMarkets.length > 0 && <> The current markets are the v{marketsVersion} set; {settlingMarkets.map((m) => `v${m.version}`).reverse().join(' and ')} markets only settle the positions they already hold.</>}</P>
             <div className="my-6 overflow-hidden rounded-xl border border-line">
               <div className="border-b border-line bg-bg-2 px-4 py-2.5 text-[13px] font-medium text-ink">Protocol</div>
               <div className="divide-y divide-line">
@@ -258,22 +257,22 @@ export default function DocsPage() {
                 ))}
               </div>
             </div>
-            {legacy && (
-              <div className="my-6 overflow-hidden rounded-xl border border-line">
+            {settlingMarkets.map(({ version, markets }) => (
+              <div key={version} className="my-6 overflow-hidden rounded-xl border border-line">
                 <div className="flex items-center justify-between border-b border-line bg-bg-2 px-4 py-2.5">
-                  <span className="text-[13px] font-medium text-ink">Markets v1</span>
+                  <span className="text-[13px] font-medium text-ink">Markets v{version}</span>
                   <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-muted">settling only</span>
                 </div>
                 <div className="divide-y divide-line">
-                  {([['callMarket', 'CallMarket v1'], ['putMarket', 'PutMarket v1'], ['optionNft', 'OptionNFT v1'], ['assetRegistry', 'AssetRegistry v1'], ['router', 'Router v1']] as const).map(([key, label]) => (
+                  {([['callMarket', 'CallMarket'], ['putMarket', 'PutMarket'], ['optionNft', 'OptionNFT'], ['assetRegistry', 'AssetRegistry'], ['router', 'Router']] as const).map(([key, label]) => (
                     <div key={key} className="grid gap-2 px-4 py-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
-                      <div className="text-sm font-medium text-ink">{label}</div>
-                      <Address addr={legacy[key]} />
+                      <div className="text-sm font-medium text-ink">{label} v{version}</div>
+                      <Address addr={markets[key]} />
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+            ))}
             <P>
               The full list of listed tokens, with live prices, is on the <Link href="/market" className="text-accent hover:underline">Market page</Link>. Source code lives in the <code>contracts/</code> folder of the repository.
             </P>

@@ -20,7 +20,8 @@ library Constants {
     uint256 internal constant EPOCH = 1 days;
 
     /// @dev OptionNFT ids are `(tag << 248) | localId`, so call and put ids never collide. v1 used tags 1 and 2;
-    /// v2 uses 3 and 4 so its ids never collide with v1 positions either (indexer, keeper and UI key by id).
-    uint256 internal constant CALL_TAG = 3;
-    uint256 internal constant PUT_TAG = 4;
+    /// v2 used 3 and 4; v3 (readable NFT art) uses 5 and 6, so no version's ids collide with another's (indexer,
+    /// keeper and UI key by id and route an id to its market set by this tag).
+    uint256 internal constant CALL_TAG = 5;
+    uint256 internal constant PUT_TAG = 6;
 }

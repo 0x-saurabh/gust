@@ -28,7 +28,8 @@ const CHAIN_ID = env.CHAIN_ID || '4663'
 const RPC = env.RPC_URL || 'https://rpc.mainnet.chain.robinhood.com'
 const dep = JSON.parse(fs.readFileSync(`contracts/deployments/${CHAIN_ID}.json`, 'utf8'))
 const SAFE = getAddress(env.GUARDIAN || dep.guardian)
-const REGISTRIES = [dep.assetRegistry, dep.v2?.assetRegistry].filter(Boolean).map((a) => getAddress(a))
+// v3 reuses the v2 registry; the Set drops the duplicate.
+const REGISTRIES = [...new Set([dep.assetRegistry, dep.v2?.assetRegistry, dep.v3?.assetRegistry].filter(Boolean).map((a) => getAddress(a)))]
 const OWNERS = (env.OWNERS || 'owner1').split(',')
 const SENDER = env.SENDER || 'deployer'
 const CAST = `${os.homedir()}/.foundry/bin/cast`

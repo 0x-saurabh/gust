@@ -60,8 +60,11 @@ export type ProtocolContracts = {
   /** Block the protocol was deployed at; chain log reads start here. */
   deployBlock?: number
   /** Markets v2: registry with room for every Robinhood Stock Token, plus new NFT, markets and router. */
-  v2?: Pick<ProtocolContracts, 'assetRegistry' | 'optionNft' | 'callMarket' | 'putMarket' | 'router'> & { fromBlock?: number }
+  v2?: MarketSection
+  /** Markets v3: new NFT (readable on-chain art), markets and router; reuses the v2 registry. */
+  v3?: MarketSection
 }
+type MarketSection = Pick<ProtocolContracts, 'assetRegistry' | 'optionNft' | 'callMarket' | 'putMarket' | 'router'> & { fromBlock?: number }
 
 export type MarketSet = Required<Pick<ProtocolContracts, 'assetRegistry' | 'optionNft' | 'callMarket' | 'putMarket' | 'router'>>
 
@@ -76,13 +79,27 @@ const EXTERNAL: Record<number, ProtocolContracts> = {
 const deployed = (deployments as Record<string, ProtocolContracts>)[String(CHAIN_ID)] ?? {}
 const pickMarkets = (c: ProtocolContracts) =>
   ({ assetRegistry: c.assetRegistry!, optionNft: c.optionNft!, callMarket: c.callMarket!, putMarket: c.putMarket!, router: c.router! }) as MarketSet
-/** v1 markets: still settle (buy, exercise, cancel, expire) every position they hold after v2 goes live. */
-export const legacyMarkets: MarketSet | null = deployed.v2?.callMarket ? pickMarkets(deployed) : null
-/** `contracts.callMarket` etc. are the current markets (v2 once deployed): new offers and listings go there. */
-export const contracts: ProtocolContracts = { ...EXTERNAL[CHAIN_ID], ...deployed, ...(deployed.v2?.callMarket ? deployed.v2 : {}) }
-/** The market set a position lives in, from its id: v1 ids carry tags 1/2, v2 ids 3/4 (`id >> 248`). */
+/** Every market set on this chain, oldest first. `minTag`: position ids carry `tag << 248`, v1 tags 1/2, v2 3/4, v3 5/6. */
+const VERSIONS: { version: number; minTag: bigint; set: ProtocolContracts }[] = [
+  { version: 1, minTag: 1n, set: deployed },
+  ...(deployed.v2?.callMarket ? [{ version: 2, minTag: 3n, set: { ...deployed, ...deployed.v2 } }] : []),
+  ...(deployed.v3?.callMarket ? [{ version: 3, minTag: 5n, set: { ...deployed, ...deployed.v2, ...deployed.v3 } }] : []),
+]
+/** Older market sets: they still settle (buy, exercise, cancel, expire) every position they hold. Newest first. */
+export const settlingMarkets: { version: number; markets: MarketSet }[] = VERSIONS.slice(0, -1)
+  .reverse()
+  .map((v) => ({ version: v.version, markets: pickMarkets(v.set) }))
+/** v1 markets once a newer set is live (null before that). */
+export const legacyMarkets: MarketSet | null = VERSIONS.length > 1 ? pickMarkets(deployed) : null
+/** Version of the current markets (1, 2 or 3). */
+export const marketsVersion = VERSIONS[VERSIONS.length - 1].version
+/** `contracts.callMarket` etc. are the current (newest) markets: new offers and listings go there. */
+export const contracts: ProtocolContracts = { ...EXTERNAL[CHAIN_ID], ...VERSIONS[VERSIONS.length - 1].set }
+/** The market set a position lives in, from its id's version tag (`id >> 248`). */
 export function marketsFor(id: bigint): MarketSet {
-  return legacyMarkets && id >> 248n < 3n ? legacyMarkets : pickMarkets(contracts)
+  const tag = id >> 248n
+  for (let i = VERSIONS.length - 1; i > 0; i--) if (tag >= VERSIONS[i].minTag) return pickMarkets(VERSIONS[i].set)
+  return pickMarkets(VERSIONS[0].set)
 }
 export const contractsLive = Boolean(contracts.callMarket && contracts.putMarket && contracts.weth)
 export const DEPLOY_BLOCK = BigInt(contracts.deployBlock ?? 0)

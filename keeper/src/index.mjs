@@ -84,8 +84,10 @@ async function send(label, params) {
 }
 
 // Live filled ids per market, built from OfferCreated logs seen so far and pruned when settled.
-// v1 markets keep settling their open positions after markets v2 (deployments `v2`) goes live, so both are watched.
-const MARKETS = [dep.callMarket, dep.putMarket, dep.v2?.callMarket, dep.v2?.putMarket].filter(Boolean).map((a) => getAddress(a))
+// Older markets keep settling their open positions after a newer set (deployments `v2`, `v3`) goes live, so all are watched.
+const MARKETS = [dep.callMarket, dep.putMarket, dep.v2?.callMarket, dep.v2?.putMarket, dep.v3?.callMarket, dep.v3?.putMarket]
+  .filter(Boolean)
+  .map((a) => getAddress(a))
 const tracked = Object.fromEntries(MARKETS.map((m) => [m, new Set()]))
 let scanned = START_BLOCK - 1n
 async function refreshTracked() {

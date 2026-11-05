@@ -25,7 +25,7 @@ export default function PositionsPage() {
   const rows = tab === 'holding' ? pos.holding : tab === 'selling' ? pos.selling : pos.history
   const now = Date.now() / 1000
 
-  // v1 and v2 positions settle in the market that holds them (marketsFor reads the id's version tag).
+  // Positions settle in the market set that holds them (v1, v2, v3): marketsFor reads the id's version tag.
   const market = (o: Offer) => (o.kind === 'call' ? { address: marketsFor(o.id).callMarket, abi: ABIS.CallMarket } : { address: marketsFor(o.id).putMarket, abi: ABIS.PutMarket })
 
   const exercise = async (o: Offer) => {

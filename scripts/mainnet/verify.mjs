@@ -45,6 +45,11 @@ const targets = [
   ['v2.callMarket', 'src/CallMarket.sol:CallMarket'],
   ['v2.putMarket', 'src/PutMarket.sol:PutMarket'],
   ['v2.router', 'src/Router.sol:Router'],
+  // Markets v3 (DeployMarketsV3.s.sol): reuses the v2 AssetRegistry
+  ['v3.optionNft', 'src/OptionNFT.sol:OptionNFT'],
+  ['v3.callMarket', 'src/CallMarket.sol:CallMarket'],
+  ['v3.putMarket', 'src/PutMarket.sol:PutMarket'],
+  ['v3.router', 'src/Router.sol:Router'],
 ]
 
 let failed = 0

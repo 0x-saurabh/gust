@@ -11,6 +11,7 @@ import {Router} from "../src/Router.sol";
 import {IAssetRegistry} from "../src/interfaces/IAssetRegistry.sol";
 import {IOptionNFT} from "../src/interfaces/IOptionNFT.sol";
 import {IWETH} from "../src/interfaces/IWETH.sol";
+import {Constants} from "../src/lib/Constants.sol";
 
 /// @notice Markets v2 against the real Robinhood Stock Tokens on a Robinhood Chain mainnet fork: list AAPL and NVDA
 /// in one batch, then a full covered call (AAPL) and cash-secured put (NVDA) lifecycle with real WETH.
@@ -85,7 +86,7 @@ contract ForkRobinhoodStocksTest is Test {
         uint256 id = calls.createOffer(AAPL, 1e18, 0.15 ether, 0.001 ether, expiry, uint64(block.timestamp + 1 hours));
         vm.stopPrank();
         assertEq(IERC20(AAPL).balanceOf(address(calls)), 1e18, "AAPL escrowed");
-        assertEq(id >> 248, 3, "v2 call tag");
+        assertEq(id >> 248, Constants.CALL_TAG, "call tag");
 
         vm.startPrank(buyer);
         router.buyWithETH{value: 0.001 ether}(id, 0.001 ether);
@@ -102,7 +103,7 @@ contract ForkRobinhoodStocksTest is Test {
         uint256 id = router.createPutOfferWithETH{value: 0.09 ether}(
             NVDA, 1e18, 0.09 ether, 0.001 ether, expiry, uint64(block.timestamp + 1 hours)
         );
-        assertEq(id >> 248, 4, "v2 put tag");
+        assertEq(id >> 248, Constants.PUT_TAG, "put tag");
 
         deal(NVDA, buyer, 1e18);
         vm.startPrank(buyer);
