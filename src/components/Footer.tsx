@@ -46,7 +46,7 @@ export function Footer() {
         <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
             <Link href="/" aria-label={`${BRAND.name} home`} className="inline-block">
-              <Logo size={64} />
+              <Logo size={44} />
             </Link>
             <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-ink/60">
               Options, on Your terms. A non-custodial, fully collateralised options market on Robinhood Chain.

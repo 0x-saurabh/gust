@@ -332,6 +332,7 @@ p {
 .mono { font-family: var(--font-mono); }
 .eyebrow { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: var(--color-muted); }
 .grad-text { background: linear-gradient(95deg, #6eff85 0%, #4affec 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.logo-word { font-weight: 500; letter-spacing: -0.02em; background: linear-gradient(95deg, #6eff85 0%, #4affec 100%); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: 0.03em; }
 .grad-bg { background: linear-gradient(95deg, #6eff85 0%, #4affec 100%); }
 .hair { border-color: rgba(160, 255, 220, 0.09); }
 .panel { background: linear-gradient(180deg, rgba(110, 255, 170, 0.035), rgba(74, 255, 236, 0.012)); border: 1px solid rgba(160, 255, 220, 0.09); }
