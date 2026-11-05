@@ -1,6 +1,6 @@
 'use client'
 
-import { Bank, Coins, Fire, Gear, LockKey, Ticket, User, Wallet, type Icon } from '@phosphor-icons/react'
+import { Bank, Coins, Fire, Gear, LockKey, User, Wallet, type Icon } from '@phosphor-icons/react'
 import { AnimatePresence, motion, useScroll, useSpring } from 'framer-motion'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { BRAND, FEES, SPLIT } from '@/lib/config'
@@ -102,37 +102,26 @@ function TokenLogo({ symbol, size = 16 }: { symbol: string; size?: number }) {
   )
 }
 
-/**
- * Artwork for the Option NFT: real NFT images from OpenSea's CDN (Pudgy Penguins, whose PENGU token trades on
- * Robinhood Chain), one picked per offer. Falls back to generative art, then to a ticket mark, if a host is down.
- */
-const SEADN = 'https://i2c.seadn.io/ethereum/0xbd3531da5cf5857e7cfaa92426877b022e612cf8'
-const OPENSEA_NFTS = [
-  '18b83cb0c638ed9a1497f14488e848b3', 'a92de0adef86eb1da63710c8282f98ed', '7be864e7623aef497f6389666cd5c892',
-  'e63badd4895ffebd9d02b1679a040744', '07bb2c625a87a839aae3d1435098d52c', '382f58322af33054cdab993172439576',
-  'c60e9bc5f717fc3097ddfcfe1c5b256c', '940d0f71e41082b7f41ff3ea17ccae16',
-].map((h) => `${SEADN}/${h}.png?w=120`)
-const hashSeed = (seed: string) => seed.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7)
-const nftSources = (seed: string, size: number) => [
-  OPENSEA_NFTS[hashSeed(seed) % OPENSEA_NFTS.length],
-  `https://api.dicebear.com/9.x/shapes/svg?seed=${encodeURIComponent(seed)}&size=${size * 2}&radius=0`,
-]
-function NftArt({ seed, size = 16 }: { seed: string; size?: number }) {
-  const [attempt, setAttempt] = useState(0)
-  const src = nftSources(seed, size)[attempt]
-  if (!src) return <span className="flex shrink-0 items-center justify-center rounded-[5px]" style={{ width: size, height: size, background: C.ink, color: '#fff' }}><Ticket size={size * 0.62} weight="fill" /></span>
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img key={src} src={src} alt="" width={size} height={size} referrerPolicy="no-referrer" className="shrink-0 rounded-[5px] object-cover" style={{ width: size, height: size, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} onError={() => setAttempt((n) => n + 1)} />
+/** The Option NFT, drawn like its on-chain art (OptionNFT.tokenURI): dark card, mint CALL label, term lines. */
+function NftArt({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden className="shrink-0">
+      <rect width="24" height="24" rx="5" fill="#07090c" />
+      <text x="4" y="10.5" fill="#7cf2c9" fontFamily="ui-monospace, monospace" fontSize="7" fontWeight="700">C</text>
+      <rect x="4" y="13.5" width="16" height="1.6" rx=".8" fill="#eef3f7" opacity=".85" />
+      <rect x="4" y="17.2" width="10" height="1.6" rx=".8" fill="#8b98a8" />
+    </svg>
+  )
 }
 
-function ChipIcon({ tone, symbol, seed, size = 16 }: { tone: Tone; symbol: string; seed: string; size?: number }) {
+function ChipIcon({ tone, symbol, size = 16 }: { tone: Tone; symbol: string; size?: number }) {
   if (tone === 'eth') return <EthLogo size={size} />
   if (tone === 'token') return <TokenLogo symbol={symbol} size={size} />
-  return <NftArt seed={seed} size={size} />
+  return <NftArt size={size} />
 }
 
 /** One asset chip: white paper, hairline border, a soft drop shadow, logo + mono value. */
-function Chip({ asset, symbol, seed, lifted = false }: { asset: Asset; symbol: string; seed: string; lifted?: boolean }) {
+function Chip({ asset, symbol, lifted = false }: { asset: Asset; symbol: string; lifted?: boolean }) {
   return (
     <span
       className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white py-[3px] pl-[3px] pr-2.5 font-mono text-[11px] tabular md:text-xs"
@@ -142,7 +131,7 @@ function Chip({ asset, symbol, seed, lifted = false }: { asset: Asset; symbol: s
         boxShadow: lifted ? '0 10px 28px -8px rgba(11,11,12,0.28), 0 2px 6px rgba(11,11,12,0.08)' : '0 1px 2px rgba(11,11,12,0.05)',
       }}
     >
-      <ChipIcon tone={asset.tone} symbol={symbol} seed={seed} size={18} />
+      <ChipIcon tone={asset.tone} symbol={symbol} size={18} />
       {asset.label}
     </span>
   )
@@ -154,7 +143,6 @@ export function FlowStory() {
   const offers = useOffers()
   const live = (offers.data ?? []).filter((o) => isFillable(o) && o.kind === 'call').sort((a, b) => b.premium - a.premium)[0]
   const o = live ?? { symbol: 'ZEPH', amount: 200_000, strike: 10, premium: 0.3 }
-  const nftSeed = `kyte-${o.symbol}-${live ? String(live.id) : 'example'}`
 
   const { assets, steps } = useMemo(() => {
     const premFee = (o.premium * FEES.premiumBps) / 10_000
@@ -331,7 +319,7 @@ export function FlowStory() {
                         <AnimatePresence initial={false}>
                           {held.map((a) => (
                             <motion.div key={a.id} layout initial={{ opacity: 0, scale: 0.6, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.6 }} transition={{ type: 'spring', stiffness: 260, damping: 22 }}>
-                              <Chip asset={a} symbol={o.symbol} seed={nftSeed} />
+                              <Chip asset={a} symbol={o.symbol} />
                             </motion.div>
                           ))}
                         </AnimatePresence>
@@ -355,7 +343,7 @@ export function FlowStory() {
                     transition={{ duration: TRAVEL_MS / 1000, ease: EASE }}
                     onAnimationComplete={() => arrive(t)}
                   >
-                    <Chip asset={t.asset} symbol={o.symbol} seed={nftSeed} lifted />
+                    <Chip asset={t.asset} symbol={o.symbol} lifted />
                   </motion.div>
                 )
               })}
