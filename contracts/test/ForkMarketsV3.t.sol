@@ -41,8 +41,12 @@ contract ForkMarketsV3Test is Test {
         if (!on) return;
         vm.createSelectFork("robinhood");
         nft = new OptionNFT();
-        calls = new CallMarket(IAssetRegistry(V2_REGISTRY), IOptionNFT(address(nft)), IERC20(WETH), FEE_VAULT, TIMELOCK, GUARDIAN, 300, 10);
-        puts = new PutMarket(IAssetRegistry(V2_REGISTRY), IOptionNFT(address(nft)), IERC20(WETH), FEE_VAULT, TIMELOCK, GUARDIAN, 300, 10);
+        calls = new CallMarket(
+            IAssetRegistry(V2_REGISTRY), IOptionNFT(address(nft)), IERC20(WETH), FEE_VAULT, TIMELOCK, GUARDIAN, 300, 10
+        );
+        puts = new PutMarket(
+            IAssetRegistry(V2_REGISTRY), IOptionNFT(address(nft)), IERC20(WETH), FEE_VAULT, TIMELOCK, GUARDIAN, 300, 10
+        );
         nft.setMarkets(address(calls), address(puts));
         router = new Router(IWETH(WETH), calls, puts);
         vm.startPrank(TIMELOCK); // the one timelock operation pair v3-plan.mjs schedules
@@ -58,7 +62,9 @@ contract ForkMarketsV3Test is Test {
         deal(token, seller, amount);
         vm.startPrank(seller);
         IERC20(token).approve(address(calls), amount);
-        id = calls.createOffer(token, amount, strike, premium, uint64(block.timestamp + 1 days), uint64(block.timestamp + 1 hours));
+        id = calls.createOffer(
+            token, amount, strike, premium, uint64(block.timestamp + 1 days), uint64(block.timestamp + 1 hours)
+        );
         vm.stopPrank();
         vm.prank(buyer);
         router.buyWithETH{value: premium}(id, premium);

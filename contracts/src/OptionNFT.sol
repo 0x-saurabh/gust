@@ -204,7 +204,9 @@ contract OptionNFT is ERC721, IOptionNFT {
         uint256 shown = decimals > 6 ? 6 : decimals;
         if (decimals > 6) frac /= 10 ** (uint256(decimals) - 6);
         if (frac == 0) {
-            if (value != 0 && value < unit && value / (10 ** (uint256(decimals) - shown)) == 0) return string.concat("<0.", _zeros(shown - 1), "1");
+            if (value != 0 && value < unit && value / (10 ** (uint256(decimals) - shown)) == 0) {
+                return string.concat("<0.", _zeros(shown - 1), "1");
+            }
             return whole;
         }
         while (frac % 10 == 0) {
@@ -248,7 +250,16 @@ contract OptionNFT is ERC721, IOptionNFT {
         uint256 year = yoe + era * 400 + (month <= 2 ? 1 : 0);
         uint256 secs = ts % 1 days;
         return string.concat(
-            year.toString(), "-", _two(month), "-", _two(day), " ", _two(secs / 1 hours), ":", _two((secs % 1 hours) / 60), " UTC"
+            year.toString(),
+            "-",
+            _two(month),
+            "-",
+            _two(day),
+            " ",
+            _two(secs / 1 hours),
+            ":",
+            _two((secs % 1 hours) / 60),
+            " UTC"
         );
     }
 

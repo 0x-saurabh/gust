@@ -51,10 +51,24 @@ contract DeployMarketsV3 is Script {
         vm.startBroadcast();
         OptionNFT nft = new OptionNFT();
         CallMarket calls = new CallMarket(
-            IAssetRegistry(registry), IOptionNFT(address(nft)), IERC20(weth), vault, timelock, guardian, feePremium, feeExercise
+            IAssetRegistry(registry),
+            IOptionNFT(address(nft)),
+            IERC20(weth),
+            vault,
+            timelock,
+            guardian,
+            feePremium,
+            feeExercise
         );
         PutMarket puts = new PutMarket(
-            IAssetRegistry(registry), IOptionNFT(address(nft)), IERC20(weth), vault, timelock, guardian, feePremium, feeExercise
+            IAssetRegistry(registry),
+            IOptionNFT(address(nft)),
+            IERC20(weth),
+            vault,
+            timelock,
+            guardian,
+            feePremium,
+            feeExercise
         );
         nft.setMarkets(address(calls), address(puts)); // locked from here on
         Router router = new Router(IWETH(weth), calls, puts);
