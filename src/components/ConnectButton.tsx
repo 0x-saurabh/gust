@@ -9,6 +9,11 @@ import { chain } from '@/lib/chains'
 import { PRIVY_APP_ID } from '@/lib/config'
 import { shortAddr } from '@/lib/format'
 
+// Privy's connect-only flow (no login) remembers the wallet in its own store, but it never makes that wallet
+// wagmi's account again after a full page load: that only happened in connectWallet's onSuccess, which does
+// not run on reload. We remember the chosen address here and re-activate it once Privy lists the wallet again.
+const SAVED_WALLET = 'kyte:wallet'
+
 export function ConnectButton() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -23,14 +28,16 @@ function PrivyConnect() {
   const { address, chainId, isConnected } = useAccount()
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()
-  const { wallets } = useWallets()
+  const { wallets, ready } = useWallets()
   const { setActiveWallet } = useSetActiveWallet()
   const [target, setTarget] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { connectWallet } = useConnectWallet({
     onSuccess: ({ wallet }) => {
       if (wallet.type !== 'ethereum') return setError('Please use an Ethereum wallet.')
-      setTarget(wallet.address.toLowerCase())
+      const addr = wallet.address.toLowerCase()
+      localStorage.setItem(SAVED_WALLET, addr)
+      setTarget(addr)
     },
     onError: (e) => {
       const m = String(e)
@@ -47,6 +54,24 @@ function PrivyConnect() {
       .then(() => { if (path === '/') router.push('/market') })
       .catch((e) => setError(String(e)))
   }, [target, wallets, setActiveWallet, path, router])
+  // After a reload: Privy has silently re-detected the wallet (eth_accounts, no prompt) but wagmi has no account.
+  // Re-activate the wallet we saved, once per address, so the session survives navigation and refreshes.
+  const [restored, setRestored] = useState<string | null>(null)
+  useEffect(() => {
+    if (!ready || isConnected || target) return
+    const saved = localStorage.getItem(SAVED_WALLET)
+    if (!saved || saved === restored) return
+    const w = wallets.find((x) => x.address.toLowerCase() === saved)
+    if (!w) return
+    setRestored(saved)
+    setActiveWallet(w).catch((e) => setError(String(e)))
+  }, [ready, wallets, isConnected, target, restored, setActiveWallet])
+
+  const forget = () => {
+    localStorage.removeItem(SAVED_WALLET)
+    setRestored(null)
+    disconnect()
+  }
 
   if (!isConnected || !address) {
     return (
@@ -64,7 +89,7 @@ function PrivyConnect() {
     )
   }
   return (
-    <button className="btn btn-ghost btn-sm font-mono" onClick={() => disconnect()} title="Disconnect">
+    <button className="btn btn-ghost btn-sm font-mono" onClick={forget} title="Disconnect">
       <span className="size-2 rounded-full bg-accent" />
       {shortAddr(address)}
     </button>
