@@ -38,6 +38,7 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
     gsap.ticker.lagSmoothing(0)
     lenis.current = l
     instance = l
+    if (process.env.NODE_ENV !== 'production') (window as unknown as { __lenis?: Lenis }).__lenis = l
     return () => {
       gsap.ticker.remove(tick)
       l.destroy()

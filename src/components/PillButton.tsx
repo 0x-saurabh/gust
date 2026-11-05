@@ -7,9 +7,11 @@ import type { ReactNode } from 'react'
  * Pill CTA in the Optivio style: label on the left, a dark circle with a dotted arrow on the right.
  * Hover: the label rolls up and its duplicate rolls in from below (with a slight skew), the arrow slides
  * out of the circle to the top right while a second one slides in from the bottom left.
- * `premium`: the brand gradient with a glossy top light, a soft glow and a dark circle with a gradient ring (footer).
+ * `premium`: the brand gradient with a glossy top light, a soft glow and a white disc (footer).
+ * The disc holds a glyph instead of an arrow: `chart`, a mini price line like the Market chart with its area and
+ * live endpoint, which redraws on hover (trading CTAs), or `dot`, a point that blooms into a ring (connect).
  */
-export function PillButton({ href, children, tone = 'accent', size = 'md', className = '', onClick, disabled }: { href?: string; children: ReactNode; tone?: 'accent' | 'light' | 'dark' | 'premium'; size?: 'md' | 'sm'; className?: string; onClick?: () => void; disabled?: boolean }) {
+export function PillButton({ href, children, tone = 'accent', size = 'md', glyph = 'chart', className = '', onClick, disabled }: { href?: string; children: ReactNode; tone?: 'accent' | 'light' | 'dark' | 'premium'; size?: 'md' | 'sm'; glyph?: 'chart' | 'dot'; className?: string; onClick?: () => void; disabled?: boolean }) {
   const cls = `pill pill-${tone} ${size === 'sm' ? 'pill-sm' : ''} ${className}`
   const inner = (
     <>
@@ -18,8 +20,11 @@ export function PillButton({ href, children, tone = 'accent', size = 'md', class
         <span className="pill-text pill-text-2" aria-hidden>{children}</span>
       </span>
       <span className="pill-circle" aria-hidden>
-        <Arrow className="pill-arrow pill-arrow-1" />
-        <Arrow className="pill-arrow pill-arrow-2" />
+        {glyph === 'chart' ? (
+          <Spark />
+        ) : (
+          <span className="pill-dot"><i /></span>
+        )}
       </span>
     </>
   )
@@ -27,12 +32,20 @@ export function PillButton({ href, children, tone = 'accent', size = 'md', class
   return <button type="button" className={cls} onClick={onClick} disabled={disabled}>{inner}</button>
 }
 
-/** Clean stroke arrow (↗): on hover the first flies out to the top right while its twin flies in from the bottom left. */
-function Arrow({ className = '' }: { className?: string }) {
+/** Mini market chart, always live: the price line flows through, the area breathes with it and the last price pings. */
+function Spark() {
   return (
-    <svg viewBox="0 0 16 16" width="16" height="16" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M4.5 11.5 11.5 4.5" />
-      <path d="M6 4.5h5.5V10" />
+    <svg viewBox="0 0 20 14" width="18" height="13" className="pill-spark" aria-hidden>
+      <defs>
+        <linearGradient id="spark-area" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.35" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path className="pill-spark-area" d="M1 11 C4 10.5 5 7.5 7.5 7.5 S11 9.5 13 7 S16.5 2.5 19 2.2 V13 H1 Z" fill="url(#spark-area)" />
+      <path className="pill-spark-line" d="M1 11 C4 10.5 5 7.5 7.5 7.5 S11 9.5 13 7 S16.5 2.5 19 2.2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <circle className="pill-spark-ping" cx="19" cy="2.2" r="1.6" fill="none" stroke="currentColor" strokeWidth="1" />
+      <circle className="pill-spark-dot" cx="19" cy="2.2" r="1.6" fill="currentColor" />
     </svg>
   )
 }

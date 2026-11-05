@@ -42,9 +42,13 @@ export function Nav() {
             {LINKS.map((l) => {
               const active = path === l.href
               return (
-                <Link key={l.href} href={l.href} aria-current={active ? 'page' : undefined} className={`relative rounded-full px-3 py-1 text-sm transition-colors duration-300 ${active ? 'text-ink' : 'text-muted hover:text-ink'}`}>
+                // Same hover as the footer links: the label rolls up and a fresh copy rolls in from below.
+                <Link key={l.href} href={l.href} aria-current={active ? 'page' : undefined} className={`lnk-nav relative rounded-full px-3 py-1 text-sm transition-colors duration-300 ${active ? 'text-ink' : 'text-muted hover:text-ink'}`}>
                   {active && <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-white/[0.08]" transition={{ type: 'spring', stiffness: 300, damping: 28 }} />}
-                  <span className="relative">{l.label}</span>
+                  <span className="link-roll relative">
+                    <span className="link-roll-text">{l.label}</span>
+                    <span className="link-roll-text link-roll-text-2" aria-hidden>{l.label}</span>
+                  </span>
                 </Link>
               )
             })}
