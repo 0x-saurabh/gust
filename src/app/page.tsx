@@ -10,7 +10,6 @@ import { useRef, useState } from 'react'
 import { Bleed, EASE as ease, Reveal, SectionHead, Wrap, XButton, scrollToId } from '@/components/landing/kit'
 import { Tilt } from '@/components/motion/primitives'
 import { FlowStory } from '@/components/FlowStory'
-import { Logo } from '@/components/Logo'
 import { ProductFrame } from '@/components/ProductFrame'
 import { chain, isDevnet, legacyMarkets } from '@/lib/chains'
 import { BRAND } from '@/lib/config'
@@ -36,12 +35,7 @@ function Hero() {
       </motion.div>
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[45%]" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,.55) 45%, #000 100%)' }} />
       <Wrap className="relative flex flex-1 flex-col justify-center pb-10 pt-36 md:pt-32">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease }} className="inline-flex items-center gap-2.5 self-start rounded-full border px-3.5 py-1.5 text-[12px] backdrop-blur-sm" style={{ borderColor: 'rgba(160,255,220,.22)', background: 'rgba(2,10,8,.45)' }}>
-          <Logo size={14} />
-          <span className="h-3 w-px bg-ink/20" aria-hidden />
-          <span className="mono tracking-wide text-ink/80">Options market on Robinhood Chain</span>
-        </motion.div>
-        <h1 className="hero-title mt-8 text-[clamp(3.25rem,10.5vw,8.5rem)]" aria-label="Options, on Your terms.">
+        <h1 className="hero-title text-[clamp(3.25rem,10.5vw,8.5rem)]" aria-label="Options, on Your terms.">
           {[
             [{ w: 'Options,', g: false }],
             [{ w: 'on', g: false }, { w: 'Your', g: true }, { w: 'terms.', g: true }],

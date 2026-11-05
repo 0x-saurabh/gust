@@ -9,8 +9,8 @@ import type { ReactNode } from 'react'
  * out of the circle to the top right while a second one slides in from the bottom left.
  * `premium`: the brand gradient with a glossy top light, a soft glow and a dark circle with a gradient ring (footer).
  */
-export function PillButton({ href, children, tone = 'accent', className = '', onClick }: { href?: string; children: ReactNode; tone?: 'accent' | 'light' | 'dark' | 'premium'; className?: string; onClick?: () => void }) {
-  const cls = `pill pill-${tone} ${className}`
+export function PillButton({ href, children, tone = 'accent', size = 'md', className = '', onClick, disabled }: { href?: string; children: ReactNode; tone?: 'accent' | 'light' | 'dark' | 'premium'; size?: 'md' | 'sm'; className?: string; onClick?: () => void; disabled?: boolean }) {
+  const cls = `pill pill-${tone} ${size === 'sm' ? 'pill-sm' : ''} ${className}`
   const inner = (
     <>
       <span className="pill-label">
@@ -18,21 +18,21 @@ export function PillButton({ href, children, tone = 'accent', className = '', on
         <span className="pill-text pill-text-2" aria-hidden>{children}</span>
       </span>
       <span className="pill-circle" aria-hidden>
-        <DotArrow className="pill-arrow pill-arrow-1" />
-        <DotArrow className="pill-arrow pill-arrow-2" />
+        <Arrow className="pill-arrow pill-arrow-1" />
+        <Arrow className="pill-arrow pill-arrow-2" />
       </span>
     </>
   )
   if (href) return <Link href={href} className={cls} onClick={onClick}>{inner}</Link>
-  return <button type="button" className={cls} onClick={onClick}>{inner}</button>
+  return <button type="button" className={cls} onClick={onClick} disabled={disabled}>{inner}</button>
 }
 
-/** Pixel style arrow (↗) made of dots. */
-function DotArrow({ className = '' }: { className?: string }) {
-  const dots: [number, number][] = [[5, 1], [6, 1], [7, 1], [7, 2], [7, 3], [6, 2], [5, 3], [4, 4], [3, 5], [2, 6], [1, 7]]
+/** Clean stroke arrow (↗): on hover the first flies out to the top right while its twin flies in from the bottom left. */
+function Arrow({ className = '' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 9 9" width="16" height="16" className={className} fill="currentColor">
-      {dots.map(([x, y]) => <rect key={`${x}${y}`} x={x} y={y} width="1" height="1" rx="0.2" />)}
+    <svg viewBox="0 0 16 16" width="16" height="16" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4.5 11.5 11.5 4.5" />
+      <path d="M6 4.5h5.5V10" />
     </svg>
   )
 }

@@ -8,6 +8,7 @@ import { BRAND } from '@/lib/config'
 import { useHealth } from '@/lib/data'
 import { XButton, X_URL } from './landing/kit'
 import { OutlineWord } from './landing/OutlineWord'
+import { Logo } from './Logo'
 import { PillButton } from './PillButton'
 
 const COLS: { t: string; l: { h: string; n: string }[] }[] = [
@@ -33,11 +34,11 @@ function FootLink({ href, children }: { href: string; children: string }) {
   return <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={cls}>{inner}</a>
 }
 
-/** Robinhood's feather, simplified, in Robinhood green: identifies the network in the status pill. */
+/** Robinhood Chain's mark (the feather from robinhoodchain.blockscout.com's network icon), in Robinhood green. */
 function RobinhoodMark({ size = 14 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="#00C805">
-      <path d="M19.6 2.2c-2.5-.6-6.1.2-9 2.6-2.3 1.9-4 4.6-4.8 7.5-.4 1.4-.5 2.9-.3 4.3L3 20.4a.6.6 0 0 0 .8.8l4-2.5c1.3.6 2.8.9 4.3.8 2.7-.2 5.2-1.6 6.9-3.7 2.2-2.8 3-6.6 2.3-10.1-.3-1.7-.9-3.1-1.7-3.5zm-1.2 4.3c-.9 2.6-2.7 5.1-5 7a16 16 0 0 1-5.8 3.1c.3-2.6 1.6-5.2 3.6-7.1 2-2 4.6-3.2 7.2-3.4v.4z" />
+    <svg width={size} height={size} viewBox="3 0 23.25 30" aria-hidden fill="#00C805">
+      <path d="M3.173 30h.662c.12 0 .24-.06.28-.16C9.112 17.12 14.549 10.82 17.96 7.047c.14-.16.08-.28-.12-.28h-6.1a.689.689 0 0 0-.561.28l-4.374 5.417c-.642.803-.802 1.545-.802 2.608v5.537c-1.425 3.993-2.328 6.701-2.99 9.15-.04.156.02.24.16.24ZM25.182.808c-.943-1.003-5.197-1.043-7.163-.28-.41.158-.802.427-.983.581-1.806 1.545-3.01 2.77-4.153 3.973-.14.14-.08.28.12.28h6.762c.622 0 .983.362.983.984v7.624c0 .2.16.26.28.08l4.073-5.317c.663-.862.863-1.123 1.044-2.327.24-1.765.1-4.474-.963-5.598Zm-8.728 20.224 2.79-4.595c.06-.12.08-.26.08-.36V8.411c0-.2-.141-.28-.282-.12C14.85 12.967 11.58 17.882 8.55 23.8c-.077.149.02.281.2.221l6.26-1.926c.706-.216 1.103-.501 1.444-1.063Z" />
     </svg>
   )
 }
@@ -55,8 +56,7 @@ export function Footer() {
           <div>
             {/* The "Kyte" wordmark lifted out of the brand mark (public/brand/kyte-wordmark.png), no tile around it. */}
             <Link href="/" aria-label={`${BRAND.name} home`} className="inline-block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/kyte-wordmark.png" alt="" aria-hidden width={344} height={124} className="h-9 w-auto select-none" draggable={false} />
+              <Logo size={36} />
             </Link>
             <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-ink/60">
               Options, on Your terms. A non-custodial, fully collateralised options market on Robinhood Chain.

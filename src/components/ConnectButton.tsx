@@ -10,6 +10,7 @@ import { useAccount, useConnect, useConnectors, useDisconnect, useReconnect, use
 import { chain, explorerAddress } from '@/lib/chains'
 import { PRIVY_APP_ID } from '@/lib/config'
 import { shortAddr } from '@/lib/format'
+import { PillButton } from './PillButton'
 
 // Privy's connect-only flow (no login) remembers the wallet in its own store, but it never makes that wallet
 // wagmi's account again after a full page load: that only happened in connectWallet's onSuccess, which does
@@ -19,7 +20,7 @@ const SAVED_WALLET = 'kyte:wallet'
 export function ConnectButton() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
-  if (!mounted) return <button className="btn btn-premium" disabled>Connect wallet</button>
+  if (!mounted) return <PillButton tone="premium" size="sm" disabled>Connect wallet</PillButton>
   return PRIVY_APP_ID ? <PrivyConnect /> : <InjectedConnect />
 }
 
@@ -95,7 +96,7 @@ function PrivyConnect() {
     return (
       <div className="flex items-center gap-2">
         {error && <span className="hidden max-w-48 truncate text-xs text-danger md:inline" title={error}>{error}</span>}
-        <button className="btn btn-premium" onClick={() => { setError(null); connectWallet() }}><span>Connect wallet</span></button>
+        <PillButton tone="premium" size="sm" onClick={() => { setError(null); connectWallet() }}>Connect wallet</PillButton>
       </div>
     )
   }
@@ -134,10 +135,6 @@ function WalletMenu({ address, onDisconnect }: { address: string; onDisconnect: 
   return (
     <div ref={ref} className="relative">
       <button type="button" className="btn btn-glass btn-glass-sm font-mono" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <span className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-50 motion-reduce:hidden" />
-          <span className="relative inline-flex size-2 rounded-full bg-accent" />
-        </span>
         {shortAddr(address)}
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className={`transition-transform duration-300 ${open ? 'rotate-180' : ''}`}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
@@ -184,9 +181,9 @@ function InjectedConnect() {
   if (!isConnected || !address) {
     const injected = connectors[0]
     return (
-      <button className="btn btn-premium" disabled={!injected || isPending} onClick={() => injected && connect({ connector: injected, chainId: chain.id })}>
-        <span>{isPending ? 'Connecting…' : 'Connect wallet'}</span>
-      </button>
+      <PillButton tone="premium" size="sm" disabled={!injected || isPending} onClick={() => injected && connect({ connector: injected, chainId: chain.id })}>
+        {isPending ? 'Connecting…' : 'Connect wallet'}
+      </PillButton>
     )
   }
   if (chainId !== chain.id) {

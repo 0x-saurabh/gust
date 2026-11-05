@@ -305,6 +305,12 @@ p {
 .pill-accent .pill-circle, .pill-light .pill-circle { background: #0b0b0c; color: var(--color-accent); }
 .pill-dark .pill-circle { background: var(--color-ink); color: var(--color-bg); }
 .pill:hover .pill-circle { transform: rotate(-8deg) scale(1.04); }
+/* nav size: 36px tall, 30px circle, same roll and arrow swap */
+.pill-sm { height: 36px; gap: 8px; padding: 3px 3px 3px 14px; font-size: 14px; line-height: 20px; }
+.pill-sm .pill-label { line-height: 20px; }
+.pill-sm .pill-circle { width: 30px; height: 30px; }
+.pill-sm .pill-arrow { width: 14px; height: 14px; }
+.pill:disabled { opacity: 0.6; cursor: default; }
 /* premium: brand gradient with a glossy top light, a soft green glow and a dark circle ringed in the gradient */
 .pill-premium {
   position: relative;
@@ -332,15 +338,18 @@ p {
   transition: transform 900ms var(--ease-base);
   pointer-events: none;
 }
+.pill-premium.pill-sm:hover { transform: none; }
 .pill-premium:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 -1px 0 rgba(0, 40, 30, 0.18) inset, 0 18px 40px -12px rgba(92, 255, 196, 0.6), 0 3px 8px rgba(0, 0, 0, 0.4); }
 .pill-premium:hover::after { transform: translateX(120%); }
 .pill-premium .pill-circle { background: #04110c; color: #7cff9a; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.25) inset; }
 .pill-premium .pill-label, .pill-premium .pill-circle { position: relative; z-index: 1; }
 .pill-premium .pill-label { font-weight: 600; letter-spacing: -0.01em; }
-.pill-arrow { position: absolute; transition: transform 500ms var(--ease-base); }
-.pill-arrow-2 { transform: translate(-120%, 120%); }
-.pill:hover .pill-arrow-1 { transform: translate(120%, -120%); }
-.pill:hover .pill-arrow-2 { transform: translate(0, 0); }
+.pill-arrow { position: absolute; transition: transform 550ms var(--ease-base), opacity 350ms var(--ease-base); }
+.pill-arrow-2 { transform: translate(-140%, 140%) scale(0.8); opacity: 0; }
+.pill:hover .pill-arrow-1 { transform: translate(140%, -140%) scale(0.8); opacity: 0; }
+.pill:hover .pill-arrow-2 { transform: translate(0, 0) scale(1); opacity: 1; }
+.pill:hover .pill-circle { transform: rotate(0deg) scale(1.08); }
+.pill-premium:hover .pill-circle { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 16px rgba(92, 255, 196, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.25) inset; }
 
 /* ---- circular icon button (socials) ---- */
 .circle-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 9999px; overflow: hidden; background: var(--color-card-2); color: var(--color-ink); border: 1px solid var(--color-line); transition: background-color 300ms var(--ease-base), border-color 300ms var(--ease-base), transform 300ms var(--ease-base); }
@@ -434,6 +443,9 @@ p {
 .btn-premium:not(:disabled):hover::after { transform: translateX(120%); }
 .btn-premium > * { position: relative; z-index: 1; }
 .btn-glass-sm { height: 36px; padding: 0 14px; font-size: 13px; }
+/* nav pills stay put on hover (a lift under the cursor makes the hit area jitter); the glow does the work */
+.btn.btn-premium:not(:disabled):hover, .btn.btn-glass:not(:disabled):hover { transform: none; }
+.btn.btn-premium:not(:disabled):active, .btn.btn-glass:not(:disabled):active { transform: scale(0.98); }
 /* wallet menu */
 .wallet-menu { background: linear-gradient(180deg, rgba(14, 18, 16, 0.96), rgba(6, 8, 7, 0.98)); border: 1px solid rgba(160, 255, 220, 0.12); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 24px 60px -24px rgba(0, 0, 0, 0.9); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
 .wallet-menu-item { display: flex; width: 100%; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; color: var(--color-ink); transition: background-color 200ms var(--ease-base), color 200ms var(--ease-base); }

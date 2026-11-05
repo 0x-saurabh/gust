@@ -1,14 +1,16 @@
-// Kyte logo: the name KYTE set in the brand gradient (green to cyan, as on the Kyte mark image).
-// `size` is the cap height in px; the wordmark scales with it.
+// Kyte logo: the "Kyte" wordmark lifted out of the brand mark (public/brand/kyte-wordmark.png, 344x124).
+// `size` is the rendered height in px; the width follows the image's ratio.
 export function Logo({ size = 22, className = '' }: { size?: number; className?: string }) {
   return (
-    <span
-      aria-label="KYTE"
-      role="img"
-      className={`logo-word inline-block shrink-0 select-none font-display leading-none ${className}`}
-      style={{ fontSize: size }}
-    >
-      KYTE
-    </span>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/brand/kyte-wordmark.png"
+      alt="Kyte"
+      width={344}
+      height={124}
+      draggable={false}
+      className={`inline-block w-auto shrink-0 select-none ${className}`}
+      style={{ height: size }}
+    />
   )
 }
