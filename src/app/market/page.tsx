@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { BuyDialog } from '@/components/BuyDialog'
 import { TimeLeft } from '@/components/TimeLeft'
 import { TokenChart, type PriceLine } from '@/components/TokenChart'
+import { TokenLogo } from '@/components/TokenLogo'
 import { TokenPicker } from '@/components/TokenPicker'
 import { KindBadge, Note, PageHeader, Segmented } from '@/components/ui'
 import { isFillable, useAssets, useOffers, usePrices, type Kind, type Offer } from '@/lib/data'
@@ -104,7 +105,9 @@ export default function MarketPage() {
               return (
                 <tr key={o.id.toString()} className="border-b border-line/60 last:border-0 hover:bg-card-2">
                   <td className="px-4 py-4"><KindBadge kind={o.kind} /></td>
-                  <td className="px-4 py-4 font-mono font-medium">{o.symbol}</td>
+                  <td className="px-4 py-4 font-mono font-medium">
+                    <span className="inline-flex items-center gap-2"><TokenLogo symbol={o.symbol} name={asset?.name} address={o.token} size={18} />{o.symbol}</span>
+                  </td>
                   <td className="px-4 py-4 tabular">{num(o.amount, 4)}</td>
                   <td className="px-4 py-4 font-mono tabular">{strikePer.toPrecision(3)} ETH</td>
                   <td className={`px-4 py-4 font-mono tabular ${vs === null ? 'text-faint' : vs >= 0 ? 'text-accent' : 'text-danger'}`}>{vs === null ? '–' : `${vs >= 0 ? '+' : ''}${vs.toFixed(0)}%`}</td>

@@ -8,6 +8,7 @@ import { chain, isDevnet } from '@/lib/chains'
 import { FEES } from '@/lib/config'
 import { isFillable, useAssets, useCandles, useOffers, usePrices, type Offer } from '@/lib/data'
 import { eth, num, shortAddr, timeLeft } from '@/lib/format'
+import { TokenLogo } from './TokenLogo'
 import { KindBadge } from './ui'
 
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -80,7 +81,12 @@ export function LiveOffers({ limit = 6 }: { limit?: number }) {
                 <Fragment key={key}>
                 <Row i={i}>
                   <td className="px-5 py-3"><KindBadge kind={o.kind} /></td>
-                  <td className="px-5 py-3 font-medium text-ink">{o.symbol}</td>
+                  <td className="px-5 py-3 font-medium text-ink">
+                    <span className="inline-flex items-center gap-2">
+                      <TokenLogo symbol={o.symbol} name={assets.data?.find((a) => a.address.toLowerCase() === o.token.toLowerCase())?.name} address={o.token} size={18} />
+                      {o.symbol}
+                    </span>
+                  </td>
                   <td className="px-5 py-3 font-mono tabular text-muted">{num(o.amount, 4)}</td>
                   <td className="px-5 py-3 font-mono tabular">{strikePer.toPrecision(3)} ETH</td>
                   <td className="px-5 py-3">

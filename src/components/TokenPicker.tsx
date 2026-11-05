@@ -3,6 +3,7 @@
 import { CaretDown, MagnifyingGlass } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Asset } from '@/lib/data'
+import { TokenLogo } from './TokenLogo'
 
 type Group = 'Robinhood stocks' | 'Tokenized stocks' | 'Crypto'
 export const groupOf = (a: Pick<Asset, 'name'>): Group =>
@@ -56,6 +57,7 @@ export function TokenPicker({
   return (
     <div ref={box} className={`relative ${className}`}>
       <button type="button" className="input flex w-full items-center gap-3 text-left" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
+        {current && <TokenLogo symbol={current.symbol} name={current.name} address={current.address} size={22} />}
         <span className="font-mono font-semibold">{current?.symbol ?? 'Select a token'}</span>
         {current && <span className="truncate text-sm text-muted">{clean(current.name)}</span>}
         <CaretDown size={14} className="ml-auto shrink-0 text-muted" />
@@ -95,6 +97,7 @@ export function TokenPicker({
                     onClick={() => pick(a.symbol)}
                     className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm ${i === hi ? 'bg-white/5' : ''} ${a.symbol === value ? 'text-accent' : ''}`}
                   >
+                    <TokenLogo symbol={a.symbol} name={a.name} address={a.address} />
                     <span className="w-24 shrink-0 font-mono font-semibold">{a.symbol}</span>
                     <span className="truncate text-muted">{clean(a.name)}</span>
                     {p ? <span className="ml-auto shrink-0 font-mono text-xs tabular text-muted">{p.toPrecision(3)} ETH</span> : null}

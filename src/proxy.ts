@@ -34,7 +34,8 @@ const CONNECT = [
 
 // Remote images the landing page uses: token logos (CoinGecko) and Option NFT art (OpenSea CDN, DiceBear fallback).
 // Images can't run code, so allowing these exact hosts doesn't weaken the script policy.
-const IMAGES = ['https://assets.coingecko.com', 'https://i2c.seadn.io', 'https://api.dicebear.com']
+// financialmodelingprep.com: company logos for the Robinhood Stock Tokens (TokenLogo).
+const IMAGES = ['https://assets.coingecko.com', 'https://i2c.seadn.io', 'https://api.dicebear.com', 'https://financialmodelingprep.com']
 
 const FRAMES = ['https://auth.privy.io', 'https://verify.walletconnect.com', 'https://verify.walletconnect.org', 'https://challenges.cloudflare.com']
 
