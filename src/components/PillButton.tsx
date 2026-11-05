@@ -9,23 +9,21 @@ import type { ReactNode } from 'react'
  * out of the circle to the top right while a second one slides in from the bottom left.
  * `premium`: the brand gradient with a glossy top light, a soft glow and a white disc (footer).
  * The disc holds a glyph instead of an arrow: `chart`, a mini price line like the Market chart with its area and
- * live endpoint, which redraws on hover (trading CTAs), or `dot`, a point that blooms into a ring (connect).
+ * live endpoint, which redraws on hover (trading CTAs). `none` drops the disc: a plain pill, label only (connect).
  */
-export function PillButton({ href, children, tone = 'accent', size = 'md', glyph = 'chart', className = '', onClick, disabled }: { href?: string; children: ReactNode; tone?: 'accent' | 'light' | 'dark' | 'premium'; size?: 'md' | 'sm'; glyph?: 'chart' | 'dot'; className?: string; onClick?: () => void; disabled?: boolean }) {
-  const cls = `pill pill-${tone} ${size === 'sm' ? 'pill-sm' : ''} ${className}`
+export function PillButton({ href, children, tone = 'accent', size = 'md', glyph = 'chart', className = '', onClick, disabled }: { href?: string; children: ReactNode; tone?: 'accent' | 'light' | 'dark' | 'premium'; size?: 'md' | 'sm'; glyph?: 'chart' | 'none'; className?: string; onClick?: () => void; disabled?: boolean }) {
+  const cls = `pill pill-${tone} ${size === 'sm' ? 'pill-sm' : ''} ${glyph === 'none' ? 'pill-plain' : ''} ${className}`
   const inner = (
     <>
       <span className="pill-label">
         <span className="pill-text">{children}</span>
         <span className="pill-text pill-text-2" aria-hidden>{children}</span>
       </span>
-      <span className="pill-circle" aria-hidden>
-        {glyph === 'chart' ? (
+      {glyph !== 'none' && (
+        <span className="pill-circle" aria-hidden>
           <Spark />
-        ) : (
-          <span className="pill-dot"><i /></span>
-        )}
-      </span>
+        </span>
+      )}
     </>
   )
   if (href) return <Link href={href} className={cls} onClick={onClick}>{inner}</Link>

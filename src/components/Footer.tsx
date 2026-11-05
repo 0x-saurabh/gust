@@ -13,7 +13,7 @@ import { PillButton } from './PillButton'
 
 const COLS: { t: string; l: { h: string; n: string }[] }[] = [
   { t: 'Product', l: [{ h: '/market', n: 'Market' }, { h: '/sell', n: 'Sell an option' }, { h: '/positions', n: 'Positions' }, { h: '/stake', n: 'Stake' }] },
-  { t: 'Protocol', l: [{ h: '/proof', n: 'Proof of burns' }, { h: '/docs', n: 'Documentation' }, { h: '/docs#contracts', n: 'Contracts' }, { h: '/docs#risks', n: 'Risks' }] },
+  { t: 'Protocol', l: [{ h: '/proof', n: 'Proof of burns' }, { h: 'https://docs.kyte.sh/', n: 'Documentation' }, { h: '/docs#contracts', n: 'Contracts' }, { h: '/docs#risks', n: 'Risks' }] },
   { t: 'Legal', l: [{ h: '/terms', n: 'Terms of Use' }, { h: '/privacy', n: 'Privacy Policy' }, { h: X_URL, n: 'X / @useKyte' }, { h: 'mailto:contact@kyte.sh', n: 'Contact' }] },
 ]
 

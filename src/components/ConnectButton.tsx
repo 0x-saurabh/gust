@@ -20,7 +20,7 @@ const SAVED_WALLET = 'kyte:wallet'
 export function ConnectButton() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
-  if (!mounted) return <PillButton tone="light" size="sm" glyph="dot" disabled>Connect wallet</PillButton>
+  if (!mounted) return <PillButton tone="light" size="sm" glyph="none" disabled>Connect wallet</PillButton>
   return PRIVY_APP_ID ? <PrivyConnect /> : <InjectedConnect />
 }
 
@@ -96,7 +96,7 @@ function PrivyConnect() {
     return (
       <div className="flex items-center gap-2">
         {error && <span className="hidden max-w-48 truncate text-xs text-danger md:inline" title={error}>{error}</span>}
-        <PillButton tone="light" size="sm" glyph="dot" onClick={() => { setError(null); connectWallet() }}>Connect wallet</PillButton>
+        <PillButton tone="light" size="sm" glyph="none" onClick={() => { setError(null); connectWallet() }}>Connect wallet</PillButton>
       </div>
     )
   }
@@ -181,7 +181,7 @@ function InjectedConnect() {
   if (!isConnected || !address) {
     const injected = connectors[0]
     return (
-      <PillButton tone="light" size="sm" glyph="dot" disabled={!injected || isPending} onClick={() => injected && connect({ connector: injected, chainId: chain.id })}>
+      <PillButton tone="light" size="sm" glyph="none" disabled={!injected || isPending} onClick={() => injected && connect({ connector: injected, chainId: chain.id })}>
         {isPending ? 'Connecting…' : 'Connect wallet'}
       </PillButton>
     )

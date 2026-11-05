@@ -356,12 +356,12 @@ p {
 @keyframes spark-pulse { 0%, 35% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.25); } 75% { opacity: 1; transform: scale(1); } 100% { opacity: 0.35; transform: scale(0.8); } }
 @keyframes spark-ping { 0%, 45% { opacity: 0; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1); } 90%, 100% { opacity: 0; transform: scale(3.2); } }
 .pill-sm .pill-spark { width: 15px; height: 11px; }
-.pill-dot { position: relative; display: grid; place-items: center; width: 14px; height: 14px; }
-.pill-dot i { display: block; width: 6px; height: 6px; border-radius: 9999px; background: currentColor; box-shadow: 0 0 0 0 currentColor; transition: transform 450ms var(--ease-base), box-shadow 450ms var(--ease-base); }
-.pill:hover .pill-dot i { box-shadow: 0 0 0 1.5px currentColor; transform: scale(1.9); background: transparent; }
 .pill:hover .pill-circle { transform: rotate(0deg) scale(1.08); }
 .pill-premium:hover .pill-circle { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 16px rgba(92, 255, 196, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.25) inset; }
-/* light pill (nav Connect wallet): white with a dark disc that flips to green on hover */
+/* plain pill: no disc, label centred with even padding */
+.pill-plain { padding: 4px 22px; }
+.pill-plain.pill-sm { padding: 3px 16px; }
+/* light pill (nav Connect wallet): pure white, label only */
 .pill-light { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 8px 22px -10px rgba(255, 255, 255, 0.35), 0 1px 4px rgba(0, 0, 0, 0.35); }
 .pill-light .pill-circle { transition: transform 500ms var(--ease-base), background-color 450ms var(--ease-base), color 450ms var(--ease-base); }
 .pill-light:hover .pill-circle { background: var(--color-accent); color: #04110c; }
@@ -376,7 +376,7 @@ p {
 .circle-btn:hover .circle-icon { transform: translateY(-140%); }
 .circle-btn:hover .circle-icon-2 { transform: translateY(0); }
 
-@media (prefers-reduced-motion: reduce) { .pill-text, .pill-text-2, .pill-dot i, .circle-icon { transition: none; } .pill-spark-line, .pill-spark-area, .pill-spark-dot, .pill-spark-ping { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pill-text, .pill-text-2, .circle-icon { transition: none; } .pill-spark-line, .pill-spark-area, .pill-spark-dot, .pill-spark-ping { animation: none; } }
 
 /* footer links: same roll as the social circles (text rolls up, its duplicate rolls in from below) */
 .link-roll { position: relative; display: inline-block; overflow: hidden; vertical-align: top; transition: color 300ms var(--ease-base); }

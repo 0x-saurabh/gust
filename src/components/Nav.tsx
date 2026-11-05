@@ -3,22 +3,29 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { isDevnet } from '@/lib/chains'
 import { BRAND } from '@/lib/config'
 import { ConnectButton } from './ConnectButton'
 import { Faucet } from './Faucet'
 import { Logo } from './Logo'
 
+export const DOCS_URL = 'https://docs.kyte.sh/'
 const LINKS = [
   { href: '/market', label: 'Market' },
   { href: '/sell', label: 'Sell' },
   { href: '/positions', label: 'Positions' },
   { href: '/stake', label: 'Stake' },
   { href: '/proof', label: 'Proof' },
-  { href: '/docs', label: 'Docs' },
+  { href: DOCS_URL, label: 'Docs' },
 ]
 const EASE = [0.22, 1, 0.36, 1] as const
+
+/** In-app routes go through next/link; external ones (the docs site) open in a new tab. */
+function NavLink({ href, children, ...rest }: { href: string; children: ReactNode; className?: string; 'aria-current'?: 'page' }) {
+  if (href.startsWith('/')) return <Link href={href} {...rest}>{children}</Link>
+  return <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>{children}</a>
+}
 
 /** Floating pill bar (B7): translucent, blurred, off the top edge. Mobile menu is a full height panel. */
 export function Nav() {
@@ -43,13 +50,13 @@ export function Nav() {
               const active = path === l.href
               return (
                 // Same hover as the footer links: the label rolls up and a fresh copy rolls in from below.
-                <Link key={l.href} href={l.href} aria-current={active ? 'page' : undefined} className={`lnk-nav relative rounded-full px-3 py-1 text-sm transition-colors duration-300 ${active ? 'text-ink' : 'text-muted hover:text-ink'}`}>
+                <NavLink key={l.href} href={l.href} aria-current={active ? 'page' : undefined} className={`lnk-nav relative rounded-full px-3 py-1 text-sm transition-colors duration-300 ${active ? 'text-ink' : 'text-muted hover:text-ink'}`}>
                   {active && <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-white/[0.08]" transition={{ type: 'spring', stiffness: 300, damping: 28 }} />}
                   <span className="link-roll relative">
                     <span className="link-roll-text">{l.label}</span>
                     <span className="link-roll-text link-roll-text-2" aria-hidden>{l.label}</span>
                   </span>
-                </Link>
+                </NavLink>
               )
             })}
           </div>
@@ -88,9 +95,9 @@ export function Nav() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, ease: EASE, delay: Math.min(i * 0.06, 0.4) }}
                 >
-                  <Link href={l.href} aria-current={path === l.href ? 'page' : undefined} className={`block border-b border-line py-4 text-2xl ${path === l.href ? 'text-ink' : 'text-muted'}`}>
+                  <NavLink href={l.href} aria-current={path === l.href ? 'page' : undefined} className={`block border-b border-line py-4 text-2xl ${path === l.href ? 'text-ink' : 'text-muted'}`}>
                     {l.label}
-                  </Link>
+                  </NavLink>
                 </motion.li>
               ))}
               <motion.li initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE, delay: 0.4 }} className="pt-6">
