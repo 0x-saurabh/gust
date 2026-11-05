@@ -4,7 +4,7 @@ import { useConnectWallet, useWallets } from '@privy-io/react-auth'
 import { useSetActiveWallet } from '@privy-io/wagmi'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
+import { useAccount, useConnect, useConnectors, useDisconnect, useSwitchChain } from 'wagmi'
 import { chain } from '@/lib/chains'
 import { PRIVY_APP_ID } from '@/lib/config'
 import { shortAddr } from '@/lib/format'
@@ -56,6 +56,10 @@ function PrivyConnect() {
   }, [target, wallets, setActiveWallet, path, router])
   // After a reload: Privy has silently re-detected the wallet (eth_accounts, no prompt) but wagmi has no account.
   // Re-activate the wallet we saved, once per address, so the session survives navigation and refreshes.
+  // Only once Privy has registered the wallet's wagmi connector and that connector already sees the address
+  // (eth_accounts, no prompt). Calling setActiveWallet before that makes Privy fall back to a fresh connect,
+  // which opens its "Waiting for MetaMask" dialog on every page load.
+  const connectors = useConnectors()
   const [restored, setRestored] = useState<string | null>(null)
   useEffect(() => {
     if (!ready || isConnected || target) return
@@ -63,9 +67,19 @@ function PrivyConnect() {
     if (!saved || saved === restored) return
     const w = wallets.find((x) => x.address.toLowerCase() === saved)
     if (!w) return
-    setRestored(saved)
-    setActiveWallet(w).catch((e) => setError(String(e)))
-  }, [ready, wallets, isConnected, target, restored, setActiveWallet])
+    const connector = connectors.find((c) => c.id === w.meta.id)
+    if (!connector) return
+    let cancelled = false
+    connector
+      .getAccounts()
+      .then((accounts) => {
+        if (cancelled || !accounts.some((a) => a.toLowerCase() === saved)) return
+        setRestored(saved)
+        return setActiveWallet(w)
+      })
+      .catch((e) => setError(String(e)))
+    return () => { cancelled = true }
+  }, [ready, wallets, connectors, isConnected, target, restored, setActiveWallet])
 
   const forget = () => {
     localStorage.removeItem(SAVED_WALLET)
