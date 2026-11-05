@@ -33,9 +33,9 @@ export function Nav() {
   return (
     <>
       <header className="sticky top-4 z-20 px-4">
-        <nav aria-label="Main" className="glass mx-auto flex h-12 w-full max-w-5xl items-center gap-4 rounded-full pl-4 pr-2">
+        <nav aria-label="Main" className="glass mx-auto flex h-12 w-full max-w-5xl items-center gap-4 rounded-full pl-2 pr-2">
           <Link href="/" className="flex items-center gap-2 text-sm font-semibold">
-            <Logo size={18} />
+            <Logo size={30} />
             {BRAND.name}
             {isDevnet && <span className="ml-1 rounded-full border border-accent/30 px-2 py-0.5 font-mono text-xs uppercase tracking-wider text-accent">devnet</span>}
           </Link>

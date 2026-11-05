@@ -8,6 +8,7 @@ import { BRAND } from '@/lib/config'
 import { useHealth } from '@/lib/data'
 import { XButton, X_URL } from './landing/kit'
 import { OutlineWord } from './landing/OutlineWord'
+import { Logo } from './Logo'
 import { PillButton } from './PillButton'
 
 const COLS: { t: string; l: { h: string; n: string }[] }[] = [
@@ -44,8 +45,9 @@ export function Footer() {
       <div className="relative mx-auto max-w-[1240px] px-5 py-16 md:px-8 md:py-20">
         <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/kyte-wordmark.png" alt={BRAND.name} className="h-9 w-auto" />
+            <Link href="/" aria-label={`${BRAND.name} home`} className="inline-block">
+              <Logo size={64} />
+            </Link>
             <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-ink/60">
               Options, on Your terms. A non-custodial, fully collateralised options market on Robinhood Chain.
             </p>
