@@ -15,9 +15,13 @@ export const ogImage = {
   alt: `${BRAND.name}: Options, on Your terms. A non-custodial options market on Robinhood Chain.`,
 }
 
-/** Absolute site origin: the real domain when set, else Render's own hostname, else the dev server. */
+/** The public domain. Production builds use it unless NEXT_PUBLIC_SITE_URL says otherwise, so link previews
+ * never point at the host's own name (kyte-web.onrender.com) when the site is served from kyte.sh. */
+export const CANONICAL_ORIGIN = 'https://kyte.sh'
+
+/** Absolute site origin: NEXT_PUBLIC_SITE_URL when set, else kyte.sh in production, else the dev server. */
 export const siteUrl = (fallbackOrigin = 'http://localhost:3010') =>
-  process.env.NEXT_PUBLIC_SITE_URL || process.env.RENDER_EXTERNAL_URL || fallbackOrigin
+  process.env.NEXT_PUBLIC_SITE_URL || (process.env.NODE_ENV === 'production' ? CANONICAL_ORIGIN : fallbackOrigin)
 
 /**
  * Link-preview crawlers: the ones that unfurl a pasted URL into a card. Search engines (Google, Bing...) are left

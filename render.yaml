@@ -78,4 +78,4 @@ services:
       - key: NEXT_PUBLIC_PRIVY_APP_ID
         sync: false
       - key: NEXT_PUBLIC_SITE_URL
-        sync: false
+        value: https://kyte.sh # link previews and canonical URLs use this domain
