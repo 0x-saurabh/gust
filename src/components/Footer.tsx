@@ -33,6 +33,15 @@ function FootLink({ href, children }: { href: string; children: string }) {
   return <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={cls}>{inner}</a>
 }
 
+/** Robinhood's feather, simplified, in Robinhood green: identifies the network in the status pill. */
+function RobinhoodMark({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="#00C805">
+      <path d="M19.6 2.2c-2.5-.6-6.1.2-9 2.6-2.3 1.9-4 4.6-4.8 7.5-.4 1.4-.5 2.9-.3 4.3L3 20.4a.6.6 0 0 0 .8.8l4-2.5c1.3.6 2.8.9 4.3.8 2.7-.2 5.2-1.6 6.9-3.7 2.2-2.8 3-6.6 2.3-10.1-.3-1.7-.9-3.1-1.7-3.5zm-1.2 4.3c-.9 2.6-2.7 5.1-5 7a16 16 0 0 1-5.8 3.1c.3-2.6 1.6-5.2 3.6-7.1 2-2 4.6-3.2 7.2-3.4v.4z" />
+    </svg>
+  )
+}
+
 export function Footer() {
   const health = useHealth()
   const synced = Boolean(health.data && health.data.lastBlock > 0)
@@ -73,16 +82,21 @@ export function Footer() {
         <div className="mt-16 md:mt-20">
           <OutlineWord />
         </div>
-        <div className="hair mt-10 flex flex-col gap-4 border-t pt-8 text-[13px] text-ink/45 md:flex-row md:items-center md:justify-between">
-          <p className="max-w-2xl leading-relaxed">Options are risky and can expire worthless. Nothing here is investment advice. Not available where prohibited. {BRAND.name} is not affiliated with or endorsed by Robinhood.</p>
+        <div className="hair mt-10 flex flex-col gap-6 border-t pt-8 text-[13px] text-ink/45 md:flex-row md:items-start md:justify-between">
+          <p className="max-w-xl leading-relaxed">Options are risky and can expire worthless. Nothing here is investment advice. Not available where prohibited. {BRAND.name} is not affiliated with or endorsed by Robinhood.</p>
           <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
-            <span className="hair inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-xs text-ink/60">
-              <span className={`relative size-1.5 rounded-full ${synced ? 'bg-[#6EFF85]' : 'bg-warn'}`}>
-                {synced && <span className="absolute inset-0 animate-ping rounded-full bg-[#6EFF85] opacity-60 motion-reduce:hidden" />}
+            {/* Chain status: a glass pill with the indexer pulse, the last block and the network with its mark. */}
+            <span className="status-pill">
+              <span className={`relative flex size-2 ${synced ? '' : 'opacity-80'}`}>
+                {synced && <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#6EFF85] opacity-60 motion-reduce:hidden" />}
+                <span className={`relative inline-flex size-2 rounded-full ${synced ? 'bg-[#6EFF85]' : 'bg-warn'}`} style={synced ? { boxShadow: '0 0 10px rgba(110,255,133,.8)' } : undefined} />
               </span>
-              {synced ? `Indexer synced · block #${health.data?.lastBlock}` : 'Connecting…'} · {chain.name}
+              <span className={synced ? 'text-ink/85' : ''}>{synced ? 'Indexer synced' : 'Connecting…'}</span>
+              {synced && <><span className="sep" /><span className="tabular-nums">block #{health.data?.lastBlock.toLocaleString('en-US')}</span></>}
+              <span className="sep" />
+              <span className="inline-flex items-center gap-1.5 text-ink/85"><RobinhoodMark size={13} />{chain.name}</span>
             </span>
-            <p className="mono">© {new Date().getFullYear()} {BRAND.name} · kyte.sh</p>
+            <p className="mono text-ink/40">© {new Date().getFullYear()} {BRAND.name} · kyte.sh</p>
           </div>
         </div>
       </div>

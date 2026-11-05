@@ -6,6 +6,7 @@ import { TimeLeft } from '@/components/TimeLeft'
 import { TokenChart, type PriceLine } from '@/components/TokenChart'
 import { TokenLogo } from '@/components/TokenLogo'
 import { TokenPicker } from '@/components/TokenPicker'
+import { TradeHistory } from '@/components/TradeHistory'
 import { KindBadge, Note, PageHeader, Segmented } from '@/components/ui'
 import { isFillable, useAssets, useOffers, usePrices, type Kind, type Offer } from '@/lib/data'
 import { eth, num, shortAddr } from '@/lib/format'
@@ -125,6 +126,8 @@ export default function MarketPage() {
           </tbody>
         </table>
       </div>
+
+      <TradeHistory symbol={symbol} />
 
       {buying && <BuyDialog offer={buying} onClose={() => setBuying(null)} />}
     </>

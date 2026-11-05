@@ -2,10 +2,12 @@
 
 import { useConnectWallet, useWallets } from '@privy-io/react-auth'
 import { useSetActiveWallet } from '@privy-io/wagmi'
+import { ArrowSquareOut, Check, Copy, SignOut } from '@phosphor-icons/react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAccount, useConnect, useConnectors, useDisconnect, useReconnect, useSwitchChain } from 'wagmi'
-import { chain } from '@/lib/chains'
+import { chain, explorerAddress } from '@/lib/chains'
 import { PRIVY_APP_ID } from '@/lib/config'
 import { shortAddr } from '@/lib/format'
 
@@ -17,7 +19,7 @@ const SAVED_WALLET = 'kyte:wallet'
 export function ConnectButton() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
-  if (!mounted) return <button className="btn btn-ghost btn-sm" disabled>Connect</button>
+  if (!mounted) return <button className="btn btn-premium" disabled>Connect wallet</button>
   return PRIVY_APP_ID ? <PrivyConnect /> : <InjectedConnect />
 }
 
@@ -93,7 +95,7 @@ function PrivyConnect() {
     return (
       <div className="flex items-center gap-2">
         {error && <span className="hidden max-w-48 truncate text-xs text-danger md:inline" title={error}>{error}</span>}
-        <button className="btn btn-primary btn-sm" onClick={() => { setError(null); connectWallet() }}>Connect wallet</button>
+        <button className="btn btn-premium" onClick={() => { setError(null); connectWallet() }}><span>Connect wallet</span></button>
       </div>
     )
   }
@@ -104,11 +106,72 @@ function PrivyConnect() {
       </button>
     )
   }
+  return <WalletMenu address={address} onDisconnect={forget} />
+}
+
+/**
+ * Connected state: a glass pill with the address. Click opens a small menu: copy the address, open it on the
+ * explorer, disconnect. Closes on outside click and Escape.
+ */
+function WalletMenu({ address, onDisconnect }: { address: string; onDisconnect: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [open])
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(address) } catch {}
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1400)
+  }
+  const url = explorerAddress(address)
   return (
-    <button className="btn btn-ghost btn-sm font-mono" onClick={forget} title="Disconnect">
-      <span className="size-2 rounded-full bg-accent" />
-      {shortAddr(address)}
-    </button>
+    <div ref={ref} className="relative">
+      <button type="button" className="btn btn-glass btn-glass-sm font-mono" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="relative flex size-2">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-50 motion-reduce:hidden" />
+          <span className="relative inline-flex size-2 rounded-full bg-accent" />
+        </span>
+        {shortAddr(address)}
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className={`transition-transform duration-300 ${open ? 'rotate-180' : ''}`}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="wallet-menu absolute right-0 top-[calc(100%+10px)] z-30 w-72 origin-top-right rounded-2xl p-1.5"
+          >
+            <div className="px-3 pb-2 pt-2">
+              <div className="whitespace-nowrap text-[10px] uppercase tracking-[0.16em] text-muted">Connected · {chain.name}</div>
+              <div className="mt-1 truncate font-mono text-xs text-ink/80">{address}</div>
+            </div>
+            <div className="mx-1 mb-1 h-px" style={{ background: 'rgba(160,255,220,0.1)' }} />
+            <button type="button" role="menuitem" className="wallet-menu-item" onClick={copy}>
+              {copied ? <Check size={15} className="text-accent" /> : <Copy size={15} />}
+              {copied ? 'Copied' : 'Copy address'}
+            </button>
+            {url && (
+              <a role="menuitem" className="wallet-menu-item" href={url} target="_blank" rel="noreferrer">
+                <ArrowSquareOut size={15} />View on explorer
+              </a>
+            )}
+            <button type="button" role="menuitem" className="wallet-menu-item danger" onClick={() => { setOpen(false); onDisconnect() }}>
+              <SignOut size={15} />Disconnect
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -121,18 +184,13 @@ function InjectedConnect() {
   if (!isConnected || !address) {
     const injected = connectors[0]
     return (
-      <button className="btn btn-primary btn-sm" disabled={!injected || isPending} onClick={() => injected && connect({ connector: injected, chainId: chain.id })}>
-        {isPending ? 'Connecting…' : 'Connect wallet'}
+      <button className="btn btn-premium" disabled={!injected || isPending} onClick={() => injected && connect({ connector: injected, chainId: chain.id })}>
+        <span>{isPending ? 'Connecting…' : 'Connect wallet'}</span>
       </button>
     )
   }
   if (chainId !== chain.id) {
     return <button className="btn btn-sm border border-warn/50 text-warn" onClick={() => switchChain({ chainId: chain.id })}>Switch to {chain.name}</button>
   }
-  return (
-    <button className="btn btn-ghost btn-sm font-mono" onClick={() => disconnect()} title="Disconnect">
-      <span className="size-2 rounded-full bg-accent" />
-      {shortAddr(address)}
-    </button>
-  )
+  return <WalletMenu address={address} onDisconnect={() => disconnect()} />
 }

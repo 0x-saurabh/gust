@@ -414,6 +414,35 @@ p {
 .btn-glass:hover::before { opacity: 1; }
 .btn-glass svg:last-child { transition: transform 350ms var(--ease-base); }
 .btn-glass:hover svg:last-child { transform: translate(2px, -2px); }
+/* nav sizes of the same two finishes: 36px tall, for the Connect button (premium) and secondary pills (glass) */
+.btn-premium {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 36px;
+  padding: 0 16px;
+  color: #03130c;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  background: linear-gradient(100deg, #7cff8e 0%, #5cffc4 48%, #4af0ff 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset, 0 -1px 0 rgba(0, 40, 30, 0.18) inset, 0 8px 22px -10px rgba(92, 255, 196, 0.5), 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.btn-premium::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 55%); pointer-events: none; }
+.btn-premium::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%); transform: translateX(-120%); transition: transform 900ms var(--ease-base); pointer-events: none; }
+.btn-premium:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 -1px 0 rgba(0, 40, 30, 0.18) inset, 0 14px 30px -10px rgba(92, 255, 196, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4); }
+.btn-premium:not(:disabled):hover::after { transform: translateX(120%); }
+.btn-premium > * { position: relative; z-index: 1; }
+.btn-glass-sm { height: 36px; padding: 0 14px; font-size: 13px; }
+/* wallet menu */
+.wallet-menu { background: linear-gradient(180deg, rgba(14, 18, 16, 0.96), rgba(6, 8, 7, 0.98)); border: 1px solid rgba(160, 255, 220, 0.12); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 24px 60px -24px rgba(0, 0, 0, 0.9); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.wallet-menu-item { display: flex; width: 100%; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; color: var(--color-ink); transition: background-color 200ms var(--ease-base), color 200ms var(--ease-base); }
+.wallet-menu-item:hover { background: rgba(110, 255, 170, 0.07); }
+.wallet-menu-item.danger { color: #ff8b8b; }
+.wallet-menu-item.danger:hover { background: rgba(255, 107, 107, 0.08); }
+/* footer status pill */
+.status-pill { display: inline-flex; align-items: center; gap: 10px; height: 36px; padding: 0 14px 0 12px; border-radius: 9999px; font-family: var(--font-mono); font-size: 12px; color: rgba(255, 255, 255, 0.72); background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)); border: 1px solid rgba(160, 255, 220, 0.14); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 6px 18px -10px rgba(0, 0, 0, 0.6); }
+.status-pill .sep { width: 1px; height: 14px; background: rgba(160, 255, 220, 0.14); }
 .lnk { position: relative; }
 .lnk::after { content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .lnk:hover::after { transform: scaleX(1); transform-origin: left; }
