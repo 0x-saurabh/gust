@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # ONE command: $KYTE launch on Robinhood Chain mainnet. Re-run to resume; every step checks what is done.
+# Simplest entry point: scripts/mainnet/kyte-token.sh 0xToken (checks the token, records it in .env, runs this,
+# then refreshes the local services).
 #
 #   cd /Volumes/my_files/newii/gust-website && KYTE_TOKEN=0x... KYTE_PER_ETH=... scripts/mainnet/kyte-launch.sh
 #
