@@ -469,9 +469,19 @@ const routes = {
     if (symbol) out = out.filter((o) => o.symbol === symbol)
     return out.sort((a, b) => a.expiry - b.expiry)
   },
+  // Newest first. `token=SYM` keeps only the option events of that market (fee, burn and stake events have no token).
   '/activity': async (u) => {
-    const limit = intParam(u, 'limit', 30, 1, 100)
-    return all('SELECT * FROM events ORDER BY block DESC, log_index DESC LIMIT ?', limit).map(describeEvent)
+    const limit = intParam(u, 'limit', 30, 1, 500)
+    const symbol = u.searchParams.get('token') == null ? null : symbolParam(u, null)
+    if (!symbol) return all('SELECT * FROM events ORDER BY block DESC, log_index DESC LIMIT ?', limit).map(describeEvent)
+    const out = []
+    // Filtering needs the offer behind each event; walk the log in pages until `limit` rows match or it runs out.
+    for (let offset = 0; out.length < limit; offset += 500) {
+      const page = all('SELECT * FROM events ORDER BY block DESC, log_index DESC LIMIT 500 OFFSET ?', offset)
+      if (page.length === 0) break
+      for (const e of page) { const d = describeEvent(e); if (d.symbol === symbol) { out.push(d); if (out.length === limit) break } }
+    }
+    return out
   },
   '/prices': async () => {
     const out = {}
@@ -561,12 +571,21 @@ function describeEvent(e) {
   const kind = o?.kind ?? 'call'
   const base = { key: e.key, name: e.name, at: e.at, tx: e.tx, kind }
   const E = (v) => `${f18(v).toLocaleString('en-US', { maximumFractionDigits: 4 })} ETH`
+  // Structured fields for the trade history tables: the offer behind the event, in plain numbers.
+  const trade = o
+    ? {
+        id: o.id, symbol: o.symbol, token: o.token, amount: Number(formatUnits(BigInt(o.amount), o.decimals)),
+        strike: f18(o.strike), premium: f18(o.premium), seller: o.seller, holder: o.holder || null, expiry: o.expiry,
+        // Who acted: the buyer on a fill, the holder on an exercise, the seller otherwise.
+        actor: a.buyer ?? a.holder ?? a.caller ?? o.seller,
+      }
+    : {}
   switch (e.name) {
-    case 'OfferCreated': return { ...base, text: `New ${kind}: ${amt} ${sym} @ ${E(a.strike)}`, sub: `premium ${E(a.premium)}` }
-    case 'OptionBought': return { ...base, text: `${kind} on ${amt} ${sym} filled`, sub: `premium ${E(a.premium)}` }
-    case 'Exercised': return { ...base, text: `${kind} exercised: ${amt} ${sym}`, sub: `strike ${E(a.strike)}` }
-    case 'Expired': return { ...base, text: `${kind} on ${amt} ${sym} expired`, sub: 'collateral returned' }
-    case 'OfferCancelled': return { ...base, text: `${kind} on ${amt} ${sym} cancelled`, sub: 'collateral returned' }
+    case 'OfferCreated': return { ...base, ...trade, text: `New ${kind}: ${amt} ${sym} @ ${E(a.strike)}`, sub: `premium ${E(a.premium)}` }
+    case 'OptionBought': return { ...base, ...trade, text: `${kind} on ${amt} ${sym} filled`, sub: `premium ${E(a.premium)}` }
+    case 'Exercised': return { ...base, ...trade, text: `${kind} exercised: ${amt} ${sym}`, sub: `strike ${E(a.strike)}` }
+    case 'Expired': return { ...base, ...trade, text: `${kind} on ${amt} ${sym} expired`, sub: 'collateral returned' }
+    case 'OfferCancelled': return { ...base, ...trade, text: `${kind} on ${amt} ${sym} cancelled`, sub: 'collateral returned' }
     case 'FeesSplit': return { ...base, kind: 'fee', text: `Fees split: ${E(BigInt(a.stakers) + BigInt(a.buyback) + BigInt(a.ops))}`, sub: `${E(a.stakers)} stakers · ${E(a.buyback)} burn · ${E(a.ops)} ops` }
     case 'Burned': return { ...base, kind: 'burn', text: `${f18(a.tokenOut).toLocaleString('en-US', { maximumFractionDigits: 0 })} KYTE burned`, sub: `${E(a.wethIn)} via Uniswap v4` }
     case 'Staked': return { ...base, kind: 'stake', text: `${f18(a.amount).toLocaleString('en-US', { maximumFractionDigits: 0 })} KYTE staked`, sub: `active from epoch ${a.activeFromEpoch}` }

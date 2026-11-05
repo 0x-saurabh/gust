@@ -11,7 +11,9 @@ import { Bleed, EASE as ease, Reveal, SectionHead, Wrap, XButton, scrollToId } f
 import { Tilt } from '@/components/motion/primitives'
 import { FlowStory } from '@/components/FlowStory'
 import { ProductFrame } from '@/components/ProductFrame'
+import { TradeTable, isTrade } from '@/components/TradeHistory'
 import { chain, isDevnet, legacyMarkets } from '@/lib/chains'
+import { useActivity } from '@/lib/data'
 import { BRAND } from '@/lib/config'
 
 const AuroraCanvas = dynamic(() => import('@/components/fx/AuroraCanvas').then((m) => m.AuroraCanvas), { ssr: false })
@@ -84,8 +86,27 @@ function LiveFrame() {
       <Wrap>
         <SectionHead eyebrow="Live from the chain" title={<>Real tokens. <span className="grad-text">Real offers.</span></>} sub="What is trading on Robinhood Chain right now, and the options you can buy on Kyte this minute." />
         <Reveal className="mt-12"><Tilt max={2}><ProductFrame /></Tilt></Reveal>
+        <Reveal className="mt-10" delay={0.1}><RecentTrades /></Reveal>
       </Wrap>
     </Bleed>
+  )
+}
+
+/** The last trades on the market, so a visitor sees that options are actually being filled and settled. */
+function RecentTrades() {
+  const feed = useActivity(40)
+  const rows = (feed.data ?? []).filter(isTrade).slice(0, 6)
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">Recent trades</div>
+          <p className="mt-1 text-sm text-muted">Listings, fills and settlements as they land on chain. Every row is a real transaction.</p>
+        </div>
+        <Link href="/trades" className="btn btn-ghost btn-sm">All trades <ArrowRight size={14} /></Link>
+      </div>
+      <TradeTable rows={rows} loading={feed.isPending} empty="No trades yet." compact />
+    </div>
   )
 }
 

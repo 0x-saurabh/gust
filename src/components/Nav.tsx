@@ -16,6 +16,7 @@ const LINKS = [
   { href: '/sell', label: 'Sell' },
   { href: '/positions', label: 'Positions' },
   { href: '/stake', label: 'Stake' },
+  { href: '/trades', label: 'Trades' },
   { href: '/proof', label: 'Proof' },
   { href: DOCS_URL, label: 'Docs' },
 ]

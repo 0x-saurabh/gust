@@ -416,22 +416,29 @@ export function useStats() {
 
 // ------------------------------------------------------------------ live feed + chain pulse (indexer only)
 
-export type Activity = { key: string; name: string; at: number; tx: string; kind: string; text: string; sub: string }
+export type Activity = {
+  key: string; name: string; at: number; tx: string; kind: string; text: string; sub: string
+  // Option events carry the offer behind them (fee, burn and stake events do not).
+  id?: string; symbol?: string; token?: string; amount?: number; strike?: number; premium?: number
+  seller?: string; holder?: string | null; expiry?: number; actor?: string
+}
 
-export function useActivity(limit = 30) {
+/** Chain events, newest first. `symbol` keeps only that market's option events (filtered by the indexer). */
+export function useActivity(limit = 30, symbol?: string) {
   const live = useLive()
   return useQuery({
-    queryKey: ['activity', live, limit],
+    queryKey: ['activity', live, limit, symbol ?? ''],
     queryFn: async (): Promise<Activity[]> => {
       if (!live) {
         const now = Math.floor(Date.now() / 1000)
-        return demo.OFFERS.slice(0, limit).map((o, i) => ({
+        return demo.OFFERS.filter((o) => !symbol || o.symbol === symbol).slice(0, limit).map((o, i) => ({
           key: `demo-${o.id}`, name: 'OfferCreated', at: now - i * 137, tx: '0x' + String(o.id).padStart(64, '0'), kind: o.kind,
           text: `New ${o.kind}: ${o.amount.toLocaleString('en-US')} ${o.symbol} @ ${o.strike} ETH`, sub: `premium ${o.premium} ETH`,
+          id: String(o.id), symbol: o.symbol, amount: o.amount, strike: o.strike, premium: o.premium, seller: o.seller, actor: o.seller,
         }))
       }
       if (!INDEXER_URL) return []
-      return api<Activity[]>(`/activity?limit=${limit}`)
+      return api<Activity[]>(`/activity?limit=${limit}${symbol ? `&token=${encodeURIComponent(symbol)}` : ''}`)
     },
     refetchInterval: live ? 6_000 : false,
   })
