@@ -20,7 +20,7 @@ type AssetId = 'tokens' | 'nft' | 'premSeller' | 'premFee' | 'strikeSeller' | 's
 type Tone = 'token' | 'eth' | 'nft'
 type Asset = { id: AssetId; label: string; tone: Tone }
 type Ledger = Partial<Record<AssetId, NodeId | null>>
-type Step = { n: string; eyebrow: string; title: string; body: string; frames: Ledger[]; badges?: Partial<Record<NodeId, string>> }
+type Step = { n: string; eyebrow: string; title: string; body: string; facts: [string, string][]; frames: Ledger[]; badges?: Partial<Record<NodeId, string>> }
 type Traveller = { key: string; asset: Asset; from: NodeId; to: NodeId }
 
 const NODES: { id: NodeId; name: string; icon: Icon; x: number; y: number }[] = [
@@ -166,11 +166,11 @@ export function FlowStory() {
     const afterFill: Ledger = { tokens: 'escrow', premSeller: 'seller', premFee: 'vault', nft: 'buyer' }
     const afterExercise: Ledger = { tokens: 'buyer', premSeller: 'seller', premFee: 'vault', strikeSeller: 'seller', strikeFee: 'vault', nft: null }
     const steps: Step[] = [
-      { n: '01', eyebrow: 'Lock', title: 'The seller locks the tokens.', body: `${f.amount} move into the Kyte escrow. The offer is live with a strike of ${f.strike} and a premium of ${f.premium}. Nothing is sold naked: the contract holds the full amount until the option settles.`, frames: [{ tokens: 'seller' }, { tokens: 'escrow' }], badges: { escrow: 'Locked' } },
-      { n: '02', eyebrow: 'Fill', title: 'The buyer pays the premium.', body: `${f.premium} is paid up front: ${f.premSeller} to the seller and ${f.premFee} (${FEES.premiumBps / 100}%) to the FeeVault. The buyer receives an Option NFT, the right to buy ${f.amount} for ${f.strike} before expiry.`, frames: [{ tokens: 'escrow', premSeller: 'buyer', premFee: 'buyer' }, { tokens: 'escrow', premSeller: 'seller', premFee: 'vault' }, { tokens: 'escrow', premSeller: 'seller', premFee: 'vault', nft: 'escrow' }, afterFill], badges: { escrow: 'Locked', buyer: 'Holds the NFT' } },
-      { n: '03', eyebrow: 'Exercise', title: 'In the money? The holder exercises.', body: `The holder pays the strike of ${f.strike}: ${f.strikeSeller} to the seller, ${f.strikeFee} (${FEES.exerciseBps / 100}%) to the FeeVault. The escrow releases ${f.amount} to the holder and the NFT is burned. No oracle, no counterparty risk.`, frames: [{ ...afterFill, strikeSeller: 'buyer', strikeFee: 'buyer' }, { ...afterFill, strikeSeller: 'seller', strikeFee: 'vault' }, afterExercise], badges: { escrow: 'Released', buyer: 'NFT burned' } },
-      { n: '04', eyebrow: 'Or expiry', title: 'Out of the money? It expires.', body: `After expiry anyone can call expire. The escrow returns ${f.amount} to the seller, who keeps the ${f.premSeller} premium. The holder's NFT is burned. Either way, the seller was paid for taking the other side.`, frames: [afterFill, { ...afterFill, tokens: 'seller', nft: null }], badges: { escrow: 'Returned', seller: `Kept ${f.premSeller}` } },
-      { n: '05', eyebrow: 'Split', title: 'Fees are split by code.', body: `Once per epoch, anyone can call split. The ${f.fees} collected goes ${SPLIT.stakersBps / 100}% to ${BRAND.token} stakers (${f.stakers}), ${SPLIT.buybackBps / 100}% to buy ${BRAND.token} on Uniswap v4 and burn it (${f.burn}), ${SPLIT.opsBps / 100}% to operations (${f.ops}). The events are the proof.`, frames: [afterExercise, { ...afterExercise, premFee: null, strikeFee: null, splitStakers: 'vault', splitBurn: 'vault', splitOps: 'vault' }, { ...afterExercise, premFee: null, strikeFee: null, splitStakers: 'stakers', splitBurn: 'burn', splitOps: 'ops' }, { ...afterExercise, premFee: null, strikeFee: null, splitStakers: 'stakers', splitBurn: null, splitOps: 'ops' }], badges: { burn: `${BRAND.token} burned` } },
+      { n: '01', eyebrow: 'Lock', title: 'The seller locks the tokens.', body: `${f.amount} move into the Kyte escrow. The offer is live with a strike of ${f.strike} and a premium of ${f.premium}. Nothing is sold naked: the contract holds the full amount until the option settles.`, facts: [['Status', 'OPEN'], ['Collateral', f.amount], ['Strike', f.strike], ['Premium', f.premium]], frames: [{ tokens: 'seller' }, { tokens: 'escrow' }], badges: { escrow: 'Locked' } },
+      { n: '02', eyebrow: 'Fill', title: 'The buyer pays the premium.', body: `${f.premium} is paid up front: ${f.premSeller} to the seller and ${f.premFee} (${FEES.premiumBps / 100}%) to the FeeVault. The buyer receives an Option NFT, the right to buy ${f.amount} for ${f.strike} before expiry.`, facts: [['Status', 'FILLED'], ['Seller receives', `${f.premSeller} (${100 - FEES.premiumBps / 100}%)`], ['Fee vault', `${f.premFee} (${FEES.premiumBps / 100}%)`], ['Buyer holds', 'Option NFT']], frames: [{ tokens: 'escrow', premSeller: 'buyer', premFee: 'buyer' }, { tokens: 'escrow', premSeller: 'seller', premFee: 'vault' }, { tokens: 'escrow', premSeller: 'seller', premFee: 'vault', nft: 'escrow' }, afterFill], badges: { escrow: 'Locked', buyer: 'Holds the NFT' } },
+      { n: '03', eyebrow: 'Exercise', title: 'In the money? The holder exercises.', body: `The holder pays the strike of ${f.strike}: ${f.strikeSeller} to the seller, ${f.strikeFee} (${FEES.exerciseBps / 100}%) to the FeeVault. The escrow releases ${f.amount} to the holder and the NFT is burned. No oracle, no counterparty risk.`, facts: [['Status', 'EXERCISED'], ['Holder pays', f.strike], ['Seller receives', f.strikeSeller], ['Fee vault', `${f.strikeFee} (${FEES.exerciseBps / 100}%)`]], frames: [{ ...afterFill, strikeSeller: 'buyer', strikeFee: 'buyer' }, { ...afterFill, strikeSeller: 'seller', strikeFee: 'vault' }, afterExercise], badges: { escrow: 'Released', buyer: 'NFT burned' } },
+      { n: '04', eyebrow: 'Or expiry', title: 'Out of the money? It expires.', body: `After expiry anyone can call expire. The escrow returns ${f.amount} to the seller, who keeps the ${f.premSeller} premium. The holder's NFT is burned. Either way, the seller was paid for taking the other side.`, facts: [['Status', 'EXPIRED'], ['Returned to seller', f.amount], ['Seller keeps', f.premSeller], ['Option NFT', 'Burned']], frames: [afterFill, { ...afterFill, tokens: 'seller', nft: null }], badges: { escrow: 'Returned', seller: `Kept ${f.premSeller}` } },
+      { n: '05', eyebrow: 'Split', title: 'Fees are split by code.', body: `Once per epoch, anyone can call split. The ${f.fees} collected goes ${SPLIT.stakersBps / 100}% to ${BRAND.token} stakers (${f.stakers}), ${SPLIT.buybackBps / 100}% to buy ${BRAND.token} on Uniswap v4 and burn it (${f.burn}), ${SPLIT.opsBps / 100}% to operations (${f.ops}). The events are the proof.`, facts: [['Fees collected', f.fees], [`${BRAND.token} stakers · ${SPLIT.stakersBps / 100}%`, f.stakers], [`Buy & burn · ${SPLIT.buybackBps / 100}%`, f.burn], [`Operations · ${SPLIT.opsBps / 100}%`, f.ops]], frames: [afterExercise, { ...afterExercise, premFee: null, strikeFee: null, splitStakers: 'vault', splitBurn: 'vault', splitOps: 'vault' }, { ...afterExercise, premFee: null, strikeFee: null, splitStakers: 'stakers', splitBurn: 'burn', splitOps: 'ops' }, { ...afterExercise, premFee: null, strikeFee: null, splitStakers: 'stakers', splitBurn: null, splitOps: 'ops' }], badges: { burn: `${BRAND.token} burned` } },
     ]
     return { assets, steps }
   }, [o.amount, o.symbol, o.strike, o.premium])
@@ -358,26 +358,51 @@ export function FlowStory() {
           </div>
         </div>
 
-        {/* ------------------------------------------------------------ scrolling steps */}
+        {/* ------------------------------------------------------------ scrolling steps
+            Each step is a panel in the brand-site style: mono "STEP 01 / 05" eyebrow with the step name in green,
+            a display title, the body, then a hairline key/value table with mono values. One screen per step, so
+            the diagram on the left keeps time with the card in the middle of the viewport. */}
         <div className="relative">
-          <div className="absolute left-[7px] top-0 hidden h-full w-px lg:block" style={{ background: C.lineStrong }} />
+          <div className="absolute left-[7px] top-0 hidden h-full w-px lg:block" style={{ background: 'rgba(160,255,220,0.1)' }} />
           {steps.map((st, i) => {
             const active = i === step
             return (
-              <div key={st.n} ref={(el) => { stepRefs.current[i] = el }} data-step={i} className="relative flex min-h-[60vh] items-center pl-8 lg:min-h-screen">
-                <span className="absolute left-0 top-1/2 size-[15px] -translate-y-1/2 rounded-full border-2 transition-colors duration-500" style={{ borderColor: active ? C.ink : C.lineStrong, background: active ? C.ink : C.bg }} />
+              <div key={st.n} ref={(el) => { stepRefs.current[i] = el }} data-step={i} className="relative flex min-h-[60vh] items-center lg:min-h-screen lg:pl-8">
+                <span className="absolute left-0 top-1/2 hidden size-[15px] -translate-y-1/2 rounded-full border-2 transition-all duration-500 lg:block" style={{ borderColor: active ? C.green : 'rgba(160,255,220,0.18)', background: active ? C.green : C.bg, boxShadow: active ? '0 0 0 5px rgba(77,252,169,0.14), 0 0 18px rgba(77,252,169,0.45)' : 'none' }} />
                 <motion.div
-                  animate={{ opacity: active ? 1 : 0.45, x: active ? 0 : -6 }}
-                  transition={{ duration: 0.5, ease: EASE }}
-                  className="w-full rounded-2xl p-6 transition-[background-color,border-color,box-shadow] duration-500 md:p-8"
-                  style={{ background: active ? C.card : 'transparent', border: `1px solid ${active ? C.line : 'transparent'}`, boxShadow: active ? '0 1px 2px rgba(0,0,0,0.3), 0 20px 50px -30px rgba(0,0,0,0.6)' : 'none' }}
+                  animate={{ opacity: active ? 1 : 0.4, y: active ? 0 : 8, scale: active ? 1 : 0.985 }}
+                  transition={{ duration: 0.6, ease: EASE }}
+                  className="relative w-full overflow-hidden rounded-3xl p-7 md:p-10"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(110,255,170,0.05) 0%, rgba(74,255,236,0.015) 50%, rgba(0,0,0,0) 100%), #050807',
+                    border: `1px solid ${active ? 'rgba(160,255,220,0.16)' : 'rgba(160,255,220,0.08)'}`,
+                    boxShadow: active ? '0 1px 0 rgba(160,255,220,0.08) inset, 0 30px 80px -40px rgba(0,0,0,0.9)' : 'none',
+                    transition: 'border-color 600ms, box-shadow 600ms',
+                  }}
                 >
-                  <div className="flex items-baseline gap-4">
-                    <span className="font-mono text-4xl" style={{ color: active ? C.greenInk : C.faint }}>{st.n}</span>
-                    <span className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: C.muted }}>{st.eyebrow}</span>
+                  {/* soft top light, brighter on the active card */}
+                  <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px transition-opacity duration-700" style={{ opacity: active ? 1 : 0.3, background: 'linear-gradient(90deg, transparent, rgba(110,255,170,0.35) 30%, rgba(74,255,236,0.35) 70%, transparent)' }} />
+                  <div className="flex items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.18em]">
+                    <span style={{ color: C.muted }}>Step {st.n} / {String(steps.length).padStart(2, '0')}</span>
+                    <span style={{ color: C.greenInk }}>{st.eyebrow}</span>
                   </div>
-                  <h3 className="mt-4 text-2xl md:text-3xl" style={{ color: C.ink }}>{st.title}</h3>
-                  <p className="mt-4 max-w-[52ch] text-base leading-relaxed" style={{ color: C.muted }}>{st.body}</p>
+                  <h3 className="font-display mt-7 text-[30px] font-normal leading-[1.08] tracking-[-0.02em] md:text-[38px]" style={{ color: C.ink }}>{st.title}</h3>
+                  <p className="mt-5 max-w-[52ch] text-[16px] leading-relaxed" style={{ color: C.muted }}>{st.body}</p>
+                  <dl className="mt-8 border-t" style={{ borderColor: 'rgba(160,255,220,0.12)' }}>
+                    {st.facts.map(([k, v], j) => (
+                      <motion.div
+                        key={k}
+                        initial={false}
+                        animate={{ opacity: active ? 1 : 0.6, x: active ? 0 : -4 }}
+                        transition={{ duration: 0.5, ease: EASE, delay: active ? 0.08 + j * 0.06 : 0 }}
+                        className="flex items-baseline justify-between gap-6 border-b py-3.5"
+                        style={{ borderColor: 'rgba(160,255,220,0.08)' }}
+                      >
+                        <dt className="text-[14px]" style={{ color: C.muted }}>{k}</dt>
+                        <dd className="text-right font-mono text-[13px] tabular-nums" style={{ color: C.ink }}>{v}</dd>
+                      </motion.div>
+                    ))}
+                  </dl>
                 </motion.div>
               </div>
             )
