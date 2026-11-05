@@ -53,6 +53,9 @@ export type ProtocolContracts = {
   uniswapV4SwapRouter?: Address
   kyteHook?: Address
   swapAdapter?: Address
+  /** Governance: the timelock lists and re-enables; the guardian Safe pauses and disables instantly. */
+  timelock?: Address
+  guardian?: Address
   tokens?: Record<string, Address>
   /** Block the protocol was deployed at; chain log reads start here. */
   deployBlock?: number
