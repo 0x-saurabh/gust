@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { parseEther } from 'viem'
 import { useAccount, usePublicClient } from 'wagmi'
 import { TimeLeft } from '@/components/TimeLeft'
 import { TxStatus } from '@/components/TxStatus'
@@ -40,9 +39,13 @@ export default function PositionsPage() {
   }
   const cancel = (o: Offer) => tx.run([{ label: 'Cancel offer and reclaim collateral', ...market(o), functionName: 'cancelUnfilled', args: [o.id] }])
   const expire = (o: Offer) => tx.run([{ label: 'Expire and reclaim collateral', ...market(o), functionName: 'expire', args: [o.id] }])
-  const unwrap = () => {
-    const amt = balances.data?.weth ?? 0
-    return tx.run([{ label: `Unwrap ${eth(amt)} WETH to ETH`, address: contracts.weth!, abi: ABIS.WETH, functionName: 'withdraw', args: [parseEther(amt.toFixed(18))] }])
+  const unwrap = async () => {
+    // Withdraw the exact on-chain balance in wei: rounding the displayed float can ask for more than the wallet
+    // holds, and WETH then reverts with "burn amount exceeds balance".
+    if (!client || !address) return
+    const wei = await client.readContract({ address: contracts.weth!, abi: ABIS.ERC20, functionName: 'balanceOf', args: [address] })
+    if (wei === 0n) return
+    return tx.run([{ label: `Unwrap ${eth(balances.data?.weth ?? 0)} WETH to ETH`, address: contracts.weth!, abi: ABIS.WETH, functionName: 'withdraw', args: [wei] }])
   }
 
   return (
