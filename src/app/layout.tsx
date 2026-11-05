@@ -28,7 +28,8 @@ const ogImage = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3010'),
+  // Absolute base for og:image etc. Render sets RENDER_EXTERNAL_URL, so previews work even without NEXT_PUBLIC_SITE_URL.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3010'),
   title,
   description,
   openGraph: { title, description, url: '/', siteName: BRAND.name, type: 'website', images: [ogImage] },
