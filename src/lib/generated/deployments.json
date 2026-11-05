@@ -144,6 +144,14 @@
       "router": "0xf1648a2cDE31A2F80cb5Ba8c544f7FC7af826BCd",
       "fromBlock": 105677746
     },
+    "v3": {
+      "assetRegistry": "0x02f571e10B9c7303EB7A6284A7137b146e18658D",
+      "callMarket": "0xb6759D8893601BB7c1A032eC8ea40C856a6adf80",
+      "optionNft": "0xE0CD21A7Ed37898A5ACdF7Dc68C52259Cd63308B",
+      "putMarket": "0x2E2d5DfB4cf30d15688Cc2DDD30641c78DFfcb35",
+      "router": "0xdD76956667E6423bAC56d2EbF827a9b0d7dBDF68",
+      "fromBlock": 106525888
+    },
     "deployBlock": 103214110
   },
   "31337": {
