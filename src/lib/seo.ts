@@ -6,7 +6,9 @@ export const title = `${BRAND.name} | Options, on Your terms`
 export const description = 'A non-custodial, fully collateralised options market on Robinhood Chain. Covered calls, cash-secured puts, Option NFTs.'
 export const shortDescription = 'A non-custodial, fully collateralised options market on Robinhood Chain.'
 export const ogImage = {
-  url: '/og-image.jpg',
+  // Versioned path: Telegram keeps a negative cache per exact URL, so a card that once failed to fetch (the
+  // localhost-era og:image) only shows again once the image lives at a URL it has never seen.
+  url: '/og/kyte-card-v2.jpg',
   type: 'image/jpeg',
   width: 2400,
   height: 1260,

@@ -43,7 +43,7 @@ const FRAMES = ['https://auth.privy.io', 'https://verify.walletconnect.com', 'ht
 export function proxy(request: NextRequest) {
   // A link-preview crawler (Telegram, X, WhatsApp...) gets a plain page with just the card tags: the full page is
   // ~150 KB of scripts and preloads before its first <meta>, and Telegram showed no card for it at all. Only HTML
-  // pages, not files such as /og-image.jpg; search engines are not matched, they index the real page.
+  // pages, not files such as the card image; search engines are not matched, they index the real page.
   const { pathname } = request.nextUrl
   if (request.method === 'GET' && !/\.[a-z0-9]+$/i.test(pathname) && PREVIEW_BOT.test(request.headers.get('user-agent') ?? '')) {
     const origin = siteUrl(request.nextUrl.origin)
