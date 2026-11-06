@@ -35,8 +35,7 @@ flowchart LR
   M -->|Option NFT| B
   M -->|fees| V[FeeVault]
   V -->|30%| P[StakingPool]
-  V -->|20%| X[BuybackBurner]
-  X -->|buy & burn| U[(Uniswap v4)]
+  V -->|20%| X[BuybackBurner<br/>buys & burns $KYTE]
   classDef user fill:#111,stroke:#9b9b9b,color:#fff
   class S,B user
 ```
