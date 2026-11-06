@@ -19,35 +19,15 @@ what it costs, what can go wrong, and where the contracts are. The same content 
 ## The whole system on one page
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 flowchart LR
-  subgraph Users
-    S[Seller]
-    B[Buyer / holder]
-    K[$KYTE staker]
-  end
-  subgraph Kyte contracts
-    AR[AssetRegistry]
-    M[CallMarket / PutMarket]
-    N[OptionNFT]
-    R[Router]
-    FV[FeeVault]
-    SP[StakingPool]
-    BB[BuybackBurner]
-  end
-  subgraph Uniswap v4
-    H[KyteHook]
-    P[(KYTE/WETH pool)]
-  end
-  S -- lock collateral, list offer --> M
-  B -- pay premium in ETH --> R --> M
-  M -- mint --> N --> B
-  M -- premium minus fee --> S
-  M -- fees --> FV
-  H -- swap fee --> FV
-  FV -- 30% WETH --> SP --> K
-  FV -- 20% --> BB -- buy and burn --> P
-  FV -- 50% --> O[Operations]
-  AR -. listed tokens, caps .-> M
+  S([Seller]) -->|collateral| K[Kyte markets]
+  B([Buyer]) -->|premium| K
+  K -->|Option NFT| B
+  K -->|fees| V[FeeVault]
+  V --> ST[Stakers 30%]
+  V --> BB[Burn 20%]
+  V --> OP[Ops 50%]
 ```
 
 Options can expire worthless. Nothing here is investment advice. Kyte is built on Robinhood Chain and is not

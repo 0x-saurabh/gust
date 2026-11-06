@@ -11,33 +11,23 @@ stakers their share in WETH, and `BuybackBurner` buys $KYTE on Uniswap v4 and bu
 - Stake that just became active is locked for one full epoch. Pending stake can be unstaked at any time.
 - Fee split, enforced on chain: 30% to stakers, 20% buyback and burn, 50% operations.
 
-```mermaid
-stateDiagram-v2
-  [*] --> Pending: stake()
-  Pending --> [*]: unstake() any time
-  Pending --> Active: epoch ends
-  Active --> Locked: first epoch as active
-  Locked --> Active: epoch ends
-  Active --> [*]: unstake()
-  Active --> Active: claim() WETH
-```
-
-## Where the fees go
+## A staker's journey
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 flowchart LR
-  M[CallMarket / PutMarket fees] --> FV[FeeVault]
-  H[KyteHook swap fee] --> FV
-  FV -- split, once per epoch --> SP[StakingPool 30%]
-  FV --> BB[BuybackBurner 20%]
-  FV --> OPS[Operations 50%]
-  SP -- claim --> K[$KYTE stakers, in WETH]
-  BB -- buyAndBurn via UniswapV4Adapter --> U[(Uniswap v4)] --> X[$KYTE burned]
-  TW[KyteHook 10 min TWAP] -. slippage floor .-> BB
+  A([Stake $KYTE]) --> P[Pending<br/>until the epoch ends]
+  P --> L[Active & locked<br/>one epoch]
+  L --> E[Earning<br/>30% of all fees]
+  E -->|claim| W([WETH to you])
+  E -->|unstake| A2([$KYTE back])
+  P -.->|unstake any time| A2
+  classDef out fill:#071a1c,stroke:#05edfa,color:#e8fcff
+  class W,A2 out
 ```
 
-The burner swaps with two on-chain floors: the hook's time-weighted price and the last executed price, with a per-call
-size cap, so a compromised keeper cannot hand the WETH to a sandwich.
+Fees arrive in WETH from the markets and the Uniswap v4 hook. Once per epoch the FeeVault splits them: 30% to this
+pool, 20% to the BuybackBurner which buys $KYTE on Uniswap v4 and burns it, 50% to operations.
 
 All protocol contracts: [usekyte/kyte-contract-v2](https://github.com/usekyte/kyte-contract-v2). The app:
 [usekyte/Kyte-Market](https://github.com/usekyte/Kyte-Market). Listed tokens: [`MARKETS.md`](MARKETS.md).

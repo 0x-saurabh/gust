@@ -25,67 +25,40 @@ tests in [usekyte/Kyte-StakingPool](https://github.com/usekyte/Kyte-StakingPool)
 
 Fee split, enforced on chain: 30% to stakers, 20% buyback and burn, 50% operations.
 
-## System
+## How the contracts fit
 
 ```mermaid
-flowchart TB
-  subgraph Markets
-    AR[AssetRegistry<br/>listed tokens, caps, min strike] --> CM[CallMarket]
-    AR --> PM[PutMarket]
-    CM --> NFT[OptionNFT]
-    PM --> NFT
-    R[Router<br/>ETH in, WETH wrapped] --> CM
-    R --> PM
-  end
-  CM -- premium and exercise fees --> FV[FeeVault]
-  PM -- fees --> FV
-  H[KyteHook<br/>Uniswap v4] -- 0.1% swap fee, TWAP --> FV
-  FV -- 30% WETH --> SP[StakingPool]
-  FV -- 20% --> BB[BuybackBurner]
-  FV -- 50% --> OPS[Operations]
-  BB --> AD[UniswapV4Adapter] --> U[(Uniswap v4 PoolManager)]
-  TL[Timelock, 10 min delay] -. settings .-> AR & FV & SP & BB
-  G[Guardian] -. pause / disable only .-> CM & PM & SP & BB
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
+flowchart LR
+  S([Seller]) -->|lock collateral| M[Markets<br/>CallMarket · PutMarket]
+  B([Buyer]) -->|premium| M
+  M -->|Option NFT| B
+  M -->|fees| V[FeeVault]
+  V -->|30%| P[StakingPool]
+  V -->|20%| X[BuybackBurner]
+  X -->|buy & burn| U[(Uniswap v4)]
+  classDef user fill:#111,stroke:#9b9b9b,color:#fff
+  class S,B user
 ```
 
-## Option lifecycle
+Registry, Router and KyteHook sit around this core: the AssetRegistry decides what can be listed, the Router lets
+users pay in plain ETH, and the hook on the $KYTE/WETH pool feeds its swap fee and a TWAP into the same vault.
+
+## One option, four states
 
 ```mermaid
-stateDiagram-v2
-  [*] --> Open: createOffer (collateral locked)
-  Open --> Cancelled: cancelUnfilled (seller)
-  Open --> Filled: buy (premium paid, NFT minted)
-  Filled --> Exercised: exercise before expiry (holder)
-  Filled --> Expired: expire after expiry (anyone)
-  Cancelled --> [*]: collateral to seller
-  Exercised --> [*]: tokens to holder, strike to seller (call) or the reverse (put)
-  Expired --> [*]: collateral to seller, NFT burned
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
+flowchart LR
+  O[Open] -->|buy| F[Filled]
+  O -->|cancel| C[Cancelled]
+  F -->|exercise before expiry| E[Exercised]
+  F -->|expire after expiry| X[Expired]
+  classDef done fill:#071a1c,stroke:#05edfa,color:#e8fcff
+  class C,E,X done
 ```
 
-## A covered call, end to end
-
-```mermaid
-sequenceDiagram
-  participant S as Seller
-  participant CM as CallMarket
-  participant B as Buyer
-  participant FV as FeeVault
-  S->>CM: createOffer(token, amount, strike, premium, expiry, deadline)
-  Note over CM: amount of token locked, exposure cap checked
-  B->>CM: buy(id) with premium (via Router in ETH)
-  CM->>S: premium minus 3%
-  CM->>FV: 3% of premium
-  CM->>B: Option NFT minted
-  alt holder exercises before expiry
-    B->>CM: exercise(id) paying strike
-    CM->>S: strike minus 0.1%
-    CM->>FV: 0.1% of strike
-    CM->>B: tokens released, NFT burned
-  else after expiry
-    Note over CM: anyone calls expire(id)
-    CM->>S: tokens returned, NFT burned
-  end
-```
+Status only moves forward. Collateral leaves the contract exactly once, to the holder on exercise or back to the
+seller otherwise.
 
 ## Live addresses
 

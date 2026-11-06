@@ -20,6 +20,7 @@ Stakers always receive at least 20%: the contracts refuse a split that goes belo
 - Stake, unstake and claim are free apart from gas.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 stateDiagram-v2
   [*] --> Pending: stake
   Pending --> [*]: unstake (any time)
@@ -31,6 +32,7 @@ stateDiagram-v2
 ```
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 flowchart LR
   F[Fees in WETH] --> V[FeeVault]
   V -- every 24 h: split --> A[30% StakingPool]

@@ -22,15 +22,11 @@ $KYTE for a share of every protocol fee. No leverage, no margin, no liquidations
 before an offer exists, and no admin can touch escrow.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 flowchart LR
-  S[Seller] -- locks collateral --> M[Market contracts]
-  B[Buyer] -- pays premium --> M
-  M -- Option NFT --> B
-  M -- premium minus fee --> S
-  M -- fees in WETH --> V[FeeVault]
-  V -- 30% --> P[StakingPool → $KYTE stakers]
-  V -- 20% --> X[BuybackBurner → burn $KYTE]
-  V -- 50% --> O[Operations]
+  S([Sellers<br/>lock collateral, earn premium]) --> K[Kyte]
+  B([Buyers<br/>pay premium, hold Option NFTs]) --> K
+  K -->|fees| T([$KYTE stakers<br/>paid in WETH])
 ```
 
 ## Repositories

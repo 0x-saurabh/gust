@@ -28,6 +28,7 @@ is in the money but never exercised simply expires.
 ## Lifecycle
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 stateDiagram-v2
   [*] --> Open: createOffer (collateral locked)
   Open --> Cancelled: cancelUnfilled (seller, any time before fill)
@@ -40,27 +41,3 @@ stateDiagram-v2
 ```
 
 Status only moves forward. An option can never be both exercised and expired.
-
-## Who moves what
-
-```mermaid
-sequenceDiagram
-  participant S as Seller
-  participant M as Market
-  participant B as Buyer
-  participant V as FeeVault
-  S->>M: createOffer: lock 100,000 TOKEN, strike 10 ETH, premium 0.3 ETH
-  B->>M: buy: 0.3 ETH premium
-  M->>S: 0.291 ETH (premium minus 3%)
-  M->>V: 0.009 ETH fee
-  M->>B: Option NFT
-  alt in the money before expiry
-    B->>M: exercise: pay 10 ETH strike
-    M->>S: 9.99 ETH (strike minus 0.1%)
-    M->>V: 0.01 ETH fee
-    M->>B: 100,000 TOKEN
-  else expiry passes
-    Note over M: anyone calls expire
-    M->>S: 100,000 TOKEN back
-  end
-```

@@ -10,35 +10,19 @@ exists; a buyer pays the premium and receives an Option NFT; exercise or expiry 
 ## How it fits together
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 flowchart LR
-  U[Browser<br/>Next.js app] -- read: offers, positions, prices, activity --> I[Indexer<br/>Node + SQLite]
-  U -- sign: approve, createOffer, buy, exercise, stake --> W[Wallet] --> C[(Robinhood Chain<br/>Kyte contracts)]
-  I -- poll logs every 2 s, re-scan last 8 blocks --> C
-  I -- Swap events --> P[(Uniswap v4 pools)]
-  I -- stock quotes --> Q[Robinhood market data]
-  U -. /api/indexer same-origin proxy, GET only .-> I
+  U([You]) --> A[kyte.sh<br/>Next.js app]
+  A -->|read| I[Indexer<br/>offers · prices · activity]
+  A -->|sign| W[Wallet]
+  W --> C[(Robinhood Chain<br/>Kyte contracts)]
+  I -->|events| C
+  classDef chain fill:#071a1c,stroke:#05edfa,color:#e8fcff
+  class C chain
 ```
 
-The app never trusts the indexer for money: amounts, spenders and recipients come from the deployment config and are
-re-checked by the contracts. The indexer is a read model for speed; without it the app reads the chain directly.
-
-## Buying an option from the app
-
-```mermaid
-sequenceDiagram
-  participant A as App
-  participant I as Indexer
-  participant W as Wallet
-  participant R as Router
-  participant M as CallMarket
-  A->>I: GET /offers?token=NVDA
-  I-->>A: open offers with premium, strike, expiry
-  A->>W: buyWithETH(id, maxPremium) value = premium
-  W->>R: transaction
-  R->>M: wrap ETH to WETH, buy(id)
-  M-->>W: Option NFT minted to buyer
-  I->>I: indexes OptionBought, position appears on /positions
-```
+The app reads from the indexer for speed and signs against the contracts directly. Amounts, spenders and recipients
+never come from the indexer: they come from the deployment config and are re-checked on chain.
 
 ## Pages
 

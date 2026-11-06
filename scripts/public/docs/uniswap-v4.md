@@ -16,6 +16,7 @@ A v4 hook's permissions are encoded in its address, so KyteHook is deployed at a
 `afterInitialize`, `afterSwap` and `afterSwapReturnDelta` bits set.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 flowchart LR
   BB[BuybackBurner] -- WETH, minTokenOut from TWAP --> AD[UniswapV4Adapter]
   AD -- swap --> PM[(PoolManager)]

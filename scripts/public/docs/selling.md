@@ -16,6 +16,7 @@ Cancelling is free: an unfilled offer can be cancelled at any time with `cancelU
 charged until a buyer actually fills.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 flowchart LR
   A[Pick token and side] --> B[Strike, expiry, premium]
   B --> C[Fill deadline]

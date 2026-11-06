@@ -13,6 +13,7 @@ Exercise early, not at the last block. Robinhood Chain has a single sequencer. A
 expiry timestamp fails, and the position is then expirable by anyone. Leave yourself a margin.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
 flowchart LR
   A[Buy offer: premium in ETH] --> B[Hold Option NFT]
   B --> C{Before expiry and worth it?}

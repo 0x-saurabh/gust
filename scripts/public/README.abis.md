@@ -28,24 +28,15 @@ const open = await client.readContract({
 | `addresses.json` | Every live address on chain id 4663, including the v2 and v3 market sets and listed tokens |
 | `index.mjs`, `index.d.ts` | `abis`, `addresses`, `chainId`, typed with `as const` for viem and wagmi |
 
-## How the pieces connect
+## What talks to what
 
 ```mermaid
-flowchart TB
-  subgraph Markets
-    AR[AssetRegistry] --> CM[CallMarket]
-    AR --> PM[PutMarket]
-    CM --> NFT[OptionNFT]
-    PM --> NFT
-    R[Router] --> CM
-    R --> PM
-  end
-  CM -- fees --> FV[FeeVault]
-  PM -- fees --> FV
-  H[KyteHook on Uniswap v4] -- swap fee --> FV
-  FV -- 30% --> SP[StakingPool]
-  FV -- 20% --> BB[BuybackBurner]
-  BB --> AD[UniswapV4Adapter] --> U[(Uniswap v4 PoolManager)]
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0b1a14','primaryTextColor':'#e8fff3','primaryBorderColor':'#4dfca9','lineColor':'#4dfca9','secondaryColor':'#071a1c','tertiaryColor':'#111','fontFamily':'ui-sans-serif, system-ui','fontSize':'14px'}}}%%
+flowchart LR
+  M[CallMarket · PutMarket] --> N[OptionNFT]
+  R[Router] --> M
+  M --> V[FeeVault] --> P[StakingPool]
+  V --> B[BuybackBurner] --> U[(Uniswap v4)]
 ```
 
 ## Events worth indexing
