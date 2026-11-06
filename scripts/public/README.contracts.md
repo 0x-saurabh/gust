@@ -5,7 +5,9 @@ buyers pay a premium and receive an Option NFT (ERC-721), and settlement is enfo
 no leverage, no margin and no liquidation path.
 
 This repository holds the Solidity sources, tests and deploy scripts. Addresses of the live deployment are in
-[`CONTRACTS.md`](CONTRACTS.md).
+[`CONTRACTS.md`](CONTRACTS.md); every token options can be written on is in [`MARKETS.md`](MARKETS.md). The web app
+and indexer live in [usekyte/Kyte-Market](https://github.com/usekyte/Kyte-Market), the staking contracts with their
+tests in [usekyte/Kyte-StakingPool](https://github.com/usekyte/Kyte-StakingPool).
 
 ## Contracts
 

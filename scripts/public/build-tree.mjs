@@ -33,6 +33,47 @@ const REWRITE = [
 
 const scrubbed = (d) => { const o = { ...d }; for (const k of PRIVATE_KEYS) delete o[k]; return o }
 
+// Listed markets, read from the AssetRegistry through the indexer (every token options can be written on today).
+const ASSETS_URL = process.env.ASSETS_URL || 'http://localhost:4201/assets'
+let assets = []
+try {
+  // enabled tokens only, minus the retired test token that is still listed on chain
+  assets = (await (await fetch(ASSETS_URL)).json()).filter((a) => a.enabled && !PRIVATE_ADDRESSES.some((x) => x.toLowerCase() === a.address.toLowerCase()))
+} catch (e) {
+  console.error(`cannot read listed markets from ${ASSETS_URL}: ${e.message}`)
+  process.exit(1)
+}
+const fmtCap = (a) => Number(BigInt(a.cap) / 10n ** BigInt(a.decimals)).toLocaleString('en-US')
+const fmtStrike = (a) => `${Number(a.minStrike) / 1e18} ETH`
+function marketsTable() {
+  const x = (addr) => `[\`${addr}\`](https://robinhoodchain.blockscout.com/address/${addr})`
+  const row = (a) => `| ${a.symbol} | ${a.name.replace(/ • Robinhood Token$/, '')} | ${x(a.address)} | ${a.putsEnabled ? 'calls, puts' : 'calls'} | ${fmtCap(a)} | ${fmtStrike(a)} |`
+  const head = '| Symbol | Name | Contract | Options | Exposure cap | Min strike / token |\n|---|---|---|---|---|---|'
+  const stocks = assets.filter((a) => / • Robinhood Token$/.test(a.name)).sort((p, q) => p.symbol.localeCompare(q.symbol))
+  const others = assets.filter((a) => !/ • Robinhood Token$/.test(a.name)).sort((p, q) => p.symbol.localeCompare(q.symbol))
+  return { stocks, others, head, row }
+}
+function marketsSection() {
+  const { stocks, others, head, row } = marketsTable()
+  return [
+    `${assets.length} tokens are listed on the AssetRegistry and can be traded today: ${others.length} crypto and tokenized assets and ${stocks.length} Robinhood Stock Tokens. Every row is read from the registry on chain; the full list is also in [\`MARKETS.md\`](MARKETS.md).`,
+    '',
+    '### Crypto and tokenized assets',
+    '',
+    head, ...others.map(row),
+    '',
+    `<details><summary><strong>Robinhood Stock Tokens (${stocks.length})</strong></summary>`,
+    '',
+    head, ...stocks.map(row),
+    '',
+    '</details>',
+  ].join('\n')
+}
+function marketsFile() {
+  const { stocks, others, head, row } = marketsTable()
+  return `# Listed markets on Kyte (Robinhood Chain, chain id 4663)\n\n${assets.length} tokens enabled on the AssetRegistry, read on chain at build time. Cap is the maximum open exposure per token; min strike is the lowest strike per token an offer may use.\n\n## Crypto and tokenized assets (${others.length})\n\n${head}\n${others.map(row).join('\n')}\n\n## Robinhood Stock Tokens (${stocks.length})\n\n${head}\n${stocks.map(row).join('\n')}\n`
+}
+
 // ---- allowlists (paths relative to the repo root; directories are copied whole, minus `skip`)
 const CONTRACT_SKIP = ['contracts/test/ForkMarketsV3.t.sol', 'contracts/test/ForkRobinhoodStocks.t.sol', 'contracts/script/CreateSafes.s.sol', 'contracts/script/DeployKyteLaunch.s.sol']
 const STAKING_TESTS = ['Base.t.sol', 'StakingPool.t.sol', 'BuybackBurner.t.sol', 'UniswapV4Adapter.t.sol', 'mocks/Mocks.sol', 'mocks/MockSwapAdapter.sol']
@@ -106,7 +147,8 @@ if (target === 'market') {
   fs.writeFileSync(path.join(outDir, 'deployments/4663.json'), JSON.stringify(pub, null, 2) + '\n')
 }
 const tpl = (f) => fs.readFileSync(path.join(ROOT, 'scripts/public', f), 'utf8')
-fs.writeFileSync(path.join(outDir, 'README.md'), tpl(PLAN.readme).replaceAll('{{CONTRACTS}}', contractsTable()))
+fs.writeFileSync(path.join(outDir, 'README.md'), tpl(PLAN.readme).replaceAll('{{CONTRACTS}}', contractsTable()).replaceAll('{{MARKETS}}', marketsSection()))
+fs.writeFileSync(path.join(outDir, 'MARKETS.md'), marketsFile())
 fs.writeFileSync(path.join(outDir, 'CONTRACTS.md'), `# Kyte contracts on Robinhood Chain (chain id 4663)\n\nEvery address below is verified on Sourcify and readable on Blockscout.\n\n${contractsTable()}\n`)
 fs.mkdirSync(path.join(outDir, '.github/workflows'), { recursive: true })
 fs.writeFileSync(path.join(outDir, '.github/workflows/ci.yml'), tpl(`ci.${PLAN.ci}.yml`))

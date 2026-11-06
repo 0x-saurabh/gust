@@ -11,6 +11,9 @@ stakers their share in WETH, and `BuybackBurner` buys $KYTE on Uniswap v4 and bu
 - Stake that just became active is locked for one full epoch. Pending stake can be unstaked at any time.
 - Fee split, enforced on chain: 30% to stakers, 20% buyback and burn, 50% operations.
 
+All protocol contracts: [usekyte/kyte-contract-v2](https://github.com/usekyte/kyte-contract-v2). The app:
+[usekyte/Kyte-Market](https://github.com/usekyte/Kyte-Market). Listed tokens: [`MARKETS.md`](MARKETS.md).
+
 ## Live addresses
 
 {{CONTRACTS}}
