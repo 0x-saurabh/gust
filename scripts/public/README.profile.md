@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://kyte.sh/brand/kyte-mark.png" width="96" alt="Kyte" />
+  <a href="https://kyte.sh"><img src="banner.png" width="100%" alt="Kyte. Options, on Your terms. kyte.sh" /></a>
 </p>
 
 <h1 align="center">Kyte</h1>
