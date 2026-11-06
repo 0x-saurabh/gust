@@ -52,7 +52,7 @@ Kyte is an options market. It earns WETH fees from option trades, and those fees
 
 - It does not hold funds. Fees go straight to the vault in the same transaction.
 - It does not block, pause or reroute swaps. It only runs after them.
-- It cannot be changed by the team alone. Fee rate (max 1%) and vault address can only be changed by the Timelock, after a 48-hour delay.
+- It cannot be changed by the team alone. Fee rate (max 1%) and vault address can only be changed by the Timelock, after the timelock delay (10 minutes minimum).
 
 ---
 
@@ -100,7 +100,7 @@ Flow after every swap:
 
 **Safety limits:**
 - `MAX_FEE_BPS = 100` (max 1%). Kyte's default is **10 bps (0.10%)**.
-- `setFee()` and `setFeeVault()` can only be called by `owner`, which is the **Timelock** (48h delay).
+- `setFee()` and `setFeeVault()` can only be called by `owner`, which is the **Timelock** (10 minute delay).
 
 **Where does the fee go?** `FeeVault` → `split()` once per epoch:
 **30% stakers · 20% buy-and-burn · 50% ops**. Anyone can call `split()`.
@@ -189,7 +189,7 @@ FeeVault ─(20%)─▶ BuybackBurner ─▶ UniswapV4Adapter ─▶ PoolManager
 
 | Point | Detail |
 |---|---|
-| Owner | Timelock (48h delay), run by a Safe multisig |
+| Owner | Timelock (10 minute delay), run by a Safe multisig |
 | Fee cap | Hard-coded 1% max (`MAX_FEE_BPS`) |
 | Fee destination | Straight to `FeeVault`, no team wallet in between |
 | Who can call the hooks | Only the PoolManager (`onlyPoolManager`) |

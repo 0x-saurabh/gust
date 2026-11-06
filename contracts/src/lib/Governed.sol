@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Errors} from "./Errors.sol";
 import {Events} from "./Events.sol";
 
-/// @notice Two roles (SPEC.md §2): the timelock (48 h, behind the admin Safe) changes settings;
+/// @notice Two roles (SPEC.md §2): the timelock (10 minute minimum delay, behind the admin Safe) changes settings;
 /// the guardian can only pause or disable, never enable or unpause.
 abstract contract Governed {
     address public immutable timelock;

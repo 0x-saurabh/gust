@@ -28,6 +28,10 @@ const REWRITE = [
   [/BUILD_PLAN\.md \(Phase W3\)/g, 'the indexer notes'],
   [/BUILD_PLAN\.md/g, 'the build notes'],
   [/Render sets RENDER_EXTERNAL_URL/g, 'Some hosts set RENDER_EXTERNAL_URL'],
+  [/Render: a pserv reachable\s*\n?\s*\* only on the internal network/g, 'a private service on the host\'s internal network'],
+  [/\(Render: a pserv reachable only on the internal network\)/g, '(a private service on the internal network)'],
+  [/servers, Render\b/g, 'servers'],
+  [/\bRender\b(?= (then )?redeploys)/g, 'The host'],
   [/\(kyte-web\.onrender\.com\)/g, '(the host\'s default domain)'],
 ]
 
@@ -79,21 +83,21 @@ const CONTRACT_SKIP = ['contracts/test/ForkMarketsV3.t.sol', 'contracts/test/For
 const STAKING_TESTS = ['Base.t.sol', 'StakingPool.t.sol', 'BuybackBurner.t.sol', 'UniswapV4Adapter.t.sol', 'mocks/Mocks.sol', 'mocks/MockSwapAdapter.sol']
 const PLAN = {
   contracts: {
-    copy: ['contracts/src', 'contracts/test', 'contracts/script', 'contracts/foundry.toml', 'contracts/remappings.txt', 'contracts/package.json', 'contracts/pnpm-lock.yaml', 'contracts/.gitignore', 'docs/UNISWAP_V4_HOOK.md'],
+    copy: ['contracts/src', 'contracts/test', 'contracts/script', 'contracts/foundry.toml', 'contracts/remappings.txt', 'contracts/package.json', 'contracts/pnpm-lock.yaml', 'docs/UNISWAP_V4_HOOK.md'],
     skip: CONTRACT_SKIP,
     flatten: 'contracts', // the public repo root is the contracts folder
     readme: 'README.contracts.md',
     ci: 'contracts',
   },
   staking: {
-    copy: ['contracts/src', 'contracts/foundry.toml', 'contracts/remappings.txt', 'contracts/package.json', 'contracts/pnpm-lock.yaml', 'contracts/.gitignore', ...STAKING_TESTS.map((t) => `contracts/test/${t}`)],
+    copy: ['contracts/src', 'contracts/foundry.toml', 'contracts/remappings.txt', 'contracts/package.json', 'contracts/pnpm-lock.yaml', ...STAKING_TESTS.map((t) => `contracts/test/${t}`)],
     skip: [],
     flatten: 'contracts',
     readme: 'README.staking.md',
     ci: 'contracts',
   },
   market: {
-    copy: ['src', 'public', 'indexer', 'package.json', 'pnpm-lock.yaml', 'next.config.ts', 'tsconfig.json', 'postcss.config.mjs', '.gitignore', '.dockerignore'],
+    copy: ['src', 'public', 'indexer', 'package.json', 'pnpm-lock.yaml', 'next.config.ts', 'tsconfig.json', 'postcss.config.mjs'],
     skip: ['src/lib/generated/deployments.json'],
     flatten: '',
     readme: 'README.market.md',
@@ -147,6 +151,16 @@ if (target === 'market') {
   fs.writeFileSync(path.join(outDir, 'deployments/4663.json'), JSON.stringify(pub, null, 2) + '\n')
 }
 const tpl = (f) => fs.readFileSync(path.join(ROOT, 'scripts/public', f), 'utf8')
+// package.json: public name, and only the scripts that work in the public tree
+const PKG_NAME = { contracts: 'kyte-contracts', staking: 'kyte-staking-pool', market: 'kyte-market' }[target]
+const pkgPath = path.join(outDir, 'package.json')
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+pkg.name = PKG_NAME
+if (target === 'market') pkg.scripts = Object.fromEntries(Object.entries(pkg.scripts).filter(([k]) => ['dev', 'build', 'start', 'typecheck', 'indexer'].includes(k)))
+fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+// ignore files written fresh: nothing about the private tree's layout
+fs.writeFileSync(path.join(outDir, '.gitignore'), target === 'market' ? 'node_modules\n.next\n.env\n.env.local\n*.tsbuildinfo\nnext-env.d.ts\nindexer/data\n.DS_Store\n' : 'node_modules\nout\ncache\nbroadcast\n.env\n.DS_Store\n')
+if (target === 'market') fs.writeFileSync(path.join(outDir, '.dockerignore'), 'node_modules\n.next\n.git\n.env\n.env.local\nindexer/data\n')
 fs.writeFileSync(path.join(outDir, 'README.md'), tpl(PLAN.readme).replaceAll('{{CONTRACTS}}', contractsTable()).replaceAll('{{MARKETS}}', marketsSection()))
 fs.writeFileSync(path.join(outDir, 'MARKETS.md'), marketsFile())
 fs.writeFileSync(path.join(outDir, 'CONTRACTS.md'), `# Kyte contracts on Robinhood Chain (chain id 4663)\n\nEvery address below is verified on Sourcify and readable on Blockscout.\n\n${contractsTable()}\n`)

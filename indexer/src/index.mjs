@@ -115,6 +115,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS prices (key TEXT PRIMARY KEY, symbol TEXT, block INTEGER, at INTEGER, price REAL, volume_eth REAL, tx TEXT);
   CREATE INDEX IF NOT EXISTS prices_symbol_at ON prices(symbol, at);
   CREATE INDEX IF NOT EXISTS events_block ON events(block DESC, log_index DESC);
+  CREATE INDEX IF NOT EXISTS events_offer ON events(CAST(json_extract(args, '$.id') AS TEXT));
 `)
 const q = {
   getMeta: db.prepare('SELECT value FROM meta WHERE key = ?'),
@@ -452,7 +453,7 @@ const routes = {
   // No RPC URL here: it can carry a provider API key.
   '/health': async () => ({
     chainId: CHAIN_ID, chainTime: chainNow, lastBlock: Number(q.getMeta.get('lastBlock')?.value ?? -1), latestBlock: Number(latestSeen),
-    offers: all('SELECT COUNT(*) AS n FROM offers')[0].n, contracts: dep,
+    offers: all('SELECT COUNT(*) AS n FROM offers')[0].n, contracts: PUBLIC_DEP,
   }),
   '/assets': async () => all('SELECT * FROM assets ORDER BY symbol').map((a) => ({
     address: a.address, symbol: a.symbol, name: a.name, decimals: a.decimals, enabled: !!a.enabled, putsEnabled: !!a.puts_enabled,
@@ -474,14 +475,13 @@ const routes = {
     const limit = intParam(u, 'limit', 30, 1, 500)
     const symbol = u.searchParams.get('token') == null ? null : symbolParam(u, null)
     if (!symbol) return all('SELECT * FROM events ORDER BY block DESC, log_index DESC LIMIT ?', limit).map(describeEvent)
-    const out = []
-    // Filtering needs the offer behind each event; walk the log in pages until `limit` rows match or it runs out.
-    for (let offset = 0; out.length < limit; offset += 500) {
-      const page = all('SELECT * FROM events ORDER BY block DESC, log_index DESC LIMIT 500 OFFSET ?', offset)
-      if (page.length === 0) break
-      for (const e of page) { const d = describeEvent(e); if (d.symbol === symbol) { out.push(d); if (out.length === limit) break } }
-    }
-    return out
+    // Option events carry the offer id in their args; join to the offer for its symbol, bounded by LIMIT and the
+    // expression index on the id (events_offer), so the cost no longer grows with the whole history.
+    return all(
+      `SELECT e.* FROM events e JOIN offers o ON o.id = CAST(json_extract(e.args, '$.id') AS TEXT)
+       WHERE o.symbol = ? ORDER BY e.block DESC, e.log_index DESC LIMIT ?`,
+      symbol, limit,
+    ).map(describeEvent)
   },
   '/prices': async () => {
     const out = {}
@@ -634,15 +634,21 @@ function cached(ttlMs, fn, maxKeys = 5_000) {
     return value
   }
 }
+// What /health shows of the deployment file: protocol contracts only, never governance or operator wallets.
+const PUBLIC_DEP = Object.fromEntries(Object.entries(dep).filter(([k]) => !['timelock', 'guardian', 'opsSafe', 'keeper', 'launch', 'legacyKyte'].includes(k)))
 // Fixed window per client IP.
 const hits = new Map()
 setInterval(() => hits.clear(), 60_000).unref()
 function clientIp(req) {
-  const fwd = TRUST_PROXY ? String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() : ''
+  // Behind a proxy the LAST entry is the one our proxy appended (the real peer); anything before it was sent by
+  // the client and can be forged, so it must not pick the bucket.
+  const fwd = TRUST_PROXY ? String(req.headers['x-forwarded-for'] ?? '').split(',').at(-1).trim() : ''
   return fwd || req.socket.remoteAddress || '?'
 }
+const MAX_BUCKETS = 50_000
 function overLimit(req) {
   const ip = clientIp(req)
+  if (hits.size >= MAX_BUCKETS && !hits.has(ip)) return true // flood of new addresses: fail closed until the minute resets
   const n = (hits.get(ip) ?? 0) + 1
   hits.set(ip, n)
   return n > RATE_LIMIT

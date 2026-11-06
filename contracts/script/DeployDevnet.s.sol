@@ -55,6 +55,7 @@ interface IModifyLiquidityLite {
 ///   DEV_WALLET=0xYourMetaMask ...   # optional: also funds your own wallet
 contract DeployDevnet is Script {
     // anvil's well-known default accounts (devnet only)
+    // Anvil's default, publicly documented test accounts (#0 to #3). Devnet only; they hold nothing on any real chain.
     uint256 constant K0 = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80; // admin/keeper
     uint256 constant K1 = 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d; // seller A
     uint256 constant K2 = 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a; // seller B
