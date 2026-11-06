@@ -34,7 +34,15 @@ export default function StakePage() {
 
   const submit = async () => {
     if (!client || !address) return
-    const raw = parseEther(amt.toString())
+    // The input and the Max button carry a rounded number; the pool pulls exact wei. Clamp to the exact on-chain
+    // balance (or stake) so "Max" never asks for a few wei more than the wallet holds (ERC20InsufficientBalance).
+    const exactMax =
+      mode === 'stake'
+        ? await client.readContract({ address: contracts.kyteToken!, abi: ABIS.ERC20, functionName: 'balanceOf', args: [address] })
+        : await client.readContract({ address: pool, abi: ABIS.StakingPool, functionName: 'balancesOf', args: [address] }).then(([a, p]) => a + p)
+    let raw = parseEther(amount)
+    if (raw > exactMax) raw = exactMax
+    if (raw <= 0n) return
     const ok =
       mode === 'stake'
         ? await tx.run([
