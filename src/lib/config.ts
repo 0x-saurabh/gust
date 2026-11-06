@@ -3,6 +3,8 @@ export const BRAND = {
   name: 'Kyte',
   wordmark: 'kyte.sh',
   token: '$KYTE',
+  /** Where to buy $KYTE: the Pons launchpad page for the token. */
+  tradeUrl: 'https://ponsfamily.com/launchpad/0x072d88c2f31f568c0f4b8f613692eb489541ed45',
   tagline: 'Covered options on Robinhood Chain',
 } as const
 

@@ -2,7 +2,7 @@
 
 // Landing page in the Kyte brand-site design (Updraft folder: artifacts/updraft/src/pages/home.tsx),
 // adapted to the live app. The live product frame (ProductFrame) is kept exactly as it was.
-import { ArrowDown, ArrowRight, Minus, Plus } from '@phosphor-icons/react'
+import { ArrowDown, ArrowRight, ArrowSquareOut, ArrowUpRight, Check, Copy, Minus, Plus } from '@phosphor-icons/react'
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -12,11 +12,40 @@ import { Tilt } from '@/components/motion/primitives'
 import { FlowStory } from '@/components/FlowStory'
 import { ProductFrame } from '@/components/ProductFrame'
 import { TradeTable, isTrade } from '@/components/TradeHistory'
-import { chain, isDevnet, legacyMarkets } from '@/lib/chains'
+import { chain, contracts, explorerAddress, isDevnet, legacyMarkets } from '@/lib/chains'
 import { useActivity } from '@/lib/data'
 import { BRAND } from '@/lib/config'
 
 const AuroraCanvas = dynamic(() => import('@/components/fx/AuroraCanvas').then((m) => m.AuroraCanvas), { ssr: false })
+
+const KYTE_ADDRESS = contracts.kyteToken ?? '0x072d88c2f31f568c0f4b8f613692eb489541ed45'
+
+/** The $KYTE contract in the hero: copy on click, explorer link beside it. */
+function ContractChip() {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(KYTE_ADDRESS) } catch {}
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1400)
+  }
+  const url = explorerAddress(KYTE_ADDRESS)
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full border pl-3 pr-1 text-[12px] backdrop-blur-sm" style={{ borderColor: 'rgba(160,255,220,.2)', background: 'rgba(2,10,8,.45)' }}>
+      <span className="grad-text font-mono font-medium">{BRAND.token}</span>
+      <span className="mx-1.5 h-3 w-px bg-ink/20" aria-hidden />
+      <button type="button" onClick={copy} title="Copy contract address" className="mono inline-flex items-center gap-1.5 py-1.5 text-ink/80 transition-colors hover:text-ink">
+        <span className="hidden sm:inline">{KYTE_ADDRESS}</span>
+        <span className="sm:hidden">{KYTE_ADDRESS.slice(0, 8)}…{KYTE_ADDRESS.slice(-6)}</span>
+        {copied ? <Check size={13} className="text-accent" /> : <Copy size={13} className="opacity-70" />}
+      </button>
+      {url && (
+        <a href={url} target="_blank" rel="noopener noreferrer" aria-label="View contract on explorer" className="grid size-7 place-items-center rounded-full text-ink/60 transition-colors hover:bg-white/[0.08] hover:text-ink">
+          <ArrowSquareOut size={13} />
+        </a>
+      )}
+    </div>
+  )
+}
 
 function Hero() {
   const ref = useRef<HTMLElement>(null)
@@ -57,9 +86,13 @@ function Hero() {
           <p className="max-w-xl text-[17px] leading-relaxed text-ink/75 md:text-[19px]">
             {BRAND.name} is a non-custodial, fully collateralised options market. Sell covered calls and cash-secured puts, or buy options as transferable NFTs. No leverage, no margin, no liquidations.
           </p>
-          <div className="flex flex-wrap items-center gap-3 md:justify-end">
-            <Link href="/market" className="btn btn-x !px-7 !py-4 text-[15px]">Start trading <ArrowRight size={16} /></Link>
-            <button type="button" onClick={() => scrollToId('how')} className="btn btn-ghost !py-4">How it works <ArrowDown size={16} /></button>
+          <div className="flex flex-col items-start gap-4 md:items-end">
+            <div className="flex flex-wrap items-center gap-3 md:justify-end">
+              <Link href="/market" className="btn btn-x !px-7 !py-4 text-[15px]">Start trading <ArrowRight size={16} /></Link>
+              <a href={BRAND.tradeUrl} target="_blank" rel="noopener noreferrer" className="btn btn-glass !h-auto !py-4 text-[15px]">Trade {BRAND.token} <ArrowUpRight size={16} /></a>
+              <button type="button" onClick={() => scrollToId('how')} className="btn btn-ghost !py-4">How it works <ArrowDown size={16} /></button>
+            </div>
+            <ContractChip />
           </div>
         </motion.div>
       </Wrap>
