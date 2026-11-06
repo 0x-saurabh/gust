@@ -109,7 +109,9 @@ KYTE_TOKEN="$(lc "$TOKEN")" KYTE_PER_ETH="$PER_ETH_RAW" scripts/mainnet/kyte-lau
 
 echo "== 3/4 verify on chain: staking, burner, fee vault, listing, site config"
 rd() { node -p "require('./$DEP').$1 || ''"; }
-POOL=$(rd stakingPool); BURNER=$(rd buybackBurner); VAULT=$(rd feeVault); REG=$(rd assetRegistry)
+POOL=$(rd stakingPool); BURNER=$(rd buybackBurner); VAULT=$(rd feeVault)
+# the live markets' registry: v3 reuses v2's; the top-level one is v1 (same choice as kyte-launch-plan.mjs)
+REG=$(node -p "const d=require('./$DEP'); (d.v3 && d.v3.assetRegistry) || (d.v2 && d.v2.assetRegistry) || d.assetRegistry")
 call() { $CAST call "$1" "$2" "${@:3}" --rpc-url "$RPC" 2>/dev/null | tr -d '"' || echo "?"; }
 FAIL=0
 check() { # check <label> <got> <want> <hint>
