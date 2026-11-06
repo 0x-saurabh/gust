@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAccount, usePublicClient } from 'wagmi'
+import { AddToWallet } from '@/components/AddToWallet'
 import { TimeLeft } from '@/components/TimeLeft'
 import { TxStatus } from '@/components/TxStatus'
 import { KindBadge, Note, PageHeader, Segmented } from '@/components/ui'
@@ -50,7 +51,7 @@ export default function PositionsPage() {
 
   return (
     <>
-      <PageHeader title="Positions" sub="Options you hold and offers you've written.">
+      <PageHeader title="Positions" sub="Options you hold and offers you've written. A bought option is an NFT in your wallet; wallets don't list Robinhood Chain NFTs on their own yet, so use “Add to wallet” to see it there.">
         <Segmented value={tab} onChange={setTab} options={[{ value: 'holding', label: `Holding (${pos.holding.length})` }, { value: 'selling', label: `Selling (${pos.selling.length})` }, { value: 'history', label: 'History' }]} />
       </PageHeader>
 
@@ -92,6 +93,7 @@ export default function PositionsPage() {
                       {action.label}
                     </button>
                   )}
+                  {tab === 'holding' && live && <div className="basis-full"><AddToWallet id={o.id} /></div>}
                 </div>
               )
             })}

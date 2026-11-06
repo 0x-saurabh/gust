@@ -37,6 +37,12 @@ export function explorerAddress(address: string): string | undefined {
   return url ? `${url}/address/${address}` : undefined
 }
 
+/** Blockscout page of one NFT: the option's on-chain art, traits and owner. */
+export function explorerNft(nft: string, id: bigint): string | undefined {
+  const url = chain.blockExplorers?.default.url
+  return url ? `${url}/token/${nft}/instance/${id.toString()}` : undefined
+}
+
 export type ProtocolContracts = {
   weth?: Address
   callMarket?: Address
