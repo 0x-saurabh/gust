@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { contracts } from '@/lib/chains'
 import rh from '@/lib/rh-mainnet-tokens.json'
 
 // Crypto icons from the mainnet token snapshot (by address), plus a few listed tokens it has no icon for.
@@ -14,6 +15,8 @@ const STOCK = /Robinhood Token/i
 
 /** Logo URL for a listed token: crypto icon, else the company logo for a Robinhood Stock Token, else none. */
 export function logoUrl(t: { symbol: string; name?: string; address?: string }): string | undefined {
+  // The protocol token, whatever it is called on chain: the Kyte mark (so a new $KYTE shows its logo on day one).
+  if (t.address && contracts.kyteToken && t.address.toLowerCase() === contracts.kyteToken.toLowerCase()) return '/brand/kyte-mark.png'
   const known = (t.address && BY_ADDRESS.get(t.address.toLowerCase())) || BY_SYMBOL[t.symbol]
   if (known) return known
   // Only Robinhood Stock Tokens are looked up by ticker: a crypto symbol (LIT, TI…) can collide with a real ticker.
