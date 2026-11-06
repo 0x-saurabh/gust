@@ -14,7 +14,11 @@
 #   2. scripts/mainnet/kyte-launch.sh: new StakingPool + BuybackBurner, deployment file, KYTE/WETH pool + adapter,
 #      the timelock Safe transaction (fee destinations, burner, Market listing), site config, verify, commit, push.
 #      Render then redeploys the site, indexer and keeper from main.
-#   3. refreshes the local macOS services (~/.kyte/app) so the indexer on :4201 sees the new token too.
+#   3. verifies on chain that everything now points at the new token: the StakingPool's stakeToken (staking holds its
+#      token as an immutable, so a NEW pool is deployed and the FeeVault is pointed at it; Stake page approvals
+#      target the new token), the BuybackBurner's token, FeeVault.stakingPool/buybackBurner, AssetRegistry.isEnabled,
+#      and the website's generated config. Any mismatch stops the script with what to do.
+#   4. refreshes the local macOS services (~/.kyte/app) so the indexer on :4201 sees the new token too.
 #
 # Afterwards: add KYTE/WETH liquidity from the treasury wallet. The chart and the buyback start with the first swap.
 set -euo pipefail
@@ -41,7 +45,7 @@ done
 [ -f "$ENV_FILE" ] || { echo "missing $ENV_FILE (copy scripts/mainnet/env.example and fill it in)"; exit 1; }
 lc() { echo "$1" | tr A-F a-f; }
 
-echo "== 0/3 preflight"
+echo "== 0/4 preflight"
 for i in $(seq 1 20); do
   CID=$($CAST chain-id --rpc-url "$RPC" 2>/dev/null) && break
   echo "   RPC not reachable yet (attempt $i/20), retrying in 3 s..."; sleep 3
@@ -94,16 +98,44 @@ if [ $YES != 1 ]; then
   [ "${ans:-}" = y ] || [ "${ans:-}" = Y ] || { echo "stopped, nothing was sent"; exit 1; }
 fi
 
-echo "== 1/3 record in $ENV_FILE"
+echo "== 1/4 record in $ENV_FILE"
 set_env() { if grep -q "^$1=" "$ENV_FILE"; then sed -i '' -E "s|^$1=.*|$1=$2|" "$ENV_FILE"; else echo "$1=$2" >> "$ENV_FILE"; fi; }
 set_env KYTE_TOKEN "$(lc "$TOKEN")"
 set_env KYTE_PER_ETH "$PER_ETH_RAW"
 echo "   KYTE_TOKEN=$(lc "$TOKEN")  KYTE_PER_ETH=$PER_ETH_RAW"
 
-echo "== 2/3 launch (deploy, pool, timelock, publish)"
+echo "== 2/4 launch (deploy, pool, timelock, publish)"
 KYTE_TOKEN="$(lc "$TOKEN")" KYTE_PER_ETH="$PER_ETH_RAW" scripts/mainnet/kyte-launch.sh
 
-echo "== 3/3 local services"
+echo "== 3/4 verify on chain: staking, burner, fee vault, listing, site config"
+rd() { node -p "require('./$DEP').$1 || ''"; }
+POOL=$(rd stakingPool); BURNER=$(rd buybackBurner); VAULT=$(rd feeVault); REG=$(rd assetRegistry)
+call() { $CAST call "$1" "$2" "${@:3}" --rpc-url "$RPC" 2>/dev/null | tr -d '"' || echo "?"; }
+FAIL=0
+check() { # check <label> <got> <want> <hint>
+  if [ "$(lc "$2")" = "$(lc "$3")" ]; then echo "   ok    $1: $2"; else echo "   FAIL  $1: got $2, want $3"; echo "         -> $4"; FAIL=1; fi
+}
+check "StakingPool.stakeToken   (staking accepts the new \$KYTE)" "$(call "$POOL" 'stakeToken()(address)')" "$TOKEN" \
+  "the deployment file's stakingPool is not a pool for this token: re-run to redeploy (DeployKyteLaunch) and apply"
+check "BuybackBurner.token      (burner buys and burns the new \$KYTE)" "$(call "$BURNER" 'token()(address)')" "$TOKEN" \
+  "the deployment file's buybackBurner is bound to another token: re-run to redeploy and apply"
+check "FeeVault.stakingPool     (30% of fees go to the new pool)" "$(call "$VAULT" 'stakingPool()(address)')" "$POOL" \
+  "the timelock setDestinations has not executed yet: wait for the delay, then re-run (the Safe step resumes)"
+check "FeeVault.buybackBurner   (20% of fees go to the new burner)" "$(call "$VAULT" 'buybackBurner()(address)')" "$BURNER" \
+  "same timelock transaction as above: re-run once the delay has passed"
+check "AssetRegistry.isEnabled  (\$KYTE options listed on Market)" "$(call "$REG" 'isEnabled(address)(bool)' "$TOKEN")" "true" \
+  "the timelock addAsset has not executed yet: re-run after the delay, or set KYTE_CAP / KYTE_MIN_STRIKE and re-run"
+check "site config kyteToken    (Stake page approves the new token)" "$(node -p "require('./src/lib/generated/deployments.json')['4663']?.kyteToken || require('./src/lib/generated/deployments.json').kyteToken || ''")" "$TOKEN" \
+  "run: node scripts/sync-contracts.mjs && git add src/lib/generated && git commit && git push"
+check "site config stakingPool  (Stake page talks to the new pool)" "$(node -p "require('./src/lib/generated/deployments.json')['4663']?.stakingPool || require('./src/lib/generated/deployments.json').stakingPool || ''")" "$POOL" \
+  "run: node scripts/sync-contracts.mjs && git add src/lib/generated && git commit && git push"
+if [ $FAIL = 1 ]; then
+  echo "   some checks failed: fix the hints above and re-run this same command; it resumes where it stopped"
+  exit 1
+fi
+echo "   staking, burner, fee vault, listing and site all point at $SYM"
+
+echo "== 4/4 local services"
 if [ -d "$HOME/.kyte/app" ] && [ -f "$HOME/Library/LaunchAgents/sh.kyte.indexer.plist" ]; then
   # The launchd indexer/keeper run from a copy on the internal disk, not from this folder: refresh it and restart.
   ops/install-macos-services.sh
