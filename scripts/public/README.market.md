@@ -7,6 +7,39 @@ stake $KYTE for a share of every protocol fee.
 No leverage, no margin, no liquidations. A seller locks the full collateral in the market contract before an offer
 exists; a buyer pays the premium and receives an Option NFT; exercise or expiry settles it. No admin can move escrow.
 
+## How it fits together
+
+```mermaid
+flowchart LR
+  U[Browser<br/>Next.js app] -- read: offers, positions, prices, activity --> I[Indexer<br/>Node + SQLite]
+  U -- sign: approve, createOffer, buy, exercise, stake --> W[Wallet] --> C[(Robinhood Chain<br/>Kyte contracts)]
+  I -- poll logs every 2 s, re-scan last 8 blocks --> C
+  I -- Swap events --> P[(Uniswap v4 pools)]
+  I -- stock quotes --> Q[Robinhood market data]
+  U -. /api/indexer same-origin proxy, GET only .-> I
+```
+
+The app never trusts the indexer for money: amounts, spenders and recipients come from the deployment config and are
+re-checked by the contracts. The indexer is a read model for speed; without it the app reads the chain directly.
+
+## Buying an option from the app
+
+```mermaid
+sequenceDiagram
+  participant A as App
+  participant I as Indexer
+  participant W as Wallet
+  participant R as Router
+  participant M as CallMarket
+  A->>I: GET /offers?token=NVDA
+  I-->>A: open offers with premium, strike, expiry
+  A->>W: buyWithETH(id, maxPremium) value = premium
+  W->>R: transaction
+  R->>M: wrap ETH to WETH, buy(id)
+  M-->>W: Option NFT minted to buyer
+  I->>I: indexes OptionBought, position appears on /positions
+```
+
 ## Pages
 
 | Page | What it does |

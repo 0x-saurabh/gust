@@ -25,6 +25,68 @@ tests in [usekyte/Kyte-StakingPool](https://github.com/usekyte/Kyte-StakingPool)
 
 Fee split, enforced on chain: 30% to stakers, 20% buyback and burn, 50% operations.
 
+## System
+
+```mermaid
+flowchart TB
+  subgraph Markets
+    AR[AssetRegistry<br/>listed tokens, caps, min strike] --> CM[CallMarket]
+    AR --> PM[PutMarket]
+    CM --> NFT[OptionNFT]
+    PM --> NFT
+    R[Router<br/>ETH in, WETH wrapped] --> CM
+    R --> PM
+  end
+  CM -- premium and exercise fees --> FV[FeeVault]
+  PM -- fees --> FV
+  H[KyteHook<br/>Uniswap v4] -- 0.1% swap fee, TWAP --> FV
+  FV -- 30% WETH --> SP[StakingPool]
+  FV -- 20% --> BB[BuybackBurner]
+  FV -- 50% --> OPS[Operations]
+  BB --> AD[UniswapV4Adapter] --> U[(Uniswap v4 PoolManager)]
+  TL[Timelock, 10 min delay] -. settings .-> AR & FV & SP & BB
+  G[Guardian] -. pause / disable only .-> CM & PM & SP & BB
+```
+
+## Option lifecycle
+
+```mermaid
+stateDiagram-v2
+  [*] --> Open: createOffer (collateral locked)
+  Open --> Cancelled: cancelUnfilled (seller)
+  Open --> Filled: buy (premium paid, NFT minted)
+  Filled --> Exercised: exercise before expiry (holder)
+  Filled --> Expired: expire after expiry (anyone)
+  Cancelled --> [*]: collateral to seller
+  Exercised --> [*]: tokens to holder, strike to seller (call) or the reverse (put)
+  Expired --> [*]: collateral to seller, NFT burned
+```
+
+## A covered call, end to end
+
+```mermaid
+sequenceDiagram
+  participant S as Seller
+  participant CM as CallMarket
+  participant B as Buyer
+  participant FV as FeeVault
+  S->>CM: createOffer(token, amount, strike, premium, expiry, deadline)
+  Note over CM: amount of token locked, exposure cap checked
+  B->>CM: buy(id) with premium (via Router in ETH)
+  CM->>S: premium minus 3%
+  CM->>FV: 3% of premium
+  CM->>B: Option NFT minted
+  alt holder exercises before expiry
+    B->>CM: exercise(id) paying strike
+    CM->>S: strike minus 0.1%
+    CM->>FV: 0.1% of strike
+    CM->>B: tokens released, NFT burned
+  else after expiry
+    Note over CM: anyone calls expire(id)
+    CM->>S: tokens returned, NFT burned
+  end
+```
+
 ## Live addresses
 
 {{CONTRACTS}}

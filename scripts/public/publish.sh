@@ -2,7 +2,7 @@
 # Publishes the public repos of the usekyte GitHub account from this private repo, without ever mirroring it.
 #
 #   scripts/public/publish.sh all            # contracts, staking and market
-#   scripts/public/publish.sh market         # one of: contracts | staking | market
+#   scripts/public/publish.sh market         # one of: contracts | staking | market | profile | abis | docs
 #   scripts/public/publish.sh all --dry-run  # build and check the trees, push nothing
 #
 # For each target: build-tree.mjs copies an allowlist into a clean folder and refuses if anything private is found,
@@ -15,10 +15,10 @@ AUTHOR_NAME="Kyte"
 AUTHOR_EMAIL="contact@kyte.sh"
 HOST="git@github-usekyte"
 FORGE=${FORGE:-$HOME/.foundry/bin/forge}
-repo_of() { case "$1" in contracts) echo usekyte/kyte-contract-v2 ;; staking) echo usekyte/Kyte-StakingPool ;; market) echo usekyte/Kyte-Market ;; *) echo "unknown target: $1" >&2; exit 1 ;; esac; }
+repo_of() { case "$1" in contracts) echo usekyte/kyte-contract-v2 ;; staking) echo usekyte/Kyte-StakingPool ;; market) echo usekyte/Kyte-Market ;; profile) echo usekyte/usekyte ;; abis) echo usekyte/kyte-abis ;; docs) echo usekyte/kyte-docs ;; *) echo "unknown target: $1" >&2; exit 1 ;; esac; }
 
 TARGETS="${1:-all}"; DRY=0; [ "${2:-}" = "--dry-run" ] && DRY=1
-[ "$TARGETS" = all ] && TARGETS="contracts staking market"
+[ "$TARGETS" = all ] && TARGETS="contracts staking market profile abis docs"
 WORK=$(mktemp -d -t kyte-public)
 trap 'rm -rf "$WORK"' EXIT
 
@@ -26,7 +26,7 @@ for t in $TARGETS; do
   echo "== $t -> $(repo_of "$t")"
   TREE="$WORK/$t-tree"
   node scripts/public/build-tree.mjs "$t" "$TREE"
-  if [ "$t" != market ]; then
+  if [ "$t" = contracts ] || [ "$t" = staking ]; then
     # the public contract trees must compile on their own; borrow this repo's installed libs for the check
     if [ -d contracts/node_modules ]; then
       ln -s "$PWD/contracts/node_modules" "$TREE/node_modules"
@@ -53,7 +53,10 @@ for t in $TARGETS; do
   if git -C "$CLONE" diff --cached --quiet; then echo "   nothing changed"; continue; fi
   MSG=$([ -n "$(git -C "$CLONE" log --oneline -1 2>/dev/null)" ] && echo "Update $(date -u +%Y-%m-%d)" || echo "Initial release")
   git -C "$CLONE" -c user.name="$AUTHOR_NAME" -c user.email="$AUTHOR_EMAIL" commit -q -m "$MSG"
-  git -C "$CLONE" push -q -u origin main
-  echo "   pushed: $MSG ($(git -C "$CLONE" rev-parse --short HEAD))"
+  if git -C "$CLONE" push -q -u origin main 2>/dev/null; then
+    echo "   pushed: $MSG ($(git -C "$CLONE" rev-parse --short HEAD))"
+  else
+    echo "   NOT PUSHED: $(repo_of "$t") is missing on GitHub or the key has no access. Create the empty repo and re-run."
+  fi
 done
 echo "done"

@@ -9,8 +9,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const [target, outDir] = process.argv.slice(2)
-if (!['contracts', 'staking', 'market'].includes(target) || !outDir) {
-  console.error('usage: build-tree.mjs <contracts|staking|market> <outDir>')
+if (!['contracts', 'staking', 'market', 'profile', 'abis', 'docs'].includes(target) || !outDir) {
+  console.error('usage: build-tree.mjs <contracts|staking|market|profile|abis|docs> <outDir>')
   process.exit(1)
 }
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..')
@@ -103,7 +103,11 @@ const PLAN = {
     readme: 'README.market.md',
     ci: 'web',
   },
+  profile: { copy: [], skip: [], flatten: '', readme: 'README.profile.md', ci: null },
+  abis: { copy: [], skip: [], flatten: '', readme: 'README.abis.md', ci: null },
+  docs: { copy: [], skip: [], flatten: '', readme: null, ci: null },
 }[target]
+const CODE = ['contracts', 'staking', 'market'].includes(target)
 
 // ---- copy
 fs.rmSync(outDir, { recursive: true, force: true })
@@ -135,6 +139,41 @@ for (const p of PLAN.copy) copy(p)
 
 // ---- generated files: scrubbed deployment config, README, CONTRACTS.md, CI, env example
 const pub = scrubbed(dep)
+const ABI_CONTRACTS = ['AssetRegistry', 'CallMarket', 'PutMarket', 'OptionNFT', 'Router', 'FeeVault', 'StakingPool', 'BuybackBurner', 'UniswapV4Adapter', 'KyteHook']
+if (target === 'abis') {
+  fs.mkdirSync(path.join(outDir, 'abis'), { recursive: true })
+  const names = []
+  for (const n of ABI_CONTRACTS) {
+    const art = path.join(ROOT, `contracts/out/${n}.sol/${n}.json`)
+    if (!fs.existsSync(art)) { console.error(`missing artifact ${art}: run forge build in contracts/`); process.exit(1) }
+    fs.writeFileSync(path.join(outDir, `abis/${n}.json`), JSON.stringify(JSON.parse(fs.readFileSync(art, 'utf8')).abi, null, 2) + '\n')
+    names.push(n)
+  }
+  fs.writeFileSync(path.join(outDir, 'addresses.json'), JSON.stringify({ 4663: pub }, null, 2) + '\n')
+  fs.writeFileSync(path.join(outDir, 'index.mjs'), `${names.map((n) => `import ${n} from './abis/${n}.json' with { type: 'json' }`).join('\n')}
+import all from './addresses.json' with { type: 'json' }
+
+export const chainId = 4663
+export const abis = { ${names.join(', ')} }
+export const addresses = all[chainId]
+export default { chainId, abis, addresses }
+`)
+  fs.writeFileSync(path.join(outDir, 'index.d.ts'), `import type { Abi } from 'viem'
+${names.map((n) => `import ${n} from './abis/${n}.json'`).join('\n')}
+export declare const chainId: 4663
+export declare const abis: { ${names.map((n) => `${n}: typeof ${n} & Abi`).join('; ')} }
+export declare const addresses: typeof import('./addresses.json')['4663']
+declare const _default: { chainId: typeof chainId; abis: typeof abis; addresses: typeof addresses }
+export default _default
+`)
+  fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify({ name: 'kyte-abis', version: '1.0.0', description: 'ABIs, addresses and types for the Kyte options market on Robinhood Chain', license: 'MIT', type: 'module', main: './index.mjs', types: './index.d.ts', exports: { '.': { types: './index.d.ts', import: './index.mjs' }, './addresses.json': './addresses.json', './abis/*': './abis/*' }, files: ['abis', 'addresses.json', 'index.mjs', 'index.d.ts'], peerDependencies: { viem: '>=2' }, peerDependenciesMeta: { viem: { optional: true } }, repository: 'github:usekyte/kyte-abis', homepage: 'https://kyte.sh' }, null, 2) + '\n')
+  fs.writeFileSync(path.join(outDir, '.gitignore'), 'node_modules\n.DS_Store\n')
+}
+if (target === 'docs') {
+  const src = path.join(ROOT, 'scripts/public/docs')
+  for (const f of fs.readdirSync(src)) fs.copyFileSync(path.join(src, f), path.join(outDir, f))
+  fs.writeFileSync(path.join(outDir, 'contracts.md'), `# Contracts\n\nAll addresses are on Robinhood Chain (chain id 4663). Sources: [usekyte/kyte-contract-v2](https://github.com/usekyte/kyte-contract-v2). ABIs and types: [usekyte/kyte-abis](https://github.com/usekyte/kyte-abis).\n\n${contractsTable()}\n\n## Listed markets\n\n${marketsSection()}\n`)
+}
 if (target === 'market') {
   const gen = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/lib/generated/deployments.json'), 'utf8'))
   const out = {}
@@ -146,27 +185,38 @@ if (target === 'market') {
   // .env.example without the Privy app id: each deployment registers its own
   const env = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8').replace(/^NEXT_PUBLIC_PRIVY_APP_ID=.*$/m, 'NEXT_PUBLIC_PRIVY_APP_ID=')
   fs.writeFileSync(path.join(outDir, '.env.example'), env)
-} else {
+} else if (target === 'contracts' || target === 'staking') {
   fs.mkdirSync(path.join(outDir, 'deployments'), { recursive: true })
   fs.writeFileSync(path.join(outDir, 'deployments/4663.json'), JSON.stringify(pub, null, 2) + '\n')
 }
 const tpl = (f) => fs.readFileSync(path.join(ROOT, 'scripts/public', f), 'utf8')
-// package.json: public name, and only the scripts that work in the public tree
-const PKG_NAME = { contracts: 'kyte-contracts', staking: 'kyte-staking-pool', market: 'kyte-market' }[target]
-const pkgPath = path.join(outDir, 'package.json')
-const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
-pkg.name = PKG_NAME
-if (target === 'market') pkg.scripts = Object.fromEntries(Object.entries(pkg.scripts).filter(([k]) => ['dev', 'build', 'start', 'typecheck', 'indexer'].includes(k)))
-fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
-// ignore files written fresh: nothing about the private tree's layout
-fs.writeFileSync(path.join(outDir, '.gitignore'), target === 'market' ? 'node_modules\n.next\n.env\n.env.local\n*.tsbuildinfo\nnext-env.d.ts\nindexer/data\n.DS_Store\n' : 'node_modules\nout\ncache\nbroadcast\n.env\n.DS_Store\n')
-if (target === 'market') fs.writeFileSync(path.join(outDir, '.dockerignore'), 'node_modules\n.next\n.git\n.env\n.env.local\nindexer/data\n')
-fs.writeFileSync(path.join(outDir, 'README.md'), tpl(PLAN.readme).replaceAll('{{CONTRACTS}}', contractsTable()).replaceAll('{{MARKETS}}', marketsSection()))
-fs.writeFileSync(path.join(outDir, 'MARKETS.md'), marketsFile())
-fs.writeFileSync(path.join(outDir, 'CONTRACTS.md'), `# Kyte contracts on Robinhood Chain (chain id 4663)\n\nEvery address below is verified on Sourcify and readable on Blockscout.\n\n${contractsTable()}\n`)
-fs.mkdirSync(path.join(outDir, '.github/workflows'), { recursive: true })
-fs.writeFileSync(path.join(outDir, '.github/workflows/ci.yml'), tpl(`ci.${PLAN.ci}.yml`))
-fs.writeFileSync(path.join(outDir, 'LICENSE'), tpl('LICENSE'))
+if (CODE) {
+  // package.json: public name, and only the scripts that work in the public tree
+  const PKG_NAME = { contracts: 'kyte-contracts', staking: 'kyte-staking-pool', market: 'kyte-market' }[target]
+  const pkgPath = path.join(outDir, 'package.json')
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+  pkg.name = PKG_NAME
+  if (target === 'market') pkg.scripts = Object.fromEntries(Object.entries(pkg.scripts).filter(([k]) => ['dev', 'build', 'start', 'typecheck', 'indexer'].includes(k)))
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+  // ignore files written fresh: nothing about the private tree's layout
+  fs.writeFileSync(path.join(outDir, '.gitignore'), target === 'market' ? 'node_modules\n.next\n.env\n.env.local\n*.tsbuildinfo\nnext-env.d.ts\nindexer/data\n.DS_Store\n' : 'node_modules\nout\ncache\nbroadcast\n.env\n.DS_Store\n')
+  if (target === 'market') fs.writeFileSync(path.join(outDir, '.dockerignore'), 'node_modules\n.next\n.git\n.env\n.env.local\nindexer/data\n')
+  fs.writeFileSync(path.join(outDir, 'MARKETS.md'), marketsFile())
+  fs.mkdirSync(path.join(outDir, '.github/workflows'), { recursive: true })
+  fs.writeFileSync(path.join(outDir, '.github/workflows/ci.yml'), tpl(`ci.${PLAN.ci}.yml`))
+}
+if (PLAN.readme) {
+  fs.writeFileSync(path.join(outDir, 'README.md'), tpl(PLAN.readme)
+    .replaceAll('{{CONTRACTS}}', contractsTable()).replaceAll('{{MARKETS}}', marketsSection())
+    .replaceAll('{{MARKET_COUNT}}', String(assets.length)).replaceAll('{{KYTE}}', pub.kyteToken).replaceAll('{{KYTE_LC}}', pub.kyteToken.toLowerCase()))
+}
+if (CODE || target === 'abis') fs.writeFileSync(path.join(outDir, 'CONTRACTS.md'), `# Kyte contracts on Robinhood Chain (chain id 4663)\n\nEvery address below is verified on Sourcify and readable on Blockscout.\n\n${contractsTable()}\n`)
+if (target !== 'profile') {
+  fs.writeFileSync(path.join(outDir, 'LICENSE'), tpl('LICENSE'))
+  fs.writeFileSync(path.join(outDir, 'SECURITY.md'), tpl('SECURITY.md'))
+  fs.mkdirSync(path.join(outDir, '.github/ISSUE_TEMPLATE'), { recursive: true })
+  fs.writeFileSync(path.join(outDir, '.github/ISSUE_TEMPLATE/bug_report.md'), tpl('bug_report.md'))
+}
 
 function contractsTable() {
   const x = (a) => `[\`${a}\`](https://robinhoodchain.blockscout.com/address/${a})`
