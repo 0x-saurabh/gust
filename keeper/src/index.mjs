@@ -183,34 +183,49 @@ const TL_ABI = [
 ]
 const ZERO32 = '0x' + '0'.repeat(64)
 const listerSkip = new Map() // token -> until (ms): don't re-check a token that failed its on-chain checks for an hour
+const listerPending = new Map() // token -> symbol: scheduled by us or seen pending; executed without needing the indexer
+const INDEXER_FALLBACK_URL = (process.env.INDEXER_FALLBACK_URL || 'http://127.0.0.1:4201').replace(/\/$/, '')
 async function jobPonsList() {
   const lister = dep.ponsLister
   if (!lister || !INDEXER_URL) return
   if (await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'paused' })) return
-  const r = await fetch(`${INDEXER_URL}/pons/tokens?status=graduated&limit=200`, { signal: AbortSignal.timeout(10_000) })
-  if (!r.ok) throw new Error(`indexer ${r.status}`)
-  const { tokens } = await r.json()
+  // Graduated tokens from the indexer (production first, local fallback); plus every token this keeper has seen
+  // scheduled, so a pending listing executes even while both indexers are down.
+  let tokens = []
+  for (const base of [INDEXER_URL, INDEXER_FALLBACK_URL].filter(Boolean)) {
+    try {
+      const r = await fetch(`${base}/pons/tokens?status=graduated&limit=200`, { signal: AbortSignal.timeout(10_000) })
+      if (!r.ok) throw new Error(`indexer ${r.status}`)
+      tokens = (await r.json()).tokens; break
+    } catch (e) { log(`pons: ${base} unavailable (${e.message})`) }
+  }
+  const candidates = new Map()
+  for (const t of tokens) if (t.pairIsWeth && (t.kyte === 'unlisted' || t.kyte === 'scheduled')) candidates.set(getAddress(t.address), t.symbol)
+  for (const [a, s] of listerPending) if (!candidates.has(a)) candidates.set(a, s)
   const timelockAddr = await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'timelockController' })
-  for (const t of tokens) {
-    if (!t.pairIsWeth || (t.kyte !== 'unlisted' && t.kyte !== 'scheduled')) continue
-    const token = getAddress(t.address)
+  for (const [token, symbol] of candidates) {
+    const t = { symbol }
     if ((listerSkip.get(token) ?? 0) > Date.now()) continue
     const op = await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'operationOf', args: [token] })
     if (op === ZERO32) {
       try { await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'check', args: [token] }) }
       catch (e) { listerSkip.set(token, Date.now() + 3_600_000); log(`pons ${t.symbol}: not listable (${e.shortMessage ?? e.message})`); continue }
       await send(`ponsLister.list ${t.symbol}`, { address: lister, abi: LISTER_ABI, functionName: 'list', args: [token] })
+      listerPending.set(token, t.symbol)
     } else if (await pub.readContract({ address: timelockAddr, abi: TL_ABI, functionName: 'isOperationReady', args: [op] })) {
       await send(`ponsLister.execute ${t.symbol}`, { address: lister, abi: LISTER_ABI, functionName: 'execute', args: [token] })
+      listerPending.delete(token)
     } else if (!(await pub.readContract({ address: timelockAddr, abi: TL_ABI, functionName: 'isOperationPending', args: [op] }))) {
+      listerPending.delete(token)
       listerSkip.set(token, Date.now() + 3_600_000) // done or cancelled; the timelock can reset() if it should run again
-    }
+    } else listerPending.set(token, t.symbol)
   }
 }
 
 async function tick() {
   await checkBalance().catch(() => {})
-  for (const [name, job] of [['expire', jobExpire], ['split', jobSplit], ['buyback', jobBuyback], ['ponsList', jobPonsList]]) {
+  // Pons listings first: they are cheap and time-sensitive, while the expiry scan can take minutes after a restart.
+  for (const [name, job] of [['ponsList', jobPonsList], ['expire', jobExpire], ['split', jobSplit], ['buyback', jobBuyback]]) {
     try { await job() } catch (e) { await alert(`${name} failed: ${e.shortMessage ?? e.message}`) }
   }
 }
