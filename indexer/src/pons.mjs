@@ -146,14 +146,17 @@ export function installPons({ db, all, client, log = console.log }) {
     const limit = Math.min(500, Math.max(1, Number(u.searchParams.get('limit') ?? 200) || 200))
     const listed = new Map(all('SELECT address, enabled FROM assets').map((a) => [a.address.toLowerCase(), a]))
     let rows
-    const hours = Math.min(RECENT_MAX_H, Math.max(1, Number(u.searchParams.get('hours') ?? 24) || 24))
-    if (status === 'recent') rows = all('SELECT * FROM pons_tokens WHERE launched_at >= ? ORDER BY launched_at DESC LIMIT ?', Math.floor(Date.now() / 1000) - hours * 3600, limit)
-    else if (status === 'graduated') rows = all('SELECT * FROM pons_tokens WHERE graduated = 1 ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', limit)
+    // graduated: optional ?hours= window on the graduation time (24, 36, …); absent or 0 means all
+    const hours = Math.min(RECENT_MAX_H, Math.max(0, Number(u.searchParams.get('hours') ?? 0) || 0))
+    if (status === 'recent') rows = all('SELECT * FROM pons_tokens WHERE launched_at >= ? ORDER BY launched_at DESC LIMIT ?', Math.floor(Date.now() / 1000) - (hours || 24) * 3600, limit)
+    else if (status === 'graduated') rows = hours
+      ? all('SELECT * FROM pons_tokens WHERE graduated = 1 AND graduated_at >= ? ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', Math.floor(Date.now() / 1000) - hours * 3600, limit)
+      : all('SELECT * FROM pons_tokens WHERE graduated = 1 ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', limit)
     else if (status === 'near') rows = all('SELECT * FROM pons_tokens WHERE graduated = 0 AND paired_principal IS NOT NULL AND threshold IS NOT NULL AND CAST(paired_principal AS REAL) >= 0.5 * CAST(threshold AS REAL) ORDER BY CAST(paired_principal AS REAL) / CAST(threshold AS REAL) DESC LIMIT ?', limit)
     else if (status === 'listed') rows = all('SELECT * FROM pons_tokens ORDER BY mcap_usd DESC').filter((r) => listed.has(r.address.toLowerCase())).slice(0, limit)
     else rows = all('SELECT * FROM pons_tokens ORDER BY launched_at DESC LIMIT ?', limit)
     const total = all('SELECT COUNT(*) AS n, SUM(graduated) AS g FROM pons_tokens')[0]
-    return { tokens: rows.map((r) => out(r, listed)), counts: { launched: total.n, graduated: total.g ?? 0 }, ...(status === 'recent' ? { hours } : {}) }
+    return { tokens: rows.map((r) => out(r, listed)), counts: { launched: total.n, graduated: total.g ?? 0 }, ...(hours ? { hours } : {}) }
   }
 
   function start() {
