@@ -75,5 +75,3 @@ services:
         value: "30"
       - key: NEXT_PUBLIC_SITE_URL
         value: https://kyte.sh # link previews and canonical URLs use this domain
-      - key: NEXT_PUBLIC_MCP_ENABLED
-        value: "false" # MCP endpoint and /mcp page unpublished until launch; local dev keeps them on
