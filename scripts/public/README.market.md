@@ -35,6 +35,7 @@ never come from the indexer: they come from the deployment config and are re-che
 | `/proof` | Every fee split and buyback burn with its transaction |
 | `/trades` | Full market history: listings, fills, exercises, expiries, cancellations |
 | `/docs` | How it works, fees, risks, contracts |
+| `/agent` | Ask Kyte: plain-language answers from live data, prepares actions you sign yourself. Also at `/api/mcp` as an MCP server for Claude, ChatGPT and Cursor |
 
 ## What is here
 
