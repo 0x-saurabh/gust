@@ -104,7 +104,6 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
         {!address && (
           <div className="agent-gate relative flex h-full min-h-[260px] flex-col items-center justify-center gap-5 overflow-hidden text-center">
             <DotField />
-            <div className="agent-gate-glow" aria-hidden />
             <div className="relative">
               <div className="text-[15px] font-medium text-ink">Connect a wallet to ask Kyte</div>
               <p className="mx-auto mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">Answers are personal to your positions and stake. The agent only sees your public address.</p>

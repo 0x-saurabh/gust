@@ -32,6 +32,15 @@ export function DotField({ className = '' }: { className?: string }) {
       const wantHover = target.x > -9000 ? 1 : 0
       hover += (wantHover - hover) * 0.08
       ctx.clearRect(0, 0, w, h)
+      // the Kyte-green glow lives under the pointer: it appears where you hover and fades when you leave
+      if (hover > 0.01) {
+        const gr = RADIUS * 1.5
+        const glow = ctx.createRadialGradient(cur.x, cur.y, 0, cur.x, cur.y, gr)
+        glow.addColorStop(0, `rgba(77, 252, 169, ${(0.2 * hover).toFixed(3)})`)
+        glow.addColorStop(0.45, `rgba(77, 252, 169, ${(0.06 * hover).toFixed(3)})`)
+        glow.addColorStop(1, 'rgba(77, 252, 169, 0)')
+        ctx.fillStyle = glow; ctx.fillRect(cur.x - gr, cur.y - gr, gr * 2, gr * 2)
+      }
       const cx = w / 2, cy = h / 2, edge = Math.max(w, h) * 0.55
       const ox = (w % GAP) / 2, oy = (h % GAP) / 2
       for (let y = oy; y <= h; y += GAP) {
