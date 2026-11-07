@@ -34,3 +34,5 @@ export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''
 
 /** MCP (connector endpoint + /mcp page). Off in production until it is published; on everywhere else, e.g. local dev. */
 export const MCP_ENABLED = process.env.NEXT_PUBLIC_MCP_ENABLED !== 'false'
+/** Autopilot (page, nav, agent tools, rule routes). Off in production until launch; on locally. */
+export const AUTOPILOT_ENABLED = process.env.NEXT_PUBLIC_AUTOPILOT_ENABLED !== 'false'

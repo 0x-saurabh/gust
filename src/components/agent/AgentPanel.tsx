@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import { AUTOPILOT_ENABLED } from '@/lib/config'
 import { INDEXER_URL } from '@/lib/data'
 import { useEffect, useState } from 'react'
 import { AgentChat } from './AgentChat'
@@ -18,7 +19,7 @@ export function AgentPanel() {
   const { address } = useAccount()
   const [waiting, setWaiting] = useState(0)
   useEffect(() => {
-    if (!address) { setWaiting(0); return }
+    if (!address || !AUTOPILOT_ENABLED) { setWaiting(0); return }
     let live = true
     const poll = () => fetch(`${INDEXER_URL}/autopilot/triggers/${address}?limit=50`).then((r) => r.json()).then((t) => { if (live && Array.isArray(t)) setWaiting(t.filter((x: { seen: boolean }) => !x.seen).length) }).catch(() => {})
     poll(); const id = setInterval(poll, 60_000)

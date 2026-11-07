@@ -23,6 +23,7 @@ async function forward(req: NextRequest, params: Promise<{ path: string[] }>, me
   if (!base) return NextResponse.json({ error: 'indexer not configured' }, { status: 503 })
   const sub = (await params).path.join('/')
   if (!(method === 'GET' ? ALLOWED : ALLOWED_WRITE).test(sub)) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (sub.startsWith('autopilot/') && process.env.NEXT_PUBLIC_AUTOPILOT_ENABLED === 'false') return NextResponse.json({ error: 'not found' }, { status: 404 })
   const qs = req.nextUrl.search.length <= 512 ? req.nextUrl.search : ''
   const body = method === 'GET' ? undefined : (await req.text()).slice(0, 16 * 1024)
   try {

@@ -75,3 +75,5 @@ services:
         value: "30"
       - key: NEXT_PUBLIC_SITE_URL
         value: https://kyte.sh # link previews and canonical URLs use this domain
+      - key: NEXT_PUBLIC_AUTOPILOT_ENABLED
+        value: "false" # Autopilot page, nav link, agent tools and rule routes unpublished until launch
