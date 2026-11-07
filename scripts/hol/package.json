@@ -1,0 +1,14 @@
+{
+  "name": "kyte-hol-registry",
+  "private": true,
+  "type": "module",
+  "description": "Registers the Kyte MCP server with the HOL (Hashgraph Online) Registry Broker. Separate from the app: install here only.",
+  "scripts": {
+    "profile": "node profile.mjs",
+    "quote": "node register.mjs --quote",
+    "register": "node register.mjs --register"
+  },
+  "dependencies": {
+    "@hashgraphonline/standards-sdk": "latest"
+  }
+}
