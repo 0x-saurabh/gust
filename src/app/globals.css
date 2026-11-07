@@ -518,3 +518,22 @@ p {
 @keyframes agent-caret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .agent-typing > div > :last-child::after { content: ""; display: inline-block; width: 7px; height: 14px; margin-left: 2px; vertical-align: -2px; background: var(--color-muted); animation: agent-caret 1s steps(1) infinite; }
 @media (prefers-reduced-motion: reduce) { .agent-think-shimmer { animation: none; color: var(--color-muted); background: none; } .agent-typing > div > :last-child::after { animation: none; } }
+
+/* Agent wallet gate: a fine dot grid that fades to the edges, with a slow breathing glow behind the text. */
+.agent-gate { isolation: isolate; }
+.agent-gate-dots {
+  position: absolute; inset: -20px; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.3) 1px, transparent 1.5px);
+  background-size: 22px 22px; background-position: 11px 11px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 20%, transparent 75%);
+  animation: agent-gate-drift 14s linear infinite;
+}
+.agent-gate-glow {
+  position: absolute; z-index: -1; pointer-events: none; width: 420px; height: 420px; left: 50%; top: 50%; translate: -50% -50%;
+  background: radial-gradient(circle, rgba(77, 252, 169, 0.18) 0%, rgba(77, 252, 169, 0.05) 38%, transparent 68%);
+  filter: blur(14px); animation: agent-gate-breathe 6s ease-in-out infinite;
+}
+@keyframes agent-gate-drift { from { background-position: 11px 11px; } to { background-position: 33px 33px; } }
+@keyframes agent-gate-breathe { 0%, 100% { opacity: 0.75; scale: 0.96; } 50% { opacity: 1; scale: 1.06; } }
+@media (prefers-reduced-motion: reduce) { .agent-gate-dots, .agent-gate-glow { animation: none; } }
