@@ -19,6 +19,7 @@ const LINKS = [
   { href: '/trades', label: 'Trades' },
   { href: '/proof', label: 'Proof' },
   { href: '/agent', label: 'Agent' },
+  { href: '/mcp', label: 'MCP' },
   { href: DOCS_URL, label: 'Docs' },
 ]
 const EASE = [0.22, 1, 0.36, 1] as const

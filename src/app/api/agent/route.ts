@@ -69,6 +69,34 @@ Protocol facts (fixed in the contracts): premium fee ${FEES.premiumBps / 100}% o
 
 Style: short, concrete, numbers first. Use a small table for several offers. Link offers with the links the tools return (site: ${SITE}). Do not repeat the disclaimer more than once per answer. If the user has no wallet connected and asks about their positions, ask them to connect or to give an address.`
 
+/** What the user sees while a tool runs: a short line built from the tool name and its safe, cleaned arguments. */
+function stepLabel(name: string, input: unknown): string {
+  const a = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
+  const str = (k: string) => (typeof a[k] === 'string' ? String(a[k]).replace(/[^\x20-\x7E]/g, '').slice(0, 24) : '')
+  const token = str('token'), kind = str('kind'), id = str('id'), addr = str('address'), action = str('action')
+  const short = addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : ''
+  switch (name) {
+    case 'list_tokens': return str('query') ? `Looking up tokens matching "${str('query')}"` : 'Reading the listed tokens'
+    case 'find_offers': return `Searching open ${kind ? kind + ' ' : ''}offers${token ? ` on ${token}` : ''}`
+    case 'get_offer': return `Opening offer ${id.slice(0, 6)}…`
+    case 'get_positions': return `Reading positions of ${short}`
+    case 'get_prices': return 'Reading live prices'
+    case 'get_chart': return `Loading the ${token} chart`
+    case 'get_staking': return short ? `Checking stake of ${short}` : 'Checking the staking pool'
+    case 'get_protocol_stats': return 'Pulling protocol stats'
+    case 'get_proof': return 'Reading fee splits and burns'
+    case 'get_activity': return `Scanning recent activity${token ? ` on ${token}` : ''}`
+    case 'explain_offer': return 'Working out breakeven, fees and payoff'
+    case 'compare_offers': return `Comparing ${kind ? kind + ' ' : ''}offers on ${token}`
+    case 'prepare_buy': return 'Preparing the buy for your review'
+    case 'prepare_covered_call': return `Preparing a covered call on ${token}`
+    case 'prepare_cash_secured_put': return `Preparing a cash-secured put on ${token}`
+    case 'prepare_exercise': return 'Preparing the exercise for your review'
+    case 'prepare_stake': return `Preparing ${action || 'the stake'}`
+    default: return name.replace(/_/g, ' ')
+  }
+}
+
 function sse(controller: ReadableStreamDefaultController, obj: unknown) {
   controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(obj)}\n\n`))
 }
@@ -126,7 +154,7 @@ export async function POST(req: NextRequest) {
             if (block.type !== 'tool_use') continue
             const tool = BY_NAME[block.name]
             toolCalls += 1
-            sse(controller, { type: 'tool', name: block.name, status: 'start' })
+            sse(controller, { type: 'tool', name: block.name, status: 'start', label: stepLabel(block.name, block.input) })
             let content: string
             if (!tool || toolCalls > 12) {
               content = JSON.stringify({ error: 'tool unavailable' })

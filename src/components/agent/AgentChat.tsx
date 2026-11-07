@@ -1,12 +1,13 @@
 'use client'
 
-import { ArrowUp, ArrowUpRight, Sparkle } from '@phosphor-icons/react'
+import { ArrowUp, ArrowUpRight, Check, CursorClick, MagnifyingGlass, Sparkle, Warning } from '@phosphor-icons/react'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAccount } from 'wagmi'
 
 type Card = { tool: string; preview: string; link: string }
-type Msg = { role: 'user' | 'assistant'; content: string; cards?: Card[]; tools?: string[]; error?: string }
+type Step = { name: string; label: string; status: 'start' | 'done' | 'error' }
+type Msg = { role: 'user' | 'assistant'; content: string; cards?: Card[]; steps?: Step[]; error?: string; done?: boolean }
 
 const SUGGESTIONS = [
   'What are the best open covered calls right now?',
@@ -35,7 +36,7 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
     const q = text.trim()
     if (!q || busy) return
     setInput('')
-    const next: Msg[] = [...msgs, { role: 'user', content: q }, { role: 'assistant', content: '', cards: [], tools: [] }]
+    const next: Msg[] = [...msgs, { role: 'user', content: q }, { role: 'assistant', content: '', cards: [], steps: [] }]
     setMsgs(next)
     setBusy(true)
     const ctl = new AbortController()
@@ -62,16 +63,19 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
         while ((i = buf.indexOf('\n\n')) >= 0) {
           const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2)
           if (!line.startsWith('data: ')) continue
-          const ev = JSON.parse(line.slice(6)) as { type: string; delta?: string; name?: string; status?: string; card?: Card; message?: string }
+          const ev = JSON.parse(line.slice(6)) as { type: string; delta?: string; name?: string; status?: 'start' | 'done' | 'error'; label?: string; card?: Card; message?: string }
           if (ev.type === 'text') patch((m) => ({ ...m, content: m.content + ev.delta }))
-          else if (ev.type === 'tool' && ev.status === 'start') patch((m) => ({ ...m, tools: [...(m.tools ?? []), ev.name!] }))
+          else if (ev.type === 'tool' && ev.status === 'start') patch((m) => ({ ...m, steps: [...(m.steps ?? []), { name: ev.name!, label: ev.label || ev.name!.replace(/_/g, ' '), status: 'start' }] }))
+          else if (ev.type === 'tool') patch((m) => ({ ...m, steps: (m.steps ?? []).map((st, k, all) => (k === all.length - 1 || (st.name === ev.name && st.status === 'start') ? { ...st, status: ev.status! } : st)) }))
           else if (ev.type === 'card') patch((m) => ({ ...m, cards: [...(m.cards ?? []), ev.card!] }))
           else if (ev.type === 'error') patch((m) => ({ ...m, error: ev.message }))
+          else if (ev.type === 'done') patch((m) => ({ ...m, done: true }))
         }
       }
     } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) patch((m) => ({ ...m, error: 'Connection lost.' }))
     } finally {
+      patch((m) => ({ ...m, done: true, steps: (m.steps ?? []).map((st) => (st.status === 'start' ? { ...st, status: 'done' } : st)) }))
       setBusy(false)
     }
   }
@@ -95,12 +99,8 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
               <div className="max-w-[85%] rounded-2xl rounded-br-md bg-white/[0.08] px-4 py-2.5 text-sm text-ink">{m.content}</div>
             ) : (
               <div className="space-y-3">
-                {m.tools && m.tools.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {m.tools.map((t, j) => <span key={j} className="hair rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">{t.replace(/_/g, ' ')}</span>)}
-                  </div>
-                )}
-                {m.content ? <Markdown text={m.content} /> : !m.error && <span className="inline-flex gap-1 text-muted"><Dot /><Dot d={0.15} /><Dot d={0.3} /></span>}
+                {!m.error && (m.steps?.length || !m.content) && <Exploring steps={m.steps ?? []} working={!m.done && !m.content} />}
+                {m.content && <Markdown text={m.content} />}
                 {m.cards?.map((c, j) => (
                   <div key={j} className="panel rounded-xl p-4">
                     <div className="eyebrow !text-[10px]">Review and sign in your wallet</div>
@@ -137,8 +137,45 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
   )
 }
 
-function Dot({ d = 0 }: { d?: number }) {
-  return <span className="size-1.5 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${d}s` }} />
+/**
+ * What the agent is doing, as it does it: a live header while it works ("Exploring Kyte…") and one row per tool
+ * call with a spinner that turns into a check. Stays visible, muted, under the answer so the sources are clear.
+ */
+function Exploring({ steps, working }: { steps: Step[]; working: boolean }) {
+  const running = steps.some((s) => s.status === 'start')
+  const active = working || running
+  return (
+    <div className={`agent-steps rounded-xl border px-3.5 py-3 transition-colors duration-500 ${active ? 'border-accent/25 bg-accent/[0.04]' : 'hair bg-transparent'}`}>
+      <div className="flex items-center gap-2 text-[12px]">
+        <span className={`grid size-5 place-items-center rounded-full ${active ? 'agent-pulse bg-accent/15 text-accent' : 'bg-white/[0.06] text-muted'}`}>
+          {active ? <MagnifyingGlass size={12} weight="bold" /> : <Check size={12} weight="bold" />}
+        </span>
+        <span className={active ? 'agent-shimmer font-medium' : 'text-muted'}>
+          {active ? (steps.length ? 'Exploring Kyte' : 'Reading your question') : `Checked ${steps.length} source${steps.length === 1 ? '' : 's'} on chain`}
+        </span>
+      </div>
+      {active && (
+        /* a miniature page the agent "browses": faux rows that scan, and a pointer gliding over them */
+        <div aria-hidden className="agent-browse relative mt-3 h-12 overflow-hidden rounded-lg border border-white/[0.06] bg-black/30">
+          <div className="absolute inset-x-3 top-2.5 space-y-2">
+            {[72, 48, 60].map((w, i) => <div key={i} className="agent-browse-row h-1.5 rounded-full bg-white/[0.08]" style={{ width: `${w}%`, animationDelay: `${i * 0.35}s` }} />)}
+          </div>
+          <div className="agent-browse-scan absolute inset-y-0 w-16" />
+          <CursorClick size={14} weight="fill" className="agent-browse-cursor absolute text-accent drop-shadow-[0_0_6px_rgba(77,252,169,.6)]" />
+        </div>
+      )}
+      {steps.length > 0 && (
+        <ol className="mt-2 space-y-1.5 border-l border-white/[0.08] pl-3.5">
+          {steps.map((st, i) => (
+            <li key={i} className="agent-step flex items-center gap-2 text-[12px]" style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}>
+              {st.status === 'start' ? <span className="agent-spin size-3 rounded-full border-[1.5px] border-accent/30 border-t-accent" /> : st.status === 'error' ? <Warning size={12} className="text-warn" /> : <Check size={12} className="text-accent" weight="bold" />}
+              <span className={st.status === 'start' ? 'text-ink/85' : 'text-muted'}>{st.label}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  )
 }
 
 /** Tiny safe Markdown: paragraphs, bullet lists, pipe tables, bold, inline code and links. No HTML is ever injected. */

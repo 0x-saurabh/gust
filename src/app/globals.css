@@ -511,3 +511,22 @@ p {
 }
 .hero-aurora { mix-blend-mode: screen; transform-origin: 60% 50%; animation: hero-aurora-breathe 8s ease-in-out infinite; will-change: transform, opacity; }
 @media (prefers-reduced-motion: reduce) { .hero-aurora { animation: none; opacity: .7; } }
+
+/* Kyte agent: the "exploring" block (steps appear one by one, spinner per running tool, shimmering header) */
+@keyframes agent-step-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes agent-spin { to { transform: rotate(360deg); } }
+@keyframes agent-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes agent-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(77, 252, 169, 0.35); } 60% { box-shadow: 0 0 0 7px rgba(77, 252, 169, 0); } }
+.agent-step { animation: agent-step-in 350ms var(--ease-base) both; }
+.agent-spin { animation: agent-spin 800ms linear infinite; }
+.agent-pulse { animation: agent-pulse 1.6s ease-out infinite; }
+.agent-shimmer { background: linear-gradient(90deg, var(--color-muted) 20%, var(--color-ink) 50%, var(--color-muted) 80%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: agent-shimmer 1.8s linear infinite; }
+/* the miniature page: rows brighten in turn, a light band sweeps across, and a pointer glides along a loop */
+@keyframes agent-row { 0%, 100% { background: rgba(255, 255, 255, 0.08); } 30% { background: rgba(77, 252, 169, 0.35); } }
+@keyframes agent-scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(520%); } }
+@keyframes agent-cursor { 0% { left: 8%; top: 55%; } 25% { left: 42%; top: 18%; } 50% { left: 70%; top: 62%; } 75% { left: 30%; top: 70%; } 100% { left: 8%; top: 55%; } }
+@keyframes agent-click { 0%, 20%, 100% { transform: scale(1); } 24% { transform: scale(0.8); } 28% { transform: scale(1); } }
+.agent-browse-row { animation: agent-row 2.1s ease-in-out infinite; }
+.agent-browse-scan { background: linear-gradient(90deg, transparent, rgba(77, 252, 169, 0.12), transparent); animation: agent-scan 2.4s linear infinite; }
+.agent-browse-cursor { animation: agent-cursor 4s cubic-bezier(0.45, 0, 0.3, 1) infinite, agent-click 4s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .agent-step, .agent-spin, .agent-pulse, .agent-shimmer, .agent-browse-row, .agent-browse-scan, .agent-browse-cursor { animation: none; } .agent-shimmer { color: var(--color-ink); background: none; } }
