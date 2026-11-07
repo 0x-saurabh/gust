@@ -14,7 +14,7 @@
     "devnet": "cd contracts && ~/.foundry/bin/anvil --port 8547 --chain-id 31337",
     "devnet:deploy": "cd contracts && ~/.foundry/bin/forge script script/DeployDevnet.s.sol --rpc-url http://127.0.0.1:8547 --broadcast && cd .. && node scripts/sync-contracts.mjs",
     "trader": "node scripts/devnet-trader.mjs",
-    "test": "node --test tests/"
+    "test": "node --test tests/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
