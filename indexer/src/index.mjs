@@ -10,6 +10,7 @@ import fs from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { installAutopilot } from './autopilot.mjs'
 import { createPublicClient, decodeEventLog, encodeAbiParameters, formatUnits, getAddress, http as httpTransport, keccak256, toHex, toEventSelector } from 'viem'
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname)
@@ -671,6 +672,23 @@ function send(res, status, body) {
   res.end(typeof body === 'string' ? body : JSON.stringify(body))
 }
 
+// ---- Autopilot (watch and prepare): signed rules, triggers with prepared links. docs/AUTOPILOT_SPEC.md
+const autopilot = installAutopilot({ db, all, client, routes, offerOut, site: (process.env.SITE_URL || 'https://kyte.sh').replace(/\/$/, '') })
+async function autopilotLoop() {
+  try { await autopilot.evaluate() } catch (e) { console.error('[autopilot] evaluate failed:', e.shortMessage ?? e.message) }
+  setTimeout(autopilotLoop, 60_000).unref?.()
+}
+setTimeout(autopilotLoop, 15_000).unref?.()
+const BODY_LIMIT = 16 * 1024
+function readJson(req) {
+  return new Promise((resolve, reject) => {
+    let data = ''
+    req.on('data', (c) => { data += c; if (data.length > BODY_LIMIT) { reject(new BadRequest('body too large')); req.destroy() } })
+    req.on('end', () => { try { resolve(data ? JSON.parse(data) : {}) } catch { reject(new BadRequest('bad json')) } })
+    req.on('error', reject)
+  })
+}
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json; charset=utf-8')
   res.setHeader('x-content-type-options', 'nosniff')
@@ -679,10 +697,12 @@ const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin
   if (!CORS_ORIGINS.length) res.setHeader('access-control-allow-origin', '*')
   else if (origin && CORS_ORIGINS.includes(origin)) { res.setHeader('access-control-allow-origin', origin); res.setHeader('vary', 'origin') }
-  res.setHeader('access-control-allow-methods', 'GET, OPTIONS')
+  res.setHeader('access-control-allow-methods', 'GET, POST, DELETE, OPTIONS')
+  res.setHeader('access-control-allow-headers', 'content-type')
 
   if (req.method === 'OPTIONS') return send(res, 204, '')
-  if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'method not allowed' })
+  const isAutopilot = (req.url ?? '').startsWith('/autopilot/')
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !(isAutopilot && (req.method === 'POST' || req.method === 'DELETE'))) return send(res, 405, { error: 'method not allowed' })
   if ((req.url ?? '').length > 2048) return send(res, 414, { error: 'uri too long' })
   if (overLimit(req)) { res.setHeader('retry-after', '60'); return send(res, 429, { error: 'rate limited' }) }
 
@@ -690,6 +710,23 @@ const server = http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x')
     let body
     const m = u.pathname.match(/^\/(offers|positions|stake)\/([^/]+)$/)
+    const ap = u.pathname.match(/^\/autopilot\/(rules|triggers)(?:\/([^/]+))?(?:\/(seen))?$/)
+    if (ap) {
+      try {
+        if (req.method === 'GET' && ap[1] === 'rules' && ap[2]) body = await autopilot.api.listRules(addressParam(ap[2]))
+        else if (req.method === 'GET' && ap[1] === 'triggers' && ap[2]) body = await autopilot.api.listTriggers(addressParam(ap[2]), intParam(u, 'limit', 50, 1, 200))
+        else if (req.method === 'POST' && ap[1] === 'rules' && !ap[2]) body = await autopilot.api.createRule(await readJson(req))
+        else if (req.method === 'DELETE' && ap[1] === 'rules' && ap[2]) body = await autopilot.api.setRuleStatus({ ...(await readJson(req)), id: ap[2] }, 'deleted')
+        else if (req.method === 'POST' && ap[1] === 'rules' && ap[2] === 'pause') body = await autopilot.api.setRuleStatus(await readJson(req), 'paused')
+        else if (req.method === 'POST' && ap[1] === 'rules' && ap[2] === 'resume') body = await autopilot.api.setRuleStatus(await readJson(req), 'active')
+        else if (req.method === 'POST' && ap[1] === 'triggers' && ap[2] && ap[3] === 'seen') body = await autopilot.api.markSeen(ap[2], addressParam((await readJson(req)).address ?? ''))
+        else return send(res, 404, { error: 'not found' })
+      } catch (e) {
+        if (e instanceof autopilot.BadRule) return send(res, 400, { error: e.message })
+        throw e
+      }
+      return send(res, 200, body)
+    }
     if (Object.hasOwn(routes, u.pathname)) body = await routes[u.pathname](u)
     else if (m?.[1] === 'offers') {
       if (!/^\d{1,80}$/.test(m[2])) throw new BadRequest('bad id')

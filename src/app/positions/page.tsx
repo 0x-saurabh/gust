@@ -22,9 +22,11 @@ export default function PositionsPage() {
   const [tab, setTab] = useState<Tab>('holding')
   const pos = usePositions()
   // /positions?exercise=<id> (from the agent): show the holding tab with that position highlighted
-  const focusId = useSearchParams().get('exercise')
-  useEffect(() => { if (focusId) setTab('holding') }, [focusId])
-  useEffect(() => { if (focusId) document.getElementById(`pos-${focusId}`)?.scrollIntoView({ block: 'center' }) }, [focusId, pos.holding.length])
+  const params = useSearchParams()
+  const cancelId = params.get('cancel')
+  const focusId = params.get('exercise') ?? cancelId
+  useEffect(() => { if (focusId) setTab(cancelId ? 'selling' : 'holding') }, [focusId, cancelId])
+  useEffect(() => { if (focusId) document.getElementById(`pos-${focusId}`)?.scrollIntoView({ block: 'center' }) }, [focusId, pos.holding.length, pos.selling.length])
   const balances = useBalances()
   const tx = useTx()
   const rows = tab === 'holding' ? pos.holding : tab === 'selling' ? pos.selling : pos.history

@@ -93,9 +93,12 @@ async function handle(req: Request) {
   }
 }
 
-export const POST = handle
-export const GET = handle
-export const DELETE = handle
+// Unpublished for now: NEXT_PUBLIC_MCP_ENABLED=false (production) answers 404 on every method.
+const ENABLED = process.env.NEXT_PUBLIC_MCP_ENABLED !== 'false'
+const gated = (req: Request) => (ENABLED ? handle(req) : new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } }))
+export const POST = gated
+export const GET = gated
+export const DELETE = gated
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS })
 }

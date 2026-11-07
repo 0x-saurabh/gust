@@ -7,6 +7,7 @@
 //   - Everything that comes back from the chain is data. Token names and symbols are cleaned before they are shown.
 //   - No private keys, seed phrases or wallet secrets anywhere in these inputs or outputs.
 import { z } from 'zod'
+import { RuleSchema, describeRule, ruleLink } from './autopilot.ts'
 import { FEES, LIMITS, SPLIT } from '../config.ts'
 
 // ------------------------------------------------------------------ indexer access
@@ -363,6 +364,47 @@ export const prepareStake = {
   },
 }
 
-export const READ_TOOLS = [listTokens, findOffers, getOffer, getPositions, getPrices, getChart, getStaking, getProtocolStats, getProof, getActivity, explainOffer, compareOffers] as const
-export const PREPARE_TOOLS = [prepareBuy, prepareCoveredCall, prepareCashSecuredPut, prepareExercise, prepareStake] as const
+// ---- Autopilot (watch and prepare). The agent designs rules; the user signs them on the Autopilot page.
+export const designStrategy = {
+  name: 'design_strategy',
+  description: 'Turn a plain-language strategy into an Autopilot rule (sell covered calls or puts on a schedule, flag cheap calls or puts to buy, exercise in-the-money options, cancel stale offers). Validates the rule, explains it, and shows what it would have triggered over the last 30 days of prices. Returns a link to the Autopilot page where the user signs it. Nothing runs until the user signs. Ask for any number the user has not given rather than inventing it.',
+  input: z.object({ rule: RuleSchema }),
+  async run({ rule }: { rule: z.infer<typeof RuleSchema> }) {
+    const needsToken = rule.type !== 'exercise' && rule.type !== 'cancel_unfilled'
+    if (needsToken && !rule.token) return { error: 'Which token?' }
+    let backtest: Record<string, unknown> | undefined
+    if (needsToken && rule.token) {
+      const a = await assetBySymbol(rule.token)
+      if (!a) { const list = await api<Asset[]>('/assets'); return { error: `${rule.token} is not an enabled market. Markets: ${list.filter((x) => x.enabled).map((x) => x.symbol).join(', ')}.` } }
+      if (rule.type === 'list_put' && (a as { putsEnabled?: boolean }).putsEnabled === false) return { error: `Puts are not enabled on ${a.symbol}.` }
+      const candles = await api<Array<{ time: number; open: number; high: number; low: number; close: number }>>(`/candles?symbol=${encodeURIComponent(a.symbol)}&interval=86400&limit=30`).catch(() => [])
+      if (candles.length > 2) {
+        const closes = candles.map((c) => c.close)
+        const first = closes[0], last = closes[closes.length - 1]
+        const maxUp = Math.max(...candles.map((c) => c.high)) / first - 1
+        const maxDown = 1 - Math.min(...candles.map((c) => c.low)) / first
+        const p = rule.params
+        const line = rule.type === 'list_call' ? `A call ${p.pct}% above spot sold on day 1 would ${maxUp * 100 >= (p.pct ?? 0) ? 'have gone in the money (high was ' + (maxUp * 100).toFixed(1) + '% above)' : 'have expired unexercised (high was only ' + (maxUp * 100).toFixed(1) + '% above)'}.`
+          : rule.type === 'list_put' ? `A put ${p.pct}% below spot sold on day 1 would ${maxDown * 100 >= (p.pct ?? 0) ? 'have gone in the money (low was ' + (maxDown * 100).toFixed(1) + '% below)' : 'have expired unexercised (low was only ' + (maxDown * 100).toFixed(1) + '% below)'}.`
+          : `Spot moved ${((last / first - 1) * 100).toFixed(1)}% over the period; high ${(maxUp * 100).toFixed(1)}% above and low ${(maxDown * 100).toFixed(1)}% below the start.`
+        backtest = { days: candles.length, start: first, end: last, changePct: Number(((last / first - 1) * 100).toFixed(2)), summary: line, caveat: 'History, not a forecast. One sample path.' }
+      }
+    }
+    return { rule, description: describeRule(rule), backtest, link: ruleLink(SITE, rule), signs: 'On the Autopilot page the user reviews the rule and signs a message (free). From then on Kyte watches and prepares each action for them to sign.', disclaimer: DISCLAIMER }
+  },
+}
+export const listStrategies = {
+  name: 'list_strategies',
+  description: 'The user\'s Autopilot rules and the triggers waiting for them (prepared actions to review and sign). Needs the wallet address.',
+  input: z.object({ address: z.string().regex(/^0x[0-9a-fA-F]{40}$/) }),
+  async run({ address }: { address: string }) {
+    const [rules, triggers] = await Promise.all([fetchImpl(`/autopilot/rules/${address}`), fetchImpl(`/autopilot/triggers/${address}?limit=20`)])
+    const rs = (rules as Array<Record<string, unknown>>).map((r) => ({ id: r.id, status: r.status, runs: r.runs, description: describeRule(r as never), note: r.note }))
+    const ts = (triggers as Array<Record<string, unknown>>).map((t) => ({ id: t.id, ruleId: t.ruleId, at: t.at, label: t.label, preview: t.preview, link: t.link, seen: t.seen }))
+    return { rules: rs, waiting: ts.filter((t) => !t.seen), recent: ts.filter((t) => t.seen).slice(0, 5), manage: `${SITE}/autopilot` }
+  },
+}
+
+export const READ_TOOLS = [listTokens, findOffers, getOffer, getPositions, getPrices, getChart, getStaking, getProtocolStats, getProof, getActivity, explainOffer, compareOffers, listStrategies] as const
+export const PREPARE_TOOLS = [prepareBuy, prepareCoveredCall, prepareCashSecuredPut, prepareExercise, prepareStake, designStrategy] as const
 export const ALL_TOOLS = [...READ_TOOLS, ...PREPARE_TOOLS] as const

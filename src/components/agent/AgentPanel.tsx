@@ -4,6 +4,8 @@ import { Sparkle, X } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAccount } from 'wagmi'
+import { INDEXER_URL } from '@/lib/data'
 import { useEffect, useState } from 'react'
 import { AgentChat } from './AgentChat'
 
@@ -13,6 +15,15 @@ const EASE = [0.22, 1, 0.36, 1] as const
 export function AgentPanel() {
   const path = usePathname()
   const [open, setOpen] = useState(false)
+  const { address } = useAccount()
+  const [waiting, setWaiting] = useState(0)
+  useEffect(() => {
+    if (!address) { setWaiting(0); return }
+    let live = true
+    const poll = () => fetch(`${INDEXER_URL}/autopilot/triggers/${address}?limit=50`).then((r) => r.json()).then((t) => { if (live && Array.isArray(t)) setWaiting(t.filter((x: { seen: boolean }) => !x.seen).length) }).catch(() => {})
+    poll(); const id = setInterval(poll, 60_000)
+    return () => { live = false; clearInterval(id) }
+  }, [address])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
     document.addEventListener('keydown', onKey)
@@ -25,6 +36,7 @@ export function AgentPanel() {
       <div className="fixed bottom-5 right-5 z-30 md:bottom-6 md:right-6">
         <button type="button" onClick={() => setOpen(true)} aria-label="Ask Kyte" className="btn btn-glass btn-glass-sm shadow-lg">
           <Sparkle size={15} className="text-accent" /> Ask Kyte
+          {waiting > 0 && <span className="ml-1 rounded-full bg-[var(--color-ink)] px-1.5 text-[10px] font-medium leading-4 text-[var(--color-bg)]" title={`${waiting} Autopilot action${waiting === 1 ? '' : 's'} waiting for you`}>{waiting}</span>}
         </button>
       </div>
       <AnimatePresence>

@@ -9,6 +9,7 @@ export PATH="$HOME/.nvm/versions/node/v25.9.0/bin:/usr/local/bin:/opt/homebrew/b
 export CHAIN_ID="${CHAIN_ID:-4663}"
 export PORT="${PORT:-4201}"
 export HOST="${HOST:-127.0.0.1}"
+export SITE_URL="${SITE_URL:-http://localhost:3010}" # Autopilot trigger links open the local site
 export POLL_MS="${POLL_MS:-3000}"
 export START_BLOCK="${START_BLOCK:-$(node -e "console.log(require('./src/lib/generated/deployments.json')['$CHAIN_ID'].deployBlock)")}"
 exec node indexer/src/index.mjs

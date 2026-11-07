@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
 import { ALL_TOOLS, clean, compareOffers, explainOffer, findOffers, getOffer, getPositions, getPrices, getStaking, listTokens, prepareBuy, prepareCashSecuredPut, prepareCoveredCall, prepareExercise, prepareStake, setFetcher } from '../src/lib/agent/tools.ts'
+import { designStrategy, listStrategies } from '../src/lib/agent/tools.ts'
 
 const fx = (n: string) => JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'fixtures', n + '.json'), 'utf8'))
 const offers = fx('offers_status_all') as { id: string; status: string; symbol: string; kind: 'call' | 'put'; expiry: number }[]
@@ -26,6 +27,9 @@ setFetcher(async (p) => {
     const u = new URLSearchParams(p.slice(8))
     return [OPEN].filter((o) => (!u.get('token') || o.symbol === u.get('token')) && (!u.get('kind') || o.kind === u.get('kind')))
   }
+  if (p.startsWith('/candles?')) return Array.from({ length: 10 }, (_, i) => ({ time: i * 86400, open: 1, high: 1.1 + i * 0.01, low: 0.95, close: 1 + i * 0.01 }))
+  if (p.startsWith('/autopilot/rules/')) return [{ id: 1, type: 'list_call', token: 'PONS', params: { amount: 10, pct: 20, minPremiumEth: 0.001, expirySec: 604800, fillWindowSec: 172800 }, schedule: { repeat: true }, limits: {}, status: 'active', runs: 2 }]
+  if (p.startsWith('/autopilot/triggers/')) return [{ id: 7, ruleId: 1, at: 1, label: 'List a call on 10 PONS', preview: 'p', link: 'https://kyte.sh/sell?kind=call', seen: false }]
   throw new Error('unexpected path ' + p)
 })
 
@@ -140,4 +144,21 @@ test('prepare_stake needs an amount except for claim', async () => {
 test('get_offer passes through seller, holder and the creating transaction', async () => {
   const r = await getOffer.run({ id: OPEN.id })
   assert.match(r.createdTx, /^0x[0-9a-f]{64}$/); assert.match(r.seller, /^0x/)
+})
+
+test('design_strategy validates the market, backtests over candles and returns a signing link', async () => {
+  const out = (await designStrategy.run({ rule: { type: 'list_call', token: 'PONS', params: { amount: 10, pct: 20, minPremiumEth: 0.001, expirySec: 604800, fillWindowSec: 172800 }, schedule: { repeat: true }, limits: {} } })) as Record<string, unknown>
+  assert.equal(out.error, undefined)
+  assert.match(String(out.description), /covered call on 10 PONS at 20% above spot/)
+  assert.ok(String(out.link).startsWith('https://kyte.sh/autopilot?rule='))
+  assert.equal((out.backtest as { days: number }).days, 10)
+  const bad = (await designStrategy.run({ rule: { type: 'list_call', token: 'NOPE', params: { amount: 10, pct: 20, minPremiumEth: 0.001, expirySec: 604800, fillWindowSec: 172800 }, schedule: { repeat: false }, limits: {} } })) as Record<string, unknown>
+  assert.match(String(bad.error), /not an enabled market/)
+})
+
+test('list_strategies returns rules with descriptions and the unseen triggers', async () => {
+  const out = (await listStrategies.run({ address: '0x000000000000000000000000000000000000dEaD' })) as { rules: Array<{ description: string }>; waiting: unknown[] }
+  assert.equal(out.rules.length, 1)
+  assert.match(out.rules[0].description, /PONS/)
+  assert.equal(out.waiting.length, 1)
 })

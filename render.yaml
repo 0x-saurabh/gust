@@ -25,6 +25,8 @@ services:
         value: "1"
       - key: RATE_LIMIT_PER_MIN
         value: "1200"
+      - key: SITE_URL
+        value: https://kyte.sh # Autopilot trigger links point here
     disk:
       name: indexer-data
       mountPath: /app/indexer/data
@@ -73,3 +75,5 @@ services:
         value: "30"
       - key: NEXT_PUBLIC_SITE_URL
         value: https://kyte.sh # link previews and canonical URLs use this domain
+      - key: NEXT_PUBLIC_MCP_ENABLED
+        value: "false" # MCP endpoint and /mcp page unpublished until launch; local dev keeps them on
