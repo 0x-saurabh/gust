@@ -177,7 +177,8 @@ contract PonsListerTest is Test {
         fs[0] = address(factory);
         address[] memory ls = new address[](1);
         ls[0] = locker;
-        PonsLister fresh = new PonsLister(address(timelock), guardian, address(registry), address(weth), fs, ls, 200, 1e12);
+        PonsLister fresh =
+            new PonsLister(address(timelock), guardian, address(registry), address(weth), fs, ls, 200, 1e12);
         vm.expectRevert(PonsLister.AlreadyListed.selector);
         fresh.list(address(token));
     }

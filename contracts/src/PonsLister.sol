@@ -27,7 +27,10 @@ interface IPonsFactory {
     }
 
     function getLaunchedToken(address token) external view returns (Launched memory launched);
-    function graduationStatus(address token) external view returns (uint256 pairedPrincipal, uint256 threshold, bool graduated);
+    function graduationStatus(address token)
+        external
+        view
+        returns (uint256 pairedPrincipal, uint256 threshold, bool graduated);
 }
 
 interface IRegistryListed {
@@ -69,7 +72,9 @@ contract PonsLister is Governed {
     /// @dev Makes every scheduled operation id unique, even for the same token after a reset.
     uint256 public nonce;
 
-    event ListingScheduled(address indexed token, bytes32 indexed operationId, uint256 cap, uint256 minStrike, uint256 readyAt);
+    event ListingScheduled(
+        address indexed token, bytes32 indexed operationId, uint256 cap, uint256 minStrike, uint256 readyAt
+    );
     event ListingExecuted(address indexed token, bytes32 indexed operationId);
     event CapBpsChanged(uint256 oldValue, uint256 newValue);
     event MinStrikeChanged(uint256 oldValue, uint256 newValue);
@@ -102,7 +107,9 @@ contract PonsLister is Governed {
         timelockController = TimelockController(payable(timelock_));
         registry = registry_;
         weth = weth_;
-        for (uint256 i; i < factories_.length; i++) _addFactory(factories_[i]);
+        for (uint256 i; i < factories_.length; i++) {
+            _addFactory(factories_[i]);
+        }
         for (uint256 i; i < lockers_.length; i++) {
             if (lockers_[i] == address(0)) revert Errors.ZeroAddress();
             lockers[lockers_[i]] = true;
@@ -135,7 +142,8 @@ contract PonsLister is Governed {
     function execute(address token) external {
         bytes32 operationId = operationOf[token];
         if (operationId == bytes32(0)) revert NotScheduled();
-        bytes memory data = abi.encodeWithSignature("addAsset(address,uint256,uint256)", token, capOf[token], minStrikeOf[token]);
+        bytes memory data =
+            abi.encodeWithSignature("addAsset(address,uint256,uint256)", token, capOf[token], minStrikeOf[token]);
         timelockController.execute(registry, 0, data, bytes32(0), saltOf[token]);
         emit ListingExecuted(token, operationId);
     }
@@ -178,7 +186,6 @@ contract PonsLister is Governed {
         delete capOf[token];
         delete minStrikeOf[token];
     }
-
 
     function setCapBps(uint256 capBps_) external onlyTimelock {
         if (capBps_ == 0 || capBps_ > 10_000) revert BadBps();
