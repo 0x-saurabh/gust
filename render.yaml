@@ -65,10 +65,10 @@ services:
           property: hostport
       - key: NEXT_PUBLIC_PRIVY_APP_ID
         sync: false
-      - key: ANTHROPIC_API_KEY # Kyte agent (/api/agent); server only, entered in the dashboard
+      - key: AI_GATEWAY_API_KEY # Kyte agent (/api/agent) through the Vercel AI Gateway; server only, entered in the dashboard
         sync: false
       - key: AGENT_MODEL
-        value: claude-sonnet-5-5
+        value: anthropic/claude-sonnet-5.5
       - key: AGENT_DAILY_LIMIT
         value: "30"
       - key: NEXT_PUBLIC_SITE_URL

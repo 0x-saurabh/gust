@@ -16,7 +16,12 @@ import { FEES, LIMITS, SPLIT } from '@/lib/config'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const MODEL = process.env.AGENT_MODEL || 'claude-sonnet-5-5'
+// Two ways to reach Claude: the Anthropic API directly (ANTHROPIC_API_KEY), or the Vercel AI Gateway
+// (AI_GATEWAY_API_KEY, Anthropic-compatible endpoint, model ids like anthropic/claude-sonnet-5.5). The gateway
+// path sends a plain Messages request: no beta headers, no server-side fallbacks, no eager tool streaming.
+const GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY
+const GATEWAY_URL = process.env.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh'
+const MODEL = process.env.AGENT_MODEL || (GATEWAY_KEY ? 'anthropic/claude-sonnet-5.5' : 'claude-sonnet-5-5')
 const DAILY_LIMIT = Number(process.env.AGENT_DAILY_LIMIT || 30)
 const MAX_ROUNDS = 6
 const MAX_TURNS = 12
@@ -45,6 +50,8 @@ const TOOLS: Anthropic.Beta.BetaToolUnion[] = ALL_TOOLS.map((t) => ({
   input_schema: (({ $schema: _s, ...rest }) => rest)(z.toJSONSchema(t.input) as Record<string, unknown>) as Anthropic.Beta.BetaTool.InputSchema,
   eager_input_streaming: true,
 }))
+// the gateway path uses the plain (non-beta) tool shape
+const PLAIN_TOOLS: Anthropic.Tool[] = ALL_TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: (({ $schema: _s, ...rest }) => rest)(z.toJSONSchema(t.input) as Record<string, unknown>) as Anthropic.Tool.InputSchema }))
 const BY_NAME = Object.fromEntries(ALL_TOOLS.map((t) => [t.name, t]))
 
 const SYSTEM = `You are the Kyte agent, inside kyte.sh: a non-custodial, fully collateralised options market on Robinhood Chain.
@@ -67,14 +74,14 @@ function sse(controller: ReadableStreamDefaultController, obj: unknown) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: 'agent not configured' }, { status: 503 })
+  if (!process.env.ANTHROPIC_API_KEY && !GATEWAY_KEY) return NextResponse.json({ error: 'agent not configured' }, { status: 503 })
   const parsed = Body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'bad request' }, { status: 400 })
   const { messages, address } = parsed.data
   const ip = (req.headers.get('x-forwarded-for') ?? '').split(',').at(-1)?.trim() || 'local'
   if (overLimit(address?.toLowerCase() ?? `ip:${ip}`)) return NextResponse.json({ error: `Daily limit of ${DAILY_LIMIT} questions reached. Try again tomorrow.` }, { status: 429 })
 
-  const client = new Anthropic()
+  const client = GATEWAY_KEY ? new Anthropic({ apiKey: GATEWAY_KEY, baseURL: GATEWAY_URL }) : new Anthropic()
   const history: Anthropic.Beta.BetaMessageParam[] = messages.map((m) => ({ role: m.role, content: m.content }))
   // The connected address is context for the tools, passed as data, never as an instruction.
   if (address) history.push({ role: 'user', content: `[context] connected wallet address: ${address}` })
@@ -88,17 +95,26 @@ export async function POST(req: NextRequest) {
         const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
         for (let round = 0; round < MAX_ROUNDS; round++) {
           rounds += 1
-          const s = client.beta.messages.stream({
-            model: MODEL,
-            max_tokens: 4_000,
-            betas: ['server-side-fallback-2026-07-01'],
-            fallbacks: 'default',
-            output_config: { effort: 'medium' },
-            system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
-            tools: TOOLS,
-            messages: history,
-          })
-          s.on('text', (delta) => sse(controller, { type: 'text', delta }))
+          // both streams expose the same on('text') / finalMessage() surface
+          const s = (GATEWAY_KEY
+            ? client.messages.stream({
+                model: MODEL,
+                max_tokens: 4_000,
+                system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
+                tools: PLAIN_TOOLS,
+                messages: history as Anthropic.MessageParam[],
+              })
+            : client.beta.messages.stream({
+                model: MODEL,
+                max_tokens: 4_000,
+                betas: ['server-side-fallback-2026-07-01'],
+                fallbacks: 'default',
+                output_config: { effort: 'medium' },
+                system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
+                tools: TOOLS,
+                messages: history,
+              })) as unknown as ReturnType<typeof client.beta.messages.stream>
+          s.on('text', (delta: string) => sse(controller, { type: 'text', delta }))
           const msg = await s.finalMessage()
           usage.input += msg.usage.input_tokens; usage.output += msg.usage.output_tokens
           usage.cacheRead += msg.usage.cache_read_input_tokens ?? 0; usage.cacheWrite += msg.usage.cache_creation_input_tokens ?? 0
