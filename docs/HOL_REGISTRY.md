@@ -31,3 +31,6 @@ Updates (new tools, description) go through `client.updateAgent(uaid, payload)` 
 
 | Date | UAID | Status | Endpoint | Tools |
 |---|---|---|---|---|
+| 2026-11-07 | uaid:aid:2P6i4mmnXKNeBw4SkxwGre4AptYWs3hB5kZGBtcKocEvytjLjuxDUHLoT6PuBHw6sx;uid=agent_75973947;registry=hashgraph-online;proto=mcp;nativeId=https://kyte.sh/api/mcp | registered via hol.org web form, 0 credits | https://kyte.sh/api/mcp | MCP server, sse |
+
+Profile: https://hol.org/registry/agent/uaid:aid:2P6i4mmnXKNeBw4SkxwGre4AptYWs3hB5kZGBtcKocEvytjLjuxDUHLoT6PuBHw6sx (agent id agent_75973947). Badge status at registration: unverified, trust score 0; add DNS verification and the plugin scan to raise it.

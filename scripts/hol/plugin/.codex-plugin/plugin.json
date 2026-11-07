@@ -1,0 +1,48 @@
+{
+  "name": "kyte",
+  "version": "1.0.0",
+  "description": "Kyte options market on Robinhood Chain for your AI agent: live markets, offers, prices, positions, staking, fee proof and Pons launchpad graduations, plus prepared trades you review and sign in your own wallet. Read-only server: no keys, no transactions.",
+  "author": {
+    "name": "Kyte",
+    "email": "contact@kyte.sh",
+    "url": "https://kyte.sh"
+  },
+  "homepage": "https://kyte.sh/mcp",
+  "repository": "https://github.com/usekyte/kyte-mcp",
+  "license": "MIT",
+  "keywords": [
+    "kyte",
+    "options",
+    "defi",
+    "robinhood-chain",
+    "mcp",
+    "non-custodial",
+    "market-data",
+    "launchpad"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "type": "mcp",
+    "displayName": "Kyte",
+    "shortDescription": "Options market data and prepared trades on Robinhood Chain.",
+    "longDescription": "Kyte connects your agent to a non-custodial, fully collateralised options market on Robinhood Chain. Ask for open calls and puts, prices, charts, your positions, staking and the on-chain fee proof, or have it prepare a trade: it returns a kyte.sh link you review and sign in your own wallet. The server never holds keys and never sends a transaction.",
+    "developerName": "Kyte",
+    "category": "Finance",
+    "capabilities": [
+      "Market Data",
+      "Read-only",
+      "Prepared Transactions"
+    ],
+    "websiteURL": "https://kyte.sh",
+    "privacyPolicyURL": "https://kyte.sh/privacy",
+    "termsOfServiceURL": "https://kyte.sh/terms",
+    "defaultPrompt": [
+      "What PONS calls are open on Kyte right now?",
+      "Which Pons tokens graduated today and are listed on Kyte?",
+      "Prepare a covered call on 10 PONS, 20% above spot, 1 day."
+    ],
+    "brandColor": "#4DFCA9",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  }
+}

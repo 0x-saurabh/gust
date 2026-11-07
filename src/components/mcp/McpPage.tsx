@@ -144,6 +144,34 @@ export function McpPage() {
         </Reveal>
       </section>
 
+      {/* ---- HOL Guard */}
+      <section className="mx-auto mt-24 max-w-5xl">
+        <Reveal>
+          <div className="eyebrow flex items-center gap-3"><span className="grad-bg h-px w-8" />Recommended</div>
+          <h2 className="font-display mt-5 text-[32px] font-medium leading-[1.05] md:text-[44px]">Run it under HOL Guard.</h2>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
+            Any DeFi tool your agent can call deserves a policy. <a href="https://hol.org/guard" target="_blank" rel="noopener noreferrer" className="text-ink underline decoration-white/20 underline-offset-4 hover:decoration-white/60">HOL Guard</a> runs on your machine and lets you allow, ask or block each MCP tool call, with a receipt for every decision. Kyte is built to sit under it cleanly.
+          </p>
+        </Reveal>
+        <Reveal delay={0.05}>
+          <div className="mt-8 grid gap-4 md:grid-cols-[1fr_1.1fr]">
+            <div className="card p-6">
+              <div className="eyebrow !text-[10px]">Terminal</div>
+              <pre className="mono mt-3 overflow-x-auto whitespace-pre-wrap text-[13px] leading-relaxed text-ink/85">{`pipx install hol-guard\nhol-guard init`}</pre>
+              <p className="mt-4 text-[13px] leading-relaxed text-ink/60">Then add Kyte to your client as above. Guard lists <code className="mono text-ink/80">kyte</code> on its Protect page, where you set the defaults below.</p>
+            </div>
+            <div className="card p-6">
+              <div className="eyebrow !text-[10px]">What Guard sees</div>
+              <ul className="mt-3 space-y-3 text-[14px] leading-relaxed">
+                <li className="flex gap-3"><Check size={16} className="mt-1 shrink-0 text-accent" /><span><span className="text-ink">{READ_TOOLS.length} read tools</span> <span className="text-ink/60">are annotated read-only and never change state. Safe to allow.</span></span></li>
+                <li className="flex gap-3"><Lock size={16} className="mt-1 shrink-0 text-ink/70" /><span><span className="text-ink">{PREPARE_TOOLS.length} prepare tools</span> <span className="text-ink/60">are annotated as not read-only, so Guard asks before each one. They only return a kyte.sh link; you still sign in your wallet.</span></span></li>
+                <li className="flex gap-3"><ShieldCheck size={16} className="mt-1 shrink-0 text-ink/70" /><span><span className="text-ink">No tool</span> <span className="text-ink/60">can sign, send, spend or read a key, so there is nothing to block.</span></span></li>
+              </ul>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
       {/* ---- tools */}
       <section className="mx-auto mt-24 max-w-5xl">
         <Reveal>

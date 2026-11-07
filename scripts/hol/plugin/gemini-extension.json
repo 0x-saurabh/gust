@@ -1,0 +1,11 @@
+{
+  "name": "kyte",
+  "version": "1.0.0",
+  "description": "Kyte options market on Robinhood Chain for your AI agent: live markets, offers, prices, positions, staking, fee proof and Pons launchpad graduations, plus prepared trades you review and sign in your own wallet. Read-only server: no keys, no transactions.",
+  "mcpServers": {
+    "kyte": {
+      "httpUrl": "https://kyte.sh/api/mcp"
+    }
+  },
+  "contextFileName": "skills/kyte-options/SKILL.md"
+}
