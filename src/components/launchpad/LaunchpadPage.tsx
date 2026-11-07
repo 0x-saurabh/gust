@@ -83,7 +83,7 @@ export function LaunchpadPage() {
                 <Logo t={t} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate font-medium text-ink">{t.name}</span>
+                    {t.kyte === 'listed' ? <Link href={`/market?token=${encodeURIComponent(t.symbol)}`} className="truncate font-medium text-ink hover:underline" title="Open on the Kyte market">{t.name}</Link> : <span className="truncate font-medium text-ink">{t.name}</span>}
                     <span className="font-mono text-xs text-muted">{t.symbol}</span>
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
@@ -131,8 +131,8 @@ export function LaunchpadPage() {
               <div className="mt-auto flex items-center gap-2">
                 {t.kyte === 'listed' ? (
                   <>
-                    <PillButton href={`/sell?kind=call&token=${t.symbol}&expiry=86400`} tone="premium" size="sm">Sell a 24h call</PillButton>
-                    <Link href={`/market?token=${t.symbol}`} className="btn btn-glass btn-glass-sm">Market</Link>
+                    <PillButton href={`/sell?kind=call&token=${encodeURIComponent(t.symbol)}&expiry=86400`} tone="premium" size="sm">Sell a 24h call</PillButton>
+                    <Link href={`/market?token=${encodeURIComponent(t.symbol)}`} className="btn btn-glass btn-glass-sm">Market</Link>
                   </>
                 ) : (
                   <a href={t.links.pons} target="_blank" rel="noreferrer" className="btn btn-glass btn-glass-sm">Trade on Pons <ArrowUpRight size={12} /></a>
