@@ -9,7 +9,7 @@ import { Note, PageHeader, Segmented } from '@/components/ui'
 import { INDEXER_URL } from '@/lib/data'
 import { compact, num } from '@/lib/format'
 
-type Tab = 'graduated' | 'near' | 'listed'
+type Tab = 'recent' | 'graduated' | 'near' | 'listed'
 type PonsToken = {
   address: string; symbol: string; name: string; logo: string | null; description: string | null
   pairIsWeth: boolean; legacy: boolean; launchedAt: number; pairedEth: number | null; thresholdEth: number | null; progress: number | null
@@ -28,9 +28,10 @@ const usd = (n: number | null) => (n == null || !Number.isFinite(n) || n === 0 ?
 
 export default function Page() {
   const [tab, setTab] = useState<Tab>('graduated')
+  const [hours, setHours] = useState<'24' | '36'>('24')
   const q = useQuery({
-    queryKey: ['pons', tab],
-    queryFn: async (): Promise<Resp> => { const r = await fetch(`${INDEXER_URL}/pons/tokens?status=${tab}&limit=200`, { cache: 'no-store' }); if (!r.ok) throw new Error(`indexer ${r.status}`); return r.json() },
+    queryKey: ['pons', tab, hours],
+    queryFn: async (): Promise<Resp> => { const r = await fetch(`${INDEXER_URL}/pons/tokens?status=${tab}&hours=${hours}&limit=200`, { cache: 'no-store' }); if (!r.ok) throw new Error(`indexer ${r.status}`); return r.json() },
     refetchInterval: 60_000,
     enabled: Boolean(INDEXER_URL),
   })
@@ -40,19 +41,20 @@ export default function Page() {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24">
       <PageHeader title="Launchpad" sub="Tokens that graduated on Pons, the Robinhood Chain launchpad. A graduated token has crossed 4.2 ETH of locked liquidity. Listed ones trade on Kyte with 24-hour options only.">
-        <Segmented value={tab} onChange={setTab} options={[{ value: 'graduated', label: 'Graduated' }, { value: 'near', label: 'Near graduation' }, { value: 'listed', label: 'On Kyte' }]} />
+        <Segmented value={tab} onChange={setTab} options={[{ value: 'recent', label: 'Recent' }, { value: 'graduated', label: 'Graduated' }, { value: 'near', label: 'Near graduation' }, { value: 'listed', label: 'On Kyte' }]} />
       </PageHeader>
 
-      {counts && (
-        <p className="mb-6 text-sm text-muted">{counts.graduated} graduated of {counts.launched} launched. Data from the Pons factory on chain and DexScreener; refreshed every minute.</p>
-      )}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        {counts && <p className="text-sm text-muted">{counts.graduated} graduated of {counts.launched} launched. Data from the Pons factory on chain and DexScreener; refreshed every minute.</p>}
+        {tab === 'recent' && <Segmented value={hours} onChange={setHours} options={[{ value: '24', label: 'Last 24 hours' }, { value: '36', label: 'Last 36 hours' }]} />}
+      </div>
 
       {q.isLoading ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : q.isError ? (
         <Note tone="warn">The indexer is not reachable right now. Try again in a minute.</Note>
       ) : tokens.length === 0 ? (
-        <p className="text-sm text-muted">{tab === 'near' ? 'No token is above half of its graduation threshold right now.' : tab === 'listed' ? 'No Pons token is listed on Kyte yet.' : 'Nothing graduated yet.'}</p>
+        <p className="text-sm text-muted">{tab === 'recent' ? `No launches in the last ${hours} hours.` : tab === 'near' ? 'No token is above half of its graduation threshold right now.' : tab === 'listed' ? 'No Pons token is listed on Kyte yet.' : 'Nothing graduated yet.'}</p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tokens.map((t) => (

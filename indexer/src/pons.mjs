@@ -17,6 +17,7 @@ const TOKEN_ABI = parseAbi(['function name() view returns (string)', 'function s
 
 const GRAD_POLL_MS = Number(process.env.PONS_POLL_MS || 120_000)
 const QUOTE_MS = Number(process.env.PONS_QUOTE_MS || 60_000)
+const RECENT_MAX_H = 168 // 'recent' window: ?hours=24|36|…, up to a week
 const STR_MAX = 200
 
 // Pons stores logos as ipfs:// URIs; serve them through a public gateway.
@@ -139,18 +140,20 @@ export function installPons({ db, all, client, log = console.log }) {
     }
   }
 
-  /** GET /pons/tokens?status=graduated|near|listed|all&limit=N */
+  /** GET /pons/tokens?status=recent|graduated|near|listed|all&hours=24&limit=N */
   async function route(u) {
     const status = u.searchParams.get('status') ?? 'graduated'
     const limit = Math.min(500, Math.max(1, Number(u.searchParams.get('limit') ?? 200) || 200))
     const listed = new Map(all('SELECT address, enabled FROM assets').map((a) => [a.address.toLowerCase(), a]))
     let rows
-    if (status === 'graduated') rows = all('SELECT * FROM pons_tokens WHERE graduated = 1 ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', limit)
+    const hours = Math.min(RECENT_MAX_H, Math.max(1, Number(u.searchParams.get('hours') ?? 24) || 24))
+    if (status === 'recent') rows = all('SELECT * FROM pons_tokens WHERE launched_at >= ? ORDER BY launched_at DESC LIMIT ?', Math.floor(Date.now() / 1000) - hours * 3600, limit)
+    else if (status === 'graduated') rows = all('SELECT * FROM pons_tokens WHERE graduated = 1 ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', limit)
     else if (status === 'near') rows = all('SELECT * FROM pons_tokens WHERE graduated = 0 AND paired_principal IS NOT NULL AND threshold IS NOT NULL AND CAST(paired_principal AS REAL) >= 0.5 * CAST(threshold AS REAL) ORDER BY CAST(paired_principal AS REAL) / CAST(threshold AS REAL) DESC LIMIT ?', limit)
     else if (status === 'listed') rows = all('SELECT * FROM pons_tokens ORDER BY mcap_usd DESC').filter((r) => listed.has(r.address.toLowerCase())).slice(0, limit)
     else rows = all('SELECT * FROM pons_tokens ORDER BY launched_at DESC LIMIT ?', limit)
     const total = all('SELECT COUNT(*) AS n, SUM(graduated) AS g FROM pons_tokens')[0]
-    return { tokens: rows.map((r) => out(r, listed)), counts: { launched: total.n, graduated: total.g ?? 0 } }
+    return { tokens: rows.map((r) => out(r, listed)), counts: { launched: total.n, graduated: total.g ?? 0 }, ...(status === 'recent' ? { hours } : {}) }
   }
 
   function start() {
