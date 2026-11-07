@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUp, ArrowUpRight, Calculator, ChartLineUp, Check, Coins, ListBullets, MagnifyingGlass, PencilLine, Receipt, Sparkle, TrendUp, Wallet, Warning, type Icon } from '@phosphor-icons/react'
+import { ArrowUp, ArrowUpRight, CaretRight, Check, Sparkle, Warning } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ConnectButton } from '@/components/ConnectButton'
 import Link from 'next/link'
@@ -9,7 +9,7 @@ import { useAccount } from 'wagmi'
 
 type Card = { tool: string; preview: string; link: string }
 type Step = { name: string; label: string; status: 'start' | 'done' | 'error' }
-type Msg = { role: 'user' | 'assistant'; content: string; cards?: Card[]; steps?: Step[]; error?: string; done?: boolean }
+type Msg = { role: 'user' | 'assistant'; content: string; shown?: string; cards?: Card[]; steps?: Step[]; error?: string; done?: boolean }
 
 const SUGGESTIONS = [
   'What are the best open covered calls right now?',
@@ -32,13 +32,28 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
   const abort = useRef<AbortController | null>(null)
 
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }) }, [msgs])
+  // typewriter: the last assistant message reveals `content` into `shown` a few characters per frame
+  useEffect(() => {
+    const last = msgs[msgs.length - 1]
+    if (!last || last.role !== 'assistant' || (last.shown ?? '').length >= last.content.length) return
+    const id = window.setTimeout(() => {
+      setMsgs((cur) => cur.map((m, i) => {
+        if (i !== cur.length - 1 || m.role !== 'assistant') return m
+        const shown = m.shown ?? ''
+        const backlog = m.content.length - shown.length
+        const step = backlog > 800 ? 8 : backlog > 200 ? 4 : 2
+        return { ...m, shown: m.content.slice(0, shown.length + step) }
+      }))
+    }, 16)
+    return () => window.clearTimeout(id)
+  }, [msgs])
   useEffect(() => () => abort.current?.abort(), [])
 
   const send = async (text: string) => {
     const q = text.trim()
     if (!q || busy) return
     setInput('')
-    const next: Msg[] = [...msgs, { role: 'user', content: q }, { role: 'assistant', content: '', cards: [], steps: [] }]
+    const next: Msg[] = [...msgs, { role: 'user', content: q }, { role: 'assistant', content: '', shown: '', cards: [], steps: [] }]
     setMsgs(next)
     setBusy(true)
     const ctl = new AbortController()
@@ -86,11 +101,10 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
     <div className={`flex h-full min-h-0 flex-col ${compact ? '' : 'card'}`}>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5" data-lenis-prevent>
         {!address && (
-          <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-4 text-center">
-            <span className="agent-pulse grid size-12 place-items-center rounded-full bg-accent/15 text-accent"><Wallet size={22} /></span>
+          <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-5 text-center">
             <div>
               <div className="text-[15px] font-medium text-ink">Connect a wallet to ask Kyte</div>
-              <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-muted">Answers are personal: your positions, your stake, your limits. The agent only ever sees your public address.</p>
+              <p className="mx-auto mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">Answers are personal to your positions and stake. The agent only sees your public address.</p>
             </div>
             <ConnectButton />
           </div>
@@ -111,8 +125,12 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
               <div className="max-w-[85%] rounded-2xl rounded-br-md bg-white/[0.08] px-4 py-2.5 text-sm text-ink">{m.content}</div>
             ) : (
               <div className="space-y-3">
-                {!m.error && (m.steps?.length || !m.content) && <Exploring steps={m.steps ?? []} working={!m.done && !m.content} />}
-                {m.content && <Markdown text={m.content} />}
+                {!m.error && (m.steps?.length || !m.content) && <Thinking steps={m.steps ?? []} working={!m.done && !m.content} />}
+                {(m.shown ?? m.content) && (
+                  <div className={!m.done || (m.shown ?? '').length < m.content.length ? 'agent-typing' : ''}>
+                    <Markdown text={m.shown ?? m.content} />
+                  </div>
+                )}
                 {m.cards?.map((c, j) => (
                   <div key={j} className="panel rounded-xl p-4">
                     <div className="eyebrow !text-[10px]">Review and sign in your wallet</div>
@@ -149,66 +167,34 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
   )
 }
 
-const TOOL_ICON: Record<string, Icon> = {
-  list_tokens: ListBullets, find_offers: ChartLineUp, compare_offers: ChartLineUp, get_offer: ChartLineUp,
-  get_prices: TrendUp, get_chart: TrendUp, get_positions: Wallet, get_staking: Coins,
-  get_protocol_stats: Receipt, get_proof: Receipt, get_activity: Receipt, explain_offer: Calculator,
-}
-
 /**
- * What the agent is doing, as it does it. A radar sweeps around the magnifier while tools run, a progress bar
- * fills as steps complete, and each tool call springs in as a chip with its own icon: spinner while running, check
- * when done. Afterwards the block settles into a muted "checked N sources" line under the answer.
+ * The thinking state, kept quiet: one shimmering gray line that says what the agent is doing right now, and the
+ * finished steps folded under a chevron. No colour, no bars. When the answer is in, it reads "Searched N sources".
  */
-function Exploring({ steps, working }: { steps: Step[]; working: boolean }) {
-  const running = steps.some((s) => s.status === 'start')
-  const active = working || running
-  const done = steps.filter((s) => s.status !== 'start').length
-  const progress = steps.length === 0 ? (active ? 12 : 100) : Math.round((done / steps.length) * 100)
+function Thinking({ steps, working }: { steps: Step[]; working: boolean }) {
+  const [open, setOpen] = useState(false)
+  const current = [...steps].reverse().find((s) => s.status === 'start')
+  const active = working || Boolean(current)
+  const label = active ? (current ? current.label + '…' : steps.length ? 'Thinking…' : 'Thinking…') : `Searched ${steps.length} source${steps.length === 1 ? '' : 's'}`
+  const finished = steps.filter((s) => s.status !== 'start')
   return (
-    <div className={`agent-steps relative overflow-hidden rounded-2xl border px-4 py-3.5 transition-colors duration-500 ${active ? 'border-accent/25 bg-accent/[0.04]' : 'hair bg-transparent'}`}>
-      {active && <div aria-hidden className="agent-sheen pointer-events-none absolute inset-0" />}
-      <div className="relative flex items-center gap-3">
-        <span className="relative grid size-9 shrink-0 place-items-center">
-          {active && <span aria-hidden className="agent-radar absolute inset-0 rounded-full" />}
-          {active && <span aria-hidden className="agent-radar-ring absolute inset-0 rounded-full border border-accent/40" />}
-          <span className={`relative grid size-7 place-items-center rounded-full ${active ? 'bg-accent/15 text-accent' : 'bg-white/[0.06] text-muted'}`}>
-            {active ? <MagnifyingGlass size={14} weight="bold" /> : <Check size={14} weight="bold" />}
-          </span>
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className={`text-[13px] ${active ? 'agent-shimmer font-medium' : 'text-muted'}`}>
-            {active ? (steps.length ? 'Exploring Kyte' : 'Reading your question') : `Checked ${steps.length} source${steps.length === 1 ? '' : 's'} on chain`}
-          </div>
-          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
-            <motion.div className={`h-full rounded-full ${active ? 'agent-bar' : 'bg-accent/60'}`} initial={false} animate={{ width: `${progress}%` }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} />
-          </div>
-        </div>
-        {active && steps.length > 0 && <span className="mono shrink-0 text-[10px] text-muted">{done}/{steps.length}</span>}
-      </div>
-      {steps.length > 0 && (
-        <div className="relative mt-3 flex flex-wrap gap-2">
-          <AnimatePresence initial={false}>
-            {steps.map((st, i) => {
-              const I = TOOL_ICON[st.name] ?? (st.name.startsWith('prepare_') ? PencilLine : MagnifyingGlass)
-              return (
-                <motion.span
-                  key={i}
-                  layout
-                  initial={{ opacity: 0, y: 8, scale: 0.92 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-                  className={`inline-flex items-center gap-1.5 rounded-full border py-1 pl-1.5 pr-2.5 text-[12px] transition-colors duration-500 ${st.status === 'start' ? 'border-accent/35 bg-accent/[0.08] text-ink' : st.status === 'error' ? 'border-warn/30 text-warn' : 'border-white/[0.08] text-muted'}`}
-                >
-                  <span className={`grid size-5 place-items-center rounded-full ${st.status === 'start' ? 'bg-accent/20 text-accent' : 'bg-white/[0.06]'}`}><I size={12} weight={st.status === 'start' ? 'fill' : 'regular'} /></span>
-                  {st.label}
-                  {st.status === 'start' ? <span className="agent-spin ml-0.5 size-3 rounded-full border-[1.5px] border-accent/30 border-t-accent" /> : st.status === 'error' ? <Warning size={12} /> : <Check size={12} className="text-accent" weight="bold" />}
-                </motion.span>
-              )
-            })}
-          </AnimatePresence>
-        </div>
-      )}
+    <div className="agent-think text-[13px]">
+      <button type="button" onClick={() => setOpen((o) => !o)} disabled={finished.length === 0} className="group inline-flex items-center gap-1.5 text-left disabled:cursor-default">
+        <CaretRight size={11} className={`shrink-0 text-faint transition-transform duration-200 ${open ? 'rotate-90' : ''} ${finished.length === 0 ? 'opacity-0' : ''}`} />
+        <span className={active ? 'agent-think-shimmer' : 'text-muted'}>{label}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && finished.length > 0 && (
+          <motion.ul initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }} className="ml-[18px] mt-1.5 space-y-1 overflow-hidden border-l border-white/[0.08] pl-3 text-[12px] text-faint">
+            {finished.map((st, i) => (
+              <li key={i} className="flex items-center gap-2">
+                {st.status === 'error' ? <Warning size={11} className="shrink-0 text-warn" /> : <Check size={11} className="shrink-0" />}
+                {st.label}
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
