@@ -26,7 +26,8 @@
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "allowImportingTsExtensions": true
   },
   "include": [
     "next-env.d.ts",
@@ -37,6 +38,7 @@
   ],
   "exclude": [
     "node_modules",
-    "video"
+    "video",
+    "tests"
   ]
 }
