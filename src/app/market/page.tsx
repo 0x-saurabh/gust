@@ -27,6 +27,9 @@ export default function MarketPage() {
   // /market?buy=<offer id> (from the agent's prepare_buy link): open that offer's dialog and select its token
   const params = useSearchParams()
   const [opened, setOpened] = useState<string | null>(null)
+  // /market?token=SYM (from the Launchpad page): select that market
+  const tokenParam = params.get('token')
+  useEffect(() => { if (tokenParam) setSymbol(tokenParam.toUpperCase()) }, [tokenParam])
   useEffect(() => {
     const id = params.get('buy')
     if (!id || opened === id || !offers.data) return
@@ -51,7 +54,7 @@ export default function MarketPage() {
   const quote = prices.data?.[symbol]
 
   const rows = useMemo(() => {
-    const list = (offers.data ?? []).filter((o) => isFillable(o) && (kind === 'all' || o.kind === kind) && (!symbol || o.symbol === symbol))
+    const list = (offers.data ?? []).filter((o) => isFillable(o) && !o.overLimit && (kind === 'all' || o.kind === kind) && (!symbol || o.symbol === symbol))
     return list.sort((a, b) => {
       if (sort === 'premium') return b.premium - a.premium
       if (sort === 'yield') return b.premium / b.strike - a.premium / a.strike

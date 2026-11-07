@@ -13,6 +13,7 @@ import { Logo } from './Logo'
 export const DOCS_URL = 'https://docs.kyte.sh/'
 const LINKS = [
   { href: '/market', label: 'Market' },
+  { href: '/launchpad', label: 'Launchpad' },
   { href: '/sell', label: 'Sell' },
   { href: '/positions', label: 'Positions' },
   { href: '/stake', label: 'Stake' },

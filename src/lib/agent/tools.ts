@@ -45,7 +45,7 @@ async function api<T>(path: string): Promise<T> {
 
 // ------------------------------------------------------------------ shapes (as the indexer returns them)
 
-export type Asset = { address: string; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string }
+export type Asset = { address: string; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | null; maxDurationSec?: number }
 export type Offer = {
   id: string; kind: 'call' | 'put'; market: string; seller: string; holder: string | null; token: string; symbol: string; decimals: number
   amount: number; strike: number; premium: number; expiry: number; offerDeadline: number
@@ -96,6 +96,7 @@ export const listTokens = {
       tokens: rows.slice(0, 60).map((a) => ({
         symbol: clean(a.symbol, 16), name: clean(a.name), address: a.address, putsEnabled: a.putsEnabled,
         capTokens: Number(BigInt(a.cap) / 10n ** BigInt(a.decimals)), minStrikeEthPerToken: Number(a.minStrike) / 1e18,
+        ...(a.source === 'pons' ? { source: 'pons', maxExpiry: '24h', note: 'Launchpad token: options on it must expire within 24 hours.' } : {}),
       })),
       truncated: rows.length > 60,
     }
@@ -303,6 +304,8 @@ async function validateOffer(input: { kind: 'call' | 'put'; token: string; amoun
   if (input.premium < LIMITS.minPremiumEth) return { error: `Premium must be at least ${LIMITS.minPremiumEth} ETH.` }
   const exp = EXPIRY_CHOICES[input.expiry]
   if (exp < LIMITS.minDurationSec || exp > LIMITS.maxDurationSec) return { error: 'Expiry must be between 1 hour and 90 days.' }
+  const maxDur = Math.min(LIMITS.maxDurationSec, a.maxDurationSec ?? LIMITS.maxDurationSec)
+  if (exp > maxDur) return { error: `${a.symbol} is a Pons launchpad token: options on it must expire within 24 hours. Use expiry '1h' or '1d'.` }
   const fill = input.fillWindow ? EXPIRY_CHOICES[input.fillWindow] : exp
   if (fill > exp) return { error: 'The fill window cannot be later than expiry.' }
   const cap = Number(BigInt(a.cap) / 10n ** BigInt(a.decimals))
@@ -405,6 +408,21 @@ export const listStrategies = {
   },
 }
 
-export const READ_TOOLS = [listTokens, findOffers, getOffer, getPositions, getPrices, getChart, getStaking, getProtocolStats, getProof, getActivity, explainOffer, compareOffers, ...(AUTOPILOT_ENABLED ? [listStrategies] : [])] as const
+export type PonsToken = { address: string; symbol: string; name: string; pairIsWeth: boolean; launchedAt: number; pairedEth: number | null; thresholdEth: number | null; progress: number | null; graduated: boolean; graduatedAt: number | null; priceUsd: number | null; priceEth: number | null; mcapUsd: number | null; change24h: number | null; liquidityUsd: number | null; volume24hUsd: number | null; kyte: 'listed' | 'disabled' | 'unlisted'; ponsUrl: string }
+export const listGraduated = {
+  name: 'list_graduated',
+  description: 'Tokens from the Pons launchpad on Robinhood Chain: graduated (locked liquidity crossed 4.2 ETH), near graduation, or the ones listed on Kyte. Each has price, market cap, 24h change, liquidity, graduation time and whether Kyte lists it. Options on Pons tokens expire within 24 hours. Read-only.',
+  input: z.object({ status: z.enum(['graduated', 'near', 'listed']).default('graduated'), limit: z.number().int().min(1).max(50).default(20) }),
+  async run({ status, limit }: { status?: 'graduated' | 'near' | 'listed'; limit?: number }) {
+    const r = (await api<{ tokens: PonsToken[]; counts: { launched: number; graduated: number } }>(`/pons/tokens?status=${status ?? 'graduated'}&limit=${limit ?? 20}`))
+    return {
+      counts: r.counts, rule: 'Kyte lists graduated, ETH-paired Pons tokens after review; options on them must expire within 24 hours.',
+      tokens: r.tokens.map((t) => ({ symbol: clean(t.symbol, 16), name: clean(t.name), address: t.address, graduated: t.graduated, graduatedAt: t.graduatedAt, progress: t.progress, pairedEth: t.pairedEth, priceEth: t.priceEth, priceUsd: t.priceUsd, mcapUsd: t.mcapUsd, change24h: t.change24h, liquidityUsd: t.liquidityUsd, onKyte: t.kyte, pons: t.ponsUrl, kyteMarket: t.kyte === 'listed' ? `${SITE}/market?token=${t.symbol}` : undefined })),
+      launchpad: `${SITE}/launchpad`,
+    }
+  },
+}
+
+export const READ_TOOLS = [listTokens, findOffers, getOffer, getPositions, getPrices, getChart, getStaking, getProtocolStats, getProof, getActivity, explainOffer, compareOffers, listGraduated, ...(AUTOPILOT_ENABLED ? [listStrategies] : [])] as const
 export const PREPARE_TOOLS = [prepareBuy, prepareCoveredCall, prepareCashSecuredPut, prepareExercise, prepareStake, ...(AUTOPILOT_ENABLED ? [designStrategy] : [])] as const
 export const ALL_TOOLS = [...READ_TOOLS, ...PREPARE_TOOLS] as const

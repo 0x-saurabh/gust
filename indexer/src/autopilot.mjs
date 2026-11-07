@@ -57,7 +57,7 @@ function validateRule(rule) {
  * deps: { db, all, client, routes, offerOut, site, log }
  *   all(sql, ...params) -> rows; client: viem public client (verifyMessage); routes['/prices'] gives the price map.
  */
-export function installAutopilot({ db, all, client, routes, offerOut, site, log = console.log }) {
+export function installAutopilot({ db, all, client, routes, offerOut, site, ponsLimit, log = console.log }) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS autopilot_rules (id INTEGER PRIMARY KEY AUTOINCREMENT, address TEXT, type TEXT, token TEXT,
       rule TEXT, status TEXT, runs INTEGER DEFAULT 0, created_at INTEGER, last_check INTEGER, last_trigger INTEGER);
@@ -152,9 +152,11 @@ export function installAutopilot({ db, all, client, routes, offerOut, site, log 
         const minStrike = Number(asset.min_strike) / 1e18
         const strikePer = Math.max(strike, minStrike)
         const premium = p.minPremiumEth
+        const maxDur = ponsLimit?.(asset.address) ?? 90 * 86400 // 24 h on Pons tokens
+        const expirySec = Math.min(p.expirySec, maxDur)
         // the target changes every time a previous offer settles, so a new listing can trigger again
         const target = `list:${open.length}:${r.runs}`
-        emit(target, `List a ${kind} on ${p.amount} ${asset.symbol}`, `Spot is ${fmt(spot, 8)} ETH. Strike ${fmt(strikePer, 8)} ETH per token (${p.pct}% ${kind === 'call' ? 'above' : 'below'} spot${strikePer > strike ? ', raised to the token minimum' : ''}), premium ${premium} ETH, expires in ${Math.round(p.expirySec / 86400)} days.`, sellLink(kind, asset.symbol, p.amount, fmt(strikePer, 10), premium, p.expirySec, Math.min(p.fillWindowSec, p.expirySec)))
+        emit(target, `List a ${kind} on ${p.amount} ${asset.symbol}`, `Spot is ${fmt(spot, 8)} ETH. Strike ${fmt(strikePer, 8)} ETH per token (${p.pct}% ${kind === 'call' ? 'above' : 'below'} spot${strikePer > strike ? ', raised to the token minimum' : ''}), premium ${premium} ETH, expires in ${expirySec >= 86400 ? Math.round(expirySec / 86400) + ' day' + (Math.round(expirySec / 86400) === 1 ? '' : 's') : Math.round(expirySec / 3600) + ' h'}${expirySec < p.expirySec ? ' (capped at 24 h: launchpad token)' : ''}.`, sellLink(kind, asset.symbol, p.amount, fmt(strikePer, 10), premium, expirySec, Math.min(p.fillWindowSec, expirySec)))
       } else if (rule.type === 'buy_call' || rule.type === 'buy_put') {
         if (!asset || !spot) continue
         const kind = rule.type === 'buy_call' ? 'call' : 'put'

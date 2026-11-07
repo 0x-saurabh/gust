@@ -21,6 +21,9 @@ export type Asset = {
   decimals: number
   enabled: boolean
   putsEnabled: boolean
+  /** 'pons' for launchpad tokens: options on them must expire within maxDurationSec (24 h). */
+  source?: 'pons' | null
+  maxDurationSec?: number
   cap: bigint
   minStrike: bigint
   spotEth: number // display only (demo hint or 0 when unknown)
@@ -44,6 +47,9 @@ export type Offer = {
   expiry: number
   offerDeadline: number
   status: Status
+  /** 'pons' for launchpad tokens; overLimit marks an offer written past the 24 h rule (hidden from the market). */
+  source?: 'pons' | null
+  overLimit?: boolean
 }
 
 export type Split = { epoch: number; at: number; tx: string; stakers: number; buyback: number; ops: number }
@@ -116,7 +122,7 @@ const hint = (symbol: string, name = '') => HINTS[symbol] ?? { spotEth: 0, vol: 
 // dropped, so pickers hide them (they list enabled assets only) while old positions still find their token.
 const HIDDEN = /Ondo Tokenized/i
 
-type ApiAsset = { address: Address; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string }
+type ApiAsset = { address: Address; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | null; maxDurationSec?: number }
 
 async function assetsFromChain(client: PublicClient): Promise<Asset[]> {
   const registry = contracts.assetRegistry!
@@ -167,7 +173,7 @@ export function useAssets() {
 type ApiOffer = {
   id: string; kind: Kind; seller: Address; holder: Address | null; token: Address; symbol: string; decimals: number
   amount: number; amountRaw: string; strike: number; strikeRaw: string; premium: number; premiumRaw: string
-  expiry: number; offerDeadline: number; status: Status
+  expiry: number; offerDeadline: number; status: Status; source?: 'pons' | null; overLimit?: boolean
 }
 
 function demoOffers(): Offer[] {

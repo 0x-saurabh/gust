@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
 import { ALL_TOOLS, clean, compareOffers, explainOffer, findOffers, getOffer, getPositions, getPrices, getStaking, listTokens, prepareBuy, prepareCashSecuredPut, prepareCoveredCall, prepareExercise, prepareStake, setFetcher } from '../src/lib/agent/tools.ts'
-import { designStrategy, listStrategies } from '../src/lib/agent/tools.ts'
+import { designStrategy, listGraduated, listStrategies } from '../src/lib/agent/tools.ts'
 
 const fx = (n: string) => JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'fixtures', n + '.json'), 'utf8'))
 const offers = fx('offers_status_all') as { id: string; status: string; symbol: string; kind: 'call' | 'put'; expiry: number }[]
@@ -14,7 +14,7 @@ const OPEN = { ...offers.find((o) => o.status === 'cancelled')!, status: 'open',
 const FILLED = { ...offers.find((o) => o.status === 'exercised')!, status: 'filled', fillable: false, expiry: Math.floor(Date.now() / 1000) + 3 * 86400 }
 
 setFetcher(async (p) => {
-  if (p === '/assets') return fx('assets')
+  if (p === '/assets') return [...fx('assets'), { address: '0xe6864e4630D4d7A0cAd2E61f6BC2C0dcAD777712', symbol: 'PLINK', name: 'Pons Link', decimals: 18, enabled: true, putsEnabled: false, cap: '20000000000000000000000000', minStrike: '1000000000000', source: 'pons', maxDurationSec: 86400 }]
   if (p === '/prices') return fx('prices')
   if (p === '/stats') return fx('stats')
   if (p === '/proof') return fx('proof')
@@ -27,6 +27,7 @@ setFetcher(async (p) => {
     const u = new URLSearchParams(p.slice(8))
     return [OPEN].filter((o) => (!u.get('token') || o.symbol === u.get('token')) && (!u.get('kind') || o.kind === u.get('kind')))
   }
+  if (p.startsWith('/pons/tokens')) return { counts: { launched: 349, graduated: 1 }, tokens: [{ address: '0xe6864e4630D4d7A0cAd2E61f6BC2C0dcAD777712', symbol: 'PLINK', name: 'Pons Link', pairIsWeth: true, launchedAt: 1, pairedEth: 7.9, thresholdEth: 4.2, progress: 1, graduated: true, graduatedAt: 2, priceUsd: 0.00013, priceEth: 0.00000004, mcapUsd: 130000, change24h: 5.3, liquidityUsd: 41700, volume24hUsd: 1000, kyte: 'listed', ponsUrl: 'https://ponsfamily.com/launchpad/0xe68' }] }
   if (p.startsWith('/candles?')) return Array.from({ length: 10 }, (_, i) => ({ time: i * 86400, open: 1, high: 1.1 + i * 0.01, low: 0.95, close: 1 + i * 0.01 }))
   if (p.startsWith('/autopilot/rules/')) return [{ id: 1, type: 'list_call', token: 'PONS', params: { amount: 10, pct: 20, minPremiumEth: 0.001, expirySec: 604800, fillWindowSec: 172800 }, schedule: { repeat: true }, limits: {}, status: 'active', runs: 2 }]
   if (p.startsWith('/autopilot/triggers/')) return [{ id: 7, ruleId: 1, at: 1, label: 'List a call on 10 PONS', preview: 'p', link: 'https://kyte.sh/sell?kind=call', seen: false }]
@@ -161,4 +162,18 @@ test('list_strategies returns rules with descriptions and the unseen triggers', 
   assert.equal(out.rules.length, 1)
   assert.match(out.rules[0].description, /PONS/)
   assert.equal(out.waiting.length, 1)
+})
+
+test('Pons tokens: list_graduated reads the launchpad and prepare tools refuse options longer than 24 h', async () => {
+  const g = (await listGraduated.run({ status: 'graduated', limit: 5 })) as { counts: { graduated: number }; tokens: Array<{ symbol: string; onKyte: string; kyteMarket?: string }> }
+  assert.equal(g.counts.graduated, 1)
+  assert.equal(g.tokens[0].symbol, 'PLINK')
+  assert.ok(g.tokens[0].kyteMarket?.endsWith('/market?token=PLINK'))
+  const long = (await prepareCoveredCall.run({ token: 'PLINK', amount: 100, strikePerToken: 0.001, premium: 0.001, expiry: '1w' })) as { error?: string }
+  assert.match(String(long.error), /within 24 hours/)
+  const day = (await prepareCoveredCall.run({ token: 'PLINK', amount: 100, strikePerToken: 0.001, premium: 0.001, expiry: '1d' })) as { error?: string; link?: string }
+  assert.equal(day.error, undefined)
+  assert.ok(String(day.link).includes('expiry=86400'))
+  const tokens = (await listTokens.run({ query: 'PLINK' })) as { tokens: Array<{ source?: string; maxExpiry?: string }> }
+  assert.equal(tokens.tokens[0].source, 'pons'); assert.equal(tokens.tokens[0].maxExpiry, '24h')
 })

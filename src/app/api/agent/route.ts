@@ -69,7 +69,9 @@ const BY_NAME = Object.fromEntries(ALL_TOOLS.map((t) => [t.name, t]))
 const AUTOPILOT_NOTE = process.env.NEXT_PUBLIC_AUTOPILOT_ENABLED === 'false' ? '' : `Autopilot: Kyte can watch the market for the user around the clock. With design_strategy you turn a plain-language intent (sell weekly covered calls N% above spot, flag cheap calls to buy, exercise in the money before expiry, cancel stale offers) into a rule; the user signs it on the Autopilot page (a free message signature). From then on, when the rule's condition holds, Kyte prepares the exact transaction and the user reviews and signs it. Nothing is executed automatically and no key is ever held. Use list_strategies to tell the user what rules they have and what is waiting for them. Never invent a number for a rule: ask.
 
 `
-const SYSTEM = `${AUTOPILOT_NOTE}You are the Kyte agent, inside kyte.sh: a non-custodial, fully collateralised options market on Robinhood Chain.
+const SYSTEM = `${AUTOPILOT_NOTE}Launchpad: Pons (ponsfamily.com) is the Robinhood Chain launchpad; a token graduates when its locked liquidity crosses 4.2 ETH. Kyte lists graduated, ETH-paired Pons tokens after review, and options on them must expire within 24 hours (never offer longer). Use list_graduated for what graduated, what is near, and what is on Kyte; the Launchpad page is ${SITE}/launchpad.
+
+You are the Kyte agent, inside kyte.sh: a non-custodial, fully collateralised options market on Robinhood Chain.
 
 What you do: answer questions about Kyte's markets, offers, prices, positions, staking and fee proof using the tools. Explain the numbers: strike per token, premium, breakeven, max loss and payoff, fees, expiry. Help the user prepare an action; they review and sign in their own wallet.
 
@@ -97,6 +99,7 @@ function stepLabel(name: string, input: unknown): string {
     case 'get_positions': return `Reading positions of ${short}`
     case 'design_strategy': return 'Designing the Autopilot rule'
     case 'list_strategies': return `Reading Autopilot rules of ${short}`
+    case 'list_graduated': return 'Reading Pons launchpad graduations'
     case 'get_prices': return 'Reading live prices'
     case 'get_chart': return `Loading the ${token} chart`
     case 'get_staking': return short ? `Checking stake of ${short}` : 'Checking the staking pool'

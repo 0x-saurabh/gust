@@ -11,6 +11,7 @@ import http from 'node:http'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { installAutopilot } from './autopilot.mjs'
+import { installPons } from './pons.mjs'
 import { createPublicClient, decodeEventLog, encodeAbiParameters, formatUnits, getAddress, http as httpTransport, keccak256, toHex, toEventSelector } from 'viem'
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname)
@@ -436,9 +437,19 @@ async function loop() {
 
 // ------------------------------------------------------------------ api
 const f18 = (s) => Number(formatUnits(BigInt(s ?? 0), 18))
+// Listing rule per token: Pons launchpad tokens are young and volatile, so Kyte only writes options on them that
+// expire within 24 hours (the UI, agent, MCP and Autopilot enforce it; the markets themselves allow up to 90 days).
+const PONS_MAX_DURATION = 86_400
+let ponsSet = new Set()
+function assetRule(address) {
+  const pons = ponsSet.has(String(address).toLowerCase())
+  return { source: pons ? 'pons' : null, maxDurationSec: pons ? PONS_MAX_DURATION : 90 * 86_400 }
+}
 function offerOut(r) {
   const now = chainNow
+  const rule = assetRule(r.token)
   return {
+    source: rule.source, overLimit: rule.source === 'pons' && r.expiry - r.created_at > PONS_MAX_DURATION,
     id: r.id, kind: r.kind, market: r.market, seller: r.seller, holder: r.holder, token: r.token, symbol: r.symbol,
     decimals: r.decimals, amount: Number(formatUnits(BigInt(r.amount), r.decimals)), amountRaw: r.amount,
     strike: f18(r.strike), strikeRaw: r.strike, premium: f18(r.premium), premiumRaw: r.premium,
@@ -458,7 +469,7 @@ const routes = {
   }),
   '/assets': async () => all('SELECT * FROM assets ORDER BY symbol').map((a) => ({
     address: a.address, symbol: a.symbol, name: a.name, decimals: a.decimals, enabled: !!a.enabled, putsEnabled: !!a.puts_enabled,
-    cap: a.cap, minStrike: a.min_strike,
+    cap: a.cap, minStrike: a.min_strike, ...assetRule(a.address),
   })),
   '/offers': async (u) => {
     const status = oneOf(u.searchParams.get('status'), ['open', 'filled', 'exercised', 'expired', 'cancelled', 'all'], 'open')
@@ -673,7 +684,7 @@ function send(res, status, body) {
 }
 
 // ---- Autopilot (watch and prepare): signed rules, triggers with prepared links. docs/AUTOPILOT_SPEC.md
-const autopilot = installAutopilot({ db, all, client, routes, offerOut, site: (process.env.SITE_URL || 'https://kyte.sh').replace(/\/$/, '') })
+const autopilot = installAutopilot({ db, all, client, routes, offerOut, ponsLimit: (addr) => assetRule(addr).maxDurationSec, site: (process.env.SITE_URL || 'https://kyte.sh').replace(/\/$/, '') })
 async function autopilotLoop() {
   try { await autopilot.evaluate() } catch (e) { console.error('[autopilot] evaluate failed:', e.shortMessage ?? e.message) }
   setTimeout(autopilotLoop, 60_000).unref?.()
@@ -688,6 +699,11 @@ function readJson(req) {
     req.on('error', reject)
   })
 }
+
+// ---- Pons launchpad: launches, graduation, quotes; /pons/tokens. Mainnet only (the factories live there).
+const pons = CHAIN_ID === 4663 ? installPons({ db, all, client }) : null
+if (pons) { routes['/pons/tokens'] = pons.route; pons.start(); pons.onTokens((set) => { ponsSet = set }); console.log('[pons] watching the Pons factories; /pons/tokens ready') }
+else console.log(`[pons] off (chain ${CHAIN_ID})`)
 
 const server = http.createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json; charset=utf-8')

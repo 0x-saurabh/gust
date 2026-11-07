@@ -18,7 +18,7 @@ import { blackScholes } from '@/lib/pricing'
 import { approvalIfNeeded, useTx } from '@/lib/tx'
 
 const DURATIONS = [
-  { label: '1 day', sec: 86400 }, { label: '3 days', sec: 3 * 86400 }, { label: '1 week', sec: 7 * 86400 },
+  { label: '1 hour', sec: 3600 }, { label: '4 hours', sec: 4 * 3600 }, { label: '12 hours', sec: 12 * 3600 }, { label: '1 day', sec: 86400 }, { label: '3 days', sec: 3 * 86400 }, { label: '1 week', sec: 7 * 86400 },
   { label: '2 weeks', sec: 14 * 86400 }, { label: '30 days', sec: 30 * 86400 }, { label: '90 days', sec: 90 * 86400 },
 ]
 const FILL_WINDOWS = [
@@ -37,7 +37,7 @@ export default function SellPage() {
   const [amount, setAmount] = useState('1')
   const [strikePer, setStrikePer] = useState('')
   const [premium, setPremium] = useState('')
-  const [durationSec, setDurationSec] = useState(DURATIONS[2].sec)
+  const [durationSec, setDurationSec] = useState(DURATIONS[5].sec)
   const [fillSec, setFillSec] = useState(FILL_WINDOWS[1].sec)
   // Pre-filled by the agent's prepare tools: /sell?kind=call&token=PONS&amount=1000&strike=0.0002&premium=0.001&expiry=604800&deadline=86400
   const params = useSearchParams()
@@ -78,7 +78,9 @@ export default function SellPage() {
   if (amt <= 0) errors.push('Amount must be above zero.')
   if (strikeEach <= 0) errors.push('Enter a strike per token.')
   if (prem < LIMITS.minPremiumEth) errors.push(`Premium must be at least ${LIMITS.minPremiumEth} ETH.`)
-  if (durationSec < LIMITS.minDurationSec || durationSec > LIMITS.maxDurationSec) errors.push('Expiry must be 1 hour to 90 days away.')
+  const maxDuration = Math.min(LIMITS.maxDurationSec, a?.maxDurationSec ?? LIMITS.maxDurationSec)
+  const durations = DURATIONS.filter((d) => d.sec <= maxDuration)
+  if (durationSec < LIMITS.minDurationSec || durationSec > maxDuration) errors.push(a?.source === 'pons' ? `${a.symbol} is a launchpad token: options on it expire within 24 hours.` : 'Expiry must be 1 hour to 90 days away.')
   if (kind === 'call' && live && myTokens !== undefined && amt > myTokens) errors.push(`You hold ${num(myTokens, 4)} ${a?.symbol}.`)
   if (kind === 'put' && live && balances.data && totalStrike > balances.data.eth) errors.push(`You need ${eth(totalStrike)} in your wallet to lock.`)
 
@@ -154,9 +156,9 @@ export default function SellPage() {
           </Field>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <Field label="Expires in">
+            <Field label={a?.source === 'pons' ? 'Expires in (24 h market)' : 'Expires in'}>
               <select className="input" value={durationSec} onChange={(e) => setDurationSec(Number(e.target.value))}>
-                {DURATIONS.map((d) => <option key={d.sec} value={d.sec}>{d.label}</option>)}
+                {durations.map((d) => <option key={d.sec} value={d.sec}>{d.label}</option>)}
               </select>
             </Field>
             <Field label="Offer can be filled for">
