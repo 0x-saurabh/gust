@@ -192,7 +192,7 @@ async function jobPonsList() {
   const { tokens } = await r.json()
   const timelockAddr = await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'timelockController' })
   for (const t of tokens) {
-    if (!t.pairIsWeth || t.kyte !== 'unlisted') continue
+    if (!t.pairIsWeth || (t.kyte !== 'unlisted' && t.kyte !== 'scheduled')) continue
     const token = getAddress(t.address)
     if ((listerSkip.get(token) ?? 0) > Date.now()) continue
     const op = await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'operationOf', args: [token] })

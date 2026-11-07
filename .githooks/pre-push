@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Pushes to main run the CI checks first (scripts/ci-local.sh). Bypass only with: git push --no-verify
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "pre-push: running CI checks before pushing to main"
+    exec scripts/ci-local.sh
+  fi
+done
+exit 0
