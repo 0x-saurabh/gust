@@ -13,7 +13,7 @@ export const PONS_FACTORY = FACTORIES[0].address
 export const PONS_LOCKER = '0x736D76699C26D0d966744cAe304C000d471f7F35'
 const LAUNCHED = parseAbiItem('event TokenLaunched(address indexed token, address indexed deployer, address indexed dexFactory, address pairToken, address pool, uint256 dexId, uint256 launchConfigId, uint256 positionId, uint256 restrictionsEndBlock, uint256 initialBuyAmount)')
 const FACTORY_ABI = parseAbi(['function graduationStatus(address token) view returns (uint256 pairedPrincipal, uint256 threshold, bool graduated)'])
-const TOKEN_ABI = parseAbi(['function name() view returns (string)', 'function symbol() view returns (string)', 'function decimals() view returns (uint8)', 'function totalSupply() view returns (uint256)', 'function logo() view returns (string)', 'function description() view returns (string)'])
+const TOKEN_ABI = parseAbi(['function name() view returns (string)', 'function symbol() view returns (string)', 'function decimals() view returns (uint8)', 'function totalSupply() view returns (uint256)', 'function logo() view returns (string)', 'function description() view returns (string)', 'function socials() view returns (string)'])
 
 const GRAD_POLL_MS = Number(process.env.PONS_POLL_MS || 120_000)
 const QUOTE_MS = Number(process.env.PONS_QUOTE_MS || 60_000)
@@ -21,22 +21,27 @@ const RECENT_MAX_H = 168 // 'recent' window: ?hours=24|36|…, up to a week
 const STR_MAX = 200
 
 // Pons stores logos as ipfs:// URIs; serve them through a public gateway.
-const logoUrl = (v) => (!v ? null : v.startsWith('ipfs://') ? `https://ipfs.io/ipfs/${v.slice(7)}` : /^https?:\/\//.test(v) ? v : null)
+const logoUrl = (v) => (!v ? null : v.startsWith('ipfs://') ? `https://dbk-vercel.vercel.app/api/ipfs/content/${v.slice(7)}` : /^https?:\/\//.test(v) ? v : null)
+const logoFallback = (v) => (v && v.startsWith('ipfs://') ? `https://gateway.pinata.cloud/ipfs/${v.slice(7)}` : null)
 const clean = (s) => String(s ?? '').replace(/[^\x20-\x7E -￿]/g, '').slice(0, STR_MAX)
 
 /** deps: { db, all, client, log }; returns { route, start } */
 export function installPons({ db, all, client, log = console.log }) {
+  const tryExec = (sql) => { try { db.exec(sql) } catch {} }
   db.exec(`
     CREATE TABLE IF NOT EXISTS pons_tokens (address TEXT PRIMARY KEY, symbol TEXT, name TEXT, decimals INTEGER, supply TEXT, logo TEXT, description TEXT,
       deployer TEXT, pair_token TEXT, pool TEXT, factory TEXT, legacy INTEGER, launch_block INTEGER, launched_at INTEGER, launch_tx TEXT,
       paired_principal TEXT, threshold TEXT, graduated INTEGER DEFAULT 0, graduated_at INTEGER, checked_at INTEGER,
-      price_usd REAL, price_eth REAL, mcap_usd REAL, change24h REAL, liquidity_usd REAL, volume24h_usd REAL, quoted_at INTEGER);
+      price_usd REAL, price_eth REAL, mcap_usd REAL, change24h REAL, liquidity_usd REAL, volume24h_usd REAL, quoted_at INTEGER, socials TEXT, dex_url TEXT);
+
     CREATE INDEX IF NOT EXISTS pons_tokens_grad ON pons_tokens(graduated, graduated_at DESC);
   `)
-  const ins = db.prepare(`INSERT OR IGNORE INTO pons_tokens(address, symbol, name, decimals, supply, logo, description, deployer, pair_token, pool, factory, legacy, launch_block, launched_at, launch_tx)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+  tryExec('ALTER TABLE pons_tokens ADD COLUMN socials TEXT'); tryExec('ALTER TABLE pons_tokens ADD COLUMN dex_url TEXT')
+  const ins = db.prepare(`INSERT OR IGNORE INTO pons_tokens(address, symbol, name, decimals, supply, logo, description, deployer, pair_token, pool, factory, legacy, launch_block, launched_at, launch_tx, socials)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+  const setSocials = db.prepare('UPDATE pons_tokens SET socials = ? WHERE address = ? AND socials IS NULL')
   const setGrad = db.prepare('UPDATE pons_tokens SET paired_principal = ?, threshold = ?, graduated = ?, graduated_at = COALESCE(graduated_at, ?), checked_at = ? WHERE address = ?')
-  const setQuote = db.prepare('UPDATE pons_tokens SET price_usd = ?, price_eth = ?, mcap_usd = ?, change24h = ?, liquidity_usd = ?, volume24h_usd = ?, quoted_at = ? WHERE address = ?')
+  const setQuote = db.prepare('UPDATE pons_tokens SET price_usd = ?, price_eth = ?, mcap_usd = ?, change24h = ?, liquidity_usd = ?, volume24h_usd = ?, quoted_at = ?, dex_url = ? WHERE address = ?')
   const getMeta = db.prepare('SELECT value FROM meta WHERE key = ?')
   const setMeta = db.prepare('INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
 
@@ -50,8 +55,8 @@ export function installPons({ db, all, client, log = console.log }) {
   }
   async function meta(token) {
     const read = (fn) => client.readContract({ address: token, abi: TOKEN_ABI, functionName: fn }).catch(() => undefined)
-    const [name, symbol, decimals, supply, logo, description] = await Promise.all(['name', 'symbol', 'decimals', 'totalSupply', 'logo', 'description'].map(read))
-    return { name: clean(name), symbol: clean(symbol).slice(0, 16), decimals: Number(decimals ?? 18), supply: String(supply ?? ''), logo: clean(logo).slice(0, 400), description: clean(description) }
+    const [name, symbol, decimals, supply, logo, description, socials] = await Promise.all(['name', 'symbol', 'decimals', 'totalSupply', 'logo', 'description', 'socials'].map(read))
+    return { name: clean(name), symbol: clean(symbol).slice(0, 16), decimals: Number(decimals ?? 18), supply: String(supply ?? ''), logo: clean(logo).slice(0, 400), description: String(description ?? '').replace(/[^\x20-\x7E\u00A0-\uFFFF\n]/g, '').slice(0, 600), socials: String(socials ?? '').slice(0, 600) }
   }
 
   // ---- launches: TokenLaunched logs per factory, resumable through meta pons:cursor:<factory>
@@ -74,7 +79,7 @@ export function installPons({ db, all, client, log = console.log }) {
           const a = l.args
           const token = getAddress(a.token)
           const m = await meta(token)
-          ins.run(token, m.symbol, m.name, m.decimals, m.supply, m.logo, m.description, getAddress(a.deployer), getAddress(a.pairToken), getAddress(a.pool), f.address, f.legacy ? 1 : 0, Number(l.blockNumber), await at(l.blockNumber), l.transactionHash)
+          ins.run(token, m.symbol, m.name, m.decimals, m.supply, m.logo, m.description, getAddress(a.deployer), getAddress(a.pairToken), getAddress(a.pool), f.address, f.legacy ? 1 : 0, Number(l.blockNumber), await at(l.blockNumber), l.transactionHash, m.socials)
         }
         if (logs.length) { notify(); log(`[pons] ${logs.length} launches in blocks ${from}-${to}${f.legacy ? ' (legacy factory)' : ''}`) }
         setMeta.run(key, String(to))
@@ -120,15 +125,29 @@ export function installPons({ db, all, client, log = console.log }) {
       }
       for (const { p, liq } of best.values()) {
         const addr = getAddress(p.baseToken.address)
-        setQuote.run(Number(p.priceUsd ?? 0), Number(p.priceNative ?? 0), Number(p.marketCap ?? p.fdv ?? 0), Number(p.priceChange?.h24 ?? 0), liq, Number(p.volume?.h24 ?? 0), now, addr)
+        setQuote.run(Number(p.priceUsd ?? 0), Number(p.priceNative ?? 0), Number(p.marketCap ?? p.fdv ?? 0), Number(p.priceChange?.h24 ?? 0), liq, Number(p.volume?.h24 ?? 0), now, typeof p.url === 'string' ? p.url.slice(0, 200) : null, addr)
+        const links = [...(p.info?.websites ?? []).map((w) => ({ type: 'website', url: w.url })), ...(p.info?.socials ?? []).map((s) => ({ type: s.type, url: s.url }))].filter((l) => typeof l.url === 'string' && /^https?:\/\//.test(l.url))
+        if (links.length) setSocials.run(JSON.stringify(links.slice(0, 8)), addr)
       }
     }
   }
 
+  // socials: the token's own socials() string (JSON array, JSON object, or whitespace-separated URLs), or DexScreener's
+  function parseSocials(v) {
+    if (!v) return []
+    const urls = []
+    try {
+      const j = JSON.parse(v)
+      const arr = Array.isArray(j) ? j : typeof j === 'object' ? Object.entries(j).map(([type, url]) => ({ type, url })) : []
+      for (const x of arr) { const url = typeof x === 'string' ? x : x?.url; if (typeof url === 'string') urls.push({ type: typeof x === 'object' && x?.type ? String(x.type) : guessType(url), url }) }
+    } catch { for (const m of String(v).match(/https?:\/\/[^\s,"']+/g) ?? []) urls.push({ type: guessType(m), url: m }) }
+    return urls.filter((u) => /^https?:\/\//.test(u.url)).slice(0, 8).map((u) => ({ type: String(u.type).toLowerCase().slice(0, 20), url: u.url.slice(0, 300) }))
+  }
+  const guessType = (url) => /x\.com|twitter\.com/.test(url) ? 'twitter' : /t\.me|telegram/.test(url) ? 'telegram' : /discord/.test(url) ? 'discord' : /github/.test(url) ? 'github' : 'website'
   function out(r, listed) {
     const k = listed.get(r.address.toLowerCase())
     return {
-      address: r.address, symbol: r.symbol, name: r.name, decimals: r.decimals, logo: logoUrl(r.logo), description: r.description || null,
+      address: r.address, symbol: r.symbol, name: r.name, decimals: r.decimals, logo: logoUrl(r.logo), logoFallback: logoFallback(r.logo), description: r.description || null,
       deployer: r.deployer, pairToken: r.pair_token, pairIsWeth: r.pair_token.toLowerCase() === PONS_WETH.toLowerCase(), pool: r.pool, legacy: !!r.legacy,
       launchedAt: r.launched_at, launchTx: r.launch_tx,
       pairedEth: r.paired_principal ? Number(r.paired_principal) / 1e18 : null, thresholdEth: r.threshold ? Number(r.threshold) / 1e18 : null,
@@ -136,6 +155,17 @@ export function installPons({ db, all, client, log = console.log }) {
       graduated: !!r.graduated, graduatedAt: r.graduated_at,
       priceUsd: r.price_usd, priceEth: r.price_eth, mcapUsd: r.mcap_usd, change24h: r.change24h, liquidityUsd: r.liquidity_usd, volume24hUsd: r.volume24h_usd, quotedAt: r.quoted_at,
       kyte: k ? (k.enabled ? 'listed' : 'disabled') : 'unlisted',
+      supply: r.supply ? Number(r.supply) / 10 ** (r.decimals || 18) : null,
+      socials: parseSocials(r.socials),
+      links: {
+        pons: `https://ponsfamily.com/launchpad/${r.address.toLowerCase()}`,
+        deployerOnPons: `https://ponsfamily.com/profile/${r.deployer.toLowerCase()}`,
+        dexscreener: r.dex_url || `https://dexscreener.com/robinhood/${r.address.toLowerCase()}`,
+        token: `https://robin.etherscan.io/token/${r.address}`,
+        pool: `https://robin.etherscan.io/address/${r.pool}`,
+        deployer: `https://robin.etherscan.io/address/${r.deployer}`,
+        launchTx: `https://robin.etherscan.io/tx/${r.launch_tx}`,
+      },
       ponsUrl: `https://ponsfamily.com/launchpad/${r.address.toLowerCase()}`,
     }
   }

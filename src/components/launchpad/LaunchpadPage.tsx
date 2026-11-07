@@ -1,5 +1,5 @@
 'use client'
-import { ArrowUpRight } from '@phosphor-icons/react'
+import { ArrowUpRight, Check, Copy } from '@phosphor-icons/react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -7,15 +7,18 @@ import { PillButton } from '@/components/PillButton'
 import { TokenLogo } from '@/components/TokenLogo'
 import { Note, PageHeader, Segmented } from '@/components/ui'
 import { INDEXER_URL } from '@/lib/data'
-import { compact, num } from '@/lib/format'
+import { compact, num, shortAddr } from '@/lib/format'
 
 type Tab = 'graduated' | 'listed'
 type PonsToken = {
-  address: string; symbol: string; name: string; logo: string | null; description: string | null
+  symbol: string; name: string; logo: string | null; logoFallback?: string | null; description: string | null
   pairIsWeth: boolean; legacy: boolean; launchedAt: number; pairedEth: number | null; thresholdEth: number | null; progress: number | null
   graduated: boolean; graduatedAt: number | null
   priceUsd: number | null; priceEth: number | null; mcapUsd: number | null; change24h: number | null; liquidityUsd: number | null; volume24hUsd: number | null
   kyte: 'listed' | 'disabled' | 'unlisted'; ponsUrl: string
+  address: string; deployer: string; pool: string; launchTx: string; supply: number | null
+  socials: Array<{ type: string; url: string }>
+  links: { pons: string; deployerOnPons: string; dexscreener: string; token: string; pool: string; deployer: string; launchTx: string }
 }
 type Resp = { tokens: PonsToken[]; counts: { launched: number; graduated: number } }
 
@@ -24,6 +27,23 @@ const ago = (t: number | null) => {
   const s = Math.max(0, Date.now() / 1000 - t)
   return s < 3600 ? `${Math.round(s / 60)}m ago` : s < 86400 ? `${Math.round(s / 3600)}h ago` : `${Math.round(s / 86400)}d ago`
 }
+const when = (t: number | null) => (t ? new Date(t * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—')
+const ethp = (n: number | null) => (n == null || !Number.isFinite(n) || n === 0 ? '—' : n >= 0.001 ? `${num(n, 5)} ETH` : `${n.toPrecision(3)} ETH`)
+function Logo({ t }: { t: PonsToken }) {
+  const [stage, setStage] = useState(0) // 0 primary, 1 fallback gateway, 2 initials
+  const src = stage === 0 ? t.logo : stage === 1 ? t.logoFallback ?? null : null
+  if (!src) return <TokenLogo symbol={t.symbol} name={t.name} address={t.address} size={40} />
+  return <img src={src} alt="" width={40} height={40} loading="lazy" onError={() => setStage((s) => s + 1)} className="h-10 w-10 shrink-0 rounded-full border border-white/10 object-cover" />
+}
+function CopyAddr({ value }: { value: string }) {
+  const [done, setDone] = useState(false)
+  return (
+    <button type="button" onClick={() => { navigator.clipboard?.writeText(value).then(() => { setDone(true); setTimeout(() => setDone(false), 1200) }).catch(() => {}) }} className="inline-flex items-center gap-1 font-mono text-xs text-muted hover:text-ink" title={value}>
+      {shortAddr(value)} {done ? <Check size={11} /> : <Copy size={11} />}
+    </button>
+  )
+}
+const SOCIAL: Record<string, string> = { twitter: 'X', x: 'X', telegram: 'Telegram', discord: 'Discord', github: 'GitHub', website: 'Website' }
 const usd = (n: number | null) => (n == null || !Number.isFinite(n) || n === 0 ? '—' : n >= 1000 ? `$${compact(n)}` : n >= 1 ? `$${num(n, 2)}` : `$${n.toPrecision(3)}`)
 
 export function LaunchpadPage() {
@@ -60,7 +80,7 @@ export function LaunchpadPage() {
           {tokens.map((t) => (
             <li key={t.address} className="card flex flex-col gap-4 p-5">
               <div className="flex items-start gap-3">
-                {t.logo ? <img src={t.logo} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full border border-white/10 object-cover" /> : <TokenLogo symbol={t.symbol} name={t.name} address={t.address} size={40} />}
+                <Logo t={t} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium text-ink">{t.name}</span>
@@ -80,20 +100,43 @@ export function LaunchpadPage() {
                 <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-ink/70" style={{ width: `${Math.round(t.progress * 100)}%` }} /></div>
               )}
 
-              <dl className="grid grid-cols-3 gap-2 text-xs">
+              {t.description && <p className="line-clamp-3 text-xs leading-relaxed text-muted" title={t.description}>{t.description}</p>}
+
+              <dl className="grid grid-cols-3 gap-x-2 gap-y-3 text-xs">
+                <div><dt className="text-muted">Price</dt><dd className="mt-0.5 font-mono text-ink">{usd(t.priceUsd)}</dd><dd className="font-mono text-[10px] text-muted">{ethp(t.priceEth)}</dd></div>
                 <div><dt className="text-muted">Market cap</dt><dd className="mt-0.5 font-mono text-ink">{usd(t.mcapUsd)}</dd></div>
                 <div><dt className="text-muted">24h</dt><dd className={`mt-0.5 font-mono ${t.change24h == null ? 'text-ink' : t.change24h >= 0 ? 'text-accent' : 'text-[#ff7a7a]'}`}>{t.change24h == null ? '—' : `${t.change24h >= 0 ? '+' : ''}${num(t.change24h, 1)}%`}</dd></div>
                 <div><dt className="text-muted">Liquidity</dt><dd className="mt-0.5 font-mono text-ink">{usd(t.liquidityUsd)}</dd></div>
+                <div><dt className="text-muted">Volume 24h</dt><dd className="mt-0.5 font-mono text-ink">{usd(t.volume24hUsd)}</dd></div>
+                <div><dt className="text-muted">ETH in pool</dt><dd className="mt-0.5 font-mono text-ink">{t.pairedEth == null ? '—' : num(t.pairedEth, 2)}{t.thresholdEth ? <span className="text-muted"> / {num(t.thresholdEth, 1)}</span> : null}</dd></div>
+                <div><dt className="text-muted">Supply</dt><dd className="mt-0.5 font-mono text-ink">{t.supply ? compact(t.supply) : '—'}</dd></div>
+                <div><dt className="text-muted">Launched</dt><dd className="mt-0.5 text-ink">{when(t.launchedAt)}</dd></div>
+                <div><dt className="text-muted">Graduated</dt><dd className="mt-0.5 text-ink">{t.graduated ? when(t.graduatedAt) : '—'}</dd></div>
               </dl>
 
+              <dl className="grid gap-1.5 border-t border-white/[0.06] pt-3 text-xs">
+                <div className="flex items-center justify-between gap-2"><dt className="text-muted">Token</dt><dd className="flex items-center gap-2"><CopyAddr value={t.address} /><a href={t.links.token} target="_blank" rel="noreferrer" className="text-muted hover:text-ink" title="Explorer"><ArrowUpRight size={12} /></a></dd></div>
+                <div className="flex items-center justify-between gap-2"><dt className="text-muted">Pool</dt><dd className="flex items-center gap-2"><CopyAddr value={t.pool} /><a href={t.links.pool} target="_blank" rel="noreferrer" className="text-muted hover:text-ink" title="Explorer"><ArrowUpRight size={12} /></a></dd></div>
+                <div className="flex items-center justify-between gap-2"><dt className="text-muted">Deployer</dt><dd className="flex items-center gap-2"><CopyAddr value={t.deployer} /><a href={t.links.deployerOnPons} target="_blank" rel="noreferrer" className="text-muted hover:text-ink" title="Profile on Pons"><ArrowUpRight size={12} /></a></dd></div>
+                <div className="flex items-center justify-between gap-2"><dt className="text-muted">Launch tx</dt><dd><a href={t.links.launchTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-muted hover:text-ink">{shortAddr(t.launchTx)} <ArrowUpRight size={12} /></a></dd></div>
+              </dl>
+
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                <a href={t.links.pons} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-ink">Pons <ArrowUpRight size={11} /></a>
+                <a href={t.links.dexscreener} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-ink">DexScreener <ArrowUpRight size={11} /></a>
+                <a href={t.links.token} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-ink">Explorer <ArrowUpRight size={11} /></a>
+                {t.socials.map((s) => <a key={s.url} href={s.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-ink">{SOCIAL[s.type] ?? s.type} <ArrowUpRight size={11} /></a>)}
+              </div>
+
               <div className="mt-auto flex items-center gap-2">
-                {t.kyte === 'listed' && (
+                {t.kyte === 'listed' ? (
                   <>
                     <PillButton href={`/sell?kind=call&token=${t.symbol}&expiry=86400`} tone="premium" size="sm">Sell a 24h call</PillButton>
                     <Link href={`/market?token=${t.symbol}`} className="btn btn-glass btn-glass-sm">Market</Link>
                   </>
+                ) : (
+                  <a href={t.links.pons} target="_blank" rel="noreferrer" className="btn btn-glass btn-glass-sm">Trade on Pons <ArrowUpRight size={12} /></a>
                 )}
-                <a href={t.ponsUrl} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-1 text-xs text-muted hover:text-ink">Trade on Pons <ArrowUpRight size={12} /></a>
               </div>
             </li>
           ))}
