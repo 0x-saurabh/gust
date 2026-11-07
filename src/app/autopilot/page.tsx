@@ -3,6 +3,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAccount, useSignMessage } from 'wagmi'
 import { ConnectButton } from '@/components/ConnectButton'
+import { PillButton } from '@/components/PillButton'
 import { Note, PageHeader } from '@/components/ui'
 import { INDEXER_URL } from '@/lib/data'
 import { RULE_TYPES, RuleSchema, describeRule, sha256Hex, signMessageFor, type Rule } from '@/lib/agent/autopilot'
@@ -107,13 +108,13 @@ function Autopilot() {
               <ul className="mt-3 grid gap-3">
                 {triggers.map((t) => (
                   <li key={t.id} className={`rounded-xl border p-4 ${t.seen ? 'border-[var(--color-line)] bg-[var(--color-card)]' : 'border-[var(--color-line-strong)] bg-[var(--color-card-2)]'}`}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
                         <p className="font-medium">{t.label}</p>
                         <p className="mt-1 text-sm text-[var(--color-muted)]">{t.preview}</p>
                         <p className="mt-1 text-xs text-[var(--color-muted)] opacity-70">{ago(t.at)} · rule #{t.ruleId}</p>
                       </div>
-                      <a href={t.link} onClick={() => seen(t)} className="pill pill-light shrink-0 text-sm">Review and sign</a>
+                      <PillButton href={t.link} tone="premium" size="sm" onClick={() => seen(t)} className="shrink-0">Review and sign</PillButton>
                     </div>
                   </li>
                 ))}
@@ -124,7 +125,7 @@ function Autopilot() {
           <section className="mt-12">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--color-muted)]">Your rules</h2>
-              <button className="pill pill-dark text-sm" onClick={() => setOpen((o) => !o)}>{open ? 'Close' : 'New rule'}</button>
+              <button type="button" className="btn btn-glass btn-glass-sm" onClick={() => setOpen((o) => !o)}>{open ? 'Close' : 'New rule'}</button>
             </div>
             {open && (
               <div className="mt-4 rounded-2xl border border-[var(--color-line-strong)] bg-[var(--color-card)] p-5">
@@ -144,7 +145,7 @@ function Autopilot() {
                 <p className="mt-4 text-sm">{describeRule(draft)}</p>
                 {err && <p className="mt-3 text-sm text-[var(--color-down,#f87171)]">{err}</p>}
                 <div className="mt-4 flex items-center gap-4">
-                  <button disabled={busy !== null} onClick={create} className="pill pill-light text-sm disabled:opacity-50">{busy === 'create' ? 'Sign in your wallet…' : 'Sign and activate'}</button>
+                  <PillButton tone="premium" size="sm" onClick={create} disabled={busy !== null} className={busy !== null ? 'opacity-60' : ''}>{busy === 'create' ? 'Sign in your wallet…' : 'Sign and activate'}</PillButton>
                   <span className="text-xs text-[var(--color-muted)]">A signed message, not a transaction: free, and it only proves the rule is yours.</span>
                 </div>
               </div>
@@ -161,8 +162,8 @@ function Autopilot() {
                         <p className="mt-1 text-xs text-[var(--color-muted)] opacity-70">{r.runs} trigger{r.runs === 1 ? '' : 's'}{r.lastTrigger ? `, last ${ago(r.lastTrigger)}` : ''}</p>
                       </div>
                       <div className="flex shrink-0 gap-2">
-                        {r.status === 'active' && <button disabled={busy !== null} onClick={() => setStatus(r, 'pause')} className="pill pill-dark text-xs">Pause</button>}
-                        {r.status === 'paused' && <button disabled={busy !== null} onClick={() => setStatus(r, 'resume')} className="pill pill-dark text-xs">Resume</button>}
+                        {r.status === 'active' && <button type="button" disabled={busy !== null} onClick={() => setStatus(r, 'pause')} className="btn btn-glass btn-glass-sm">Pause</button>}
+                        {r.status === 'paused' && <button type="button" disabled={busy !== null} onClick={() => setStatus(r, 'resume')} className="btn btn-glass btn-glass-sm">Resume</button>}
                         <button disabled={busy !== null} onClick={() => setStatus(r, 'deleted')} className="px-3 text-xs text-[var(--color-muted)] hover:text-[var(--color-ink)]">Delete</button>
                       </div>
                     </div>
