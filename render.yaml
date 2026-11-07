@@ -76,6 +76,6 @@ services:
       - key: NEXT_PUBLIC_SITE_URL
         value: https://kyte.sh # link previews and canonical URLs use this domain
       - key: NEXT_PUBLIC_MCP_ENABLED
-        value: "true" # MCP page and connector endpoint published (Render keeps a removed key, so it is set explicitly)
+        value: "false" # MCP page and connector endpoint unpublished until launch; local dev keeps them on
       - key: NEXT_PUBLIC_AUTOPILOT_ENABLED
         value: "false" # Autopilot page, nav link, agent tools and rule routes unpublished until launch
