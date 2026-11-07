@@ -3,6 +3,7 @@
 import { ArrowUp, ArrowUpRight, CaretRight, Check, Sparkle, Warning } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ConnectButton } from '@/components/ConnectButton'
+import { DotField } from '@/components/agent/DotField'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAccount } from 'wagmi'
@@ -101,13 +102,9 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
     <div className={`flex h-full min-h-0 flex-col ${compact ? '' : 'card'}`}>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5" data-lenis-prevent>
         {!address && (
-          <div
-            className="agent-gate relative flex h-full min-h-[260px] flex-col items-center justify-center gap-5 text-center"
-            onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`); e.currentTarget.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`) }}
-          >
-            <div className="agent-gate-dots" aria-hidden />
+          <div className="agent-gate relative flex h-full min-h-[260px] flex-col items-center justify-center gap-5 overflow-hidden text-center">
+            <DotField />
             <div className="agent-gate-glow" aria-hidden />
-            <div className="agent-gate-spot" aria-hidden />
             <div className="relative">
               <div className="text-[15px] font-medium text-ink">Connect a wallet to ask Kyte</div>
               <p className="mx-auto mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">Answers are personal to your positions and stake. The agent only sees your public address.</p>
