@@ -67,7 +67,9 @@ const KIND = z.enum(['call', 'put'])
 
 /** On-chain names are untrusted text: keep printable ASCII only, cap the length, so nothing can smuggle instructions. */
 export function clean(s: unknown, max = 48): string {
-  return String(s ?? '').replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim().slice(0, max)
+  // Keep letters, numbers, punctuation and symbols in any script (token names like 富贵), but drop control, format and
+  // bidi-override characters, which can hide or reorder text an agent reads.
+  return String(s ?? '').replace(/[^\p{L}\p{M}\p{N}\p{P}\p{S}\p{Zs}]/gu, '').replace(/\s+/g, ' ').trim().slice(0, max)
 }
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)}%`
 const eth = (n: number, d = 6) => `${Number(n.toFixed(d))} ETH`
