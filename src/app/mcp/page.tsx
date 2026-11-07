@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Reveal } from '@/components/landing/kit'
 import { PillButton } from '@/components/PillButton'
+import { McpConnections } from '@/components/mcp/McpConnections'
 import { Segmented } from '@/components/ui'
 import { PREPARE_TOOLS, READ_TOOLS, SITE } from '@/lib/agent/tools'
 import { BRAND } from '@/lib/config'
@@ -48,7 +49,8 @@ export default function McpPage() {
       {/* ---- hero */}
       <section className="relative -mx-4 overflow-hidden px-4 pb-16 pt-20 md:-mx-6 md:px-6 md:pt-28">
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(60% 50% at 70% 20%, rgba(74,255,236,.12), transparent 70%), radial-gradient(40% 40% at 15% 70%, rgba(110,255,133,.1), transparent 70%)' }} />
-        <div className="relative mx-auto max-w-5xl">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1.05fr_1fr]">
+          <div>
           <motion.div initial={reduce ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE }} className="eyebrow flex items-center gap-3"><span className="grad-bg h-px w-8" />Model Context Protocol</motion.div>
           <motion.h1 initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.1, ease: EASE }} className="font-display mt-6 max-w-3xl text-[40px] font-medium leading-[1.02] md:text-[68px]">
             {BRAND.name}, inside <span className="grad-text">any AI app.</span>
@@ -83,6 +85,12 @@ export default function McpPage() {
               <span className="inline-flex items-center gap-1.5"><ShieldCheck size={12} /> Read and prepare only</span>
               <span>Streamable HTTP · stateless</span>
             </div>
+          </motion.div>
+          </div>
+          {/* live connection map: every thread is a real handshake against this endpoint */}
+          <motion.div initial={reduce ? false : { opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 0.25, ease: EASE }} className="relative">
+            <McpConnections />
+            <p className="mt-1 text-center text-[11px] text-faint">Live: each thread runs the real MCP handshake. Click a client to run it again.</p>
           </motion.div>
         </div>
       </section>

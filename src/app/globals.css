@@ -530,3 +530,16 @@ p {
 .agent-browse-scan { background: linear-gradient(90deg, transparent, rgba(77, 252, 169, 0.12), transparent); animation: agent-scan 2.4s linear infinite; }
 .agent-browse-cursor { animation: agent-cursor 4s cubic-bezier(0.45, 0, 0.3, 1) infinite, agent-click 4s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .agent-step, .agent-spin, .agent-pulse, .agent-shimmer, .agent-browse-row, .agent-browse-scan, .agent-browse-cursor { animation: none; } .agent-shimmer { color: var(--color-ink); background: none; } }
+
+/* MCP connection map: flowing threads, breathing hub, pulsing ring, nodes that throb while handshaking */
+@keyframes mcp-flow { to { stroke-dashoffset: -60; } }
+@keyframes mcp-breathe { 0%, 100% { transform: scale(0.92); opacity: 0.7; } 50% { transform: scale(1.08); opacity: 1; } }
+@keyframes mcp-ring { 0% { r: 46; opacity: 0.7; } 100% { r: 70; opacity: 0; } }
+@keyframes mcp-throb { 0%, 100% { box-shadow: 0 0 0 0 rgba(77, 252, 169, 0.45); } 70% { box-shadow: 0 0 0 10px rgba(77, 252, 169, 0); } }
+.mcp-thread { stroke-dasharray: 6 10; transition: opacity 500ms var(--ease-base); }
+.mcp-thread.is-live { animation: mcp-flow 1.2s linear infinite; }
+.mcp-breathe { transform-origin: center; transform-box: fill-box; animation: mcp-breathe 5s ease-in-out infinite; }
+.mcp-ring { animation: mcp-ring 2.4s ease-out infinite; }
+.mcp-node-connecting { animation: mcp-throb 0.9s ease-out infinite; border-color: rgba(77, 252, 169, 0.5); }
+.mcp-packet { filter: drop-shadow(0 0 4px rgba(110, 255, 133, 0.9)); }
+@media (prefers-reduced-motion: reduce) { .mcp-thread.is-live, .mcp-breathe, .mcp-ring, .mcp-node-connecting { animation: none; } }
