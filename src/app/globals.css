@@ -543,3 +543,14 @@ p {
 .mcp-node-connecting { animation: mcp-throb 0.9s ease-out infinite; border-color: rgba(77, 252, 169, 0.5); }
 .mcp-packet { filter: drop-shadow(0 0 4px rgba(110, 255, 133, 0.9)); }
 @media (prefers-reduced-motion: reduce) { .mcp-thread.is-live, .mcp-breathe, .mcp-ring, .mcp-node-connecting { animation: none; } }
+
+/* exploring radar: a conic sweep behind the magnifier, an expanding ring, a sheen across the card, a flowing bar */
+@keyframes agent-radar { to { transform: rotate(360deg); } }
+@keyframes agent-radar-ring { 0% { transform: scale(0.7); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes agent-sheen { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@keyframes agent-bar { 0% { background-position: 0 0; } 100% { background-position: 40px 0; } }
+.agent-radar { background: conic-gradient(from 0deg, rgba(77, 252, 169, 0) 0deg, rgba(77, 252, 169, 0) 250deg, rgba(77, 252, 169, 0.55) 360deg); animation: agent-radar 1.6s linear infinite; mask: radial-gradient(circle, transparent 46%, #000 48%); -webkit-mask: radial-gradient(circle, transparent 46%, #000 48%); }
+.agent-radar-ring { animation: agent-radar-ring 1.6s ease-out infinite; }
+.agent-sheen { background: linear-gradient(100deg, transparent 30%, rgba(77, 252, 169, 0.06) 50%, transparent 70%); animation: agent-sheen 2.2s ease-in-out infinite; }
+.agent-bar { background: repeating-linear-gradient(90deg, #4dfca9 0 12px, #4affec 12px 24px, #4dfca9 24px 40px); background-size: 40px 100%; animation: agent-bar 0.8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .agent-radar, .agent-radar-ring, .agent-sheen, .agent-bar { animation: none; } }

@@ -1,6 +1,8 @@
 'use client'
 
-import { ArrowUp, ArrowUpRight, Check, CursorClick, MagnifyingGlass, Sparkle, Warning } from '@phosphor-icons/react'
+import { ArrowUp, ArrowUpRight, Calculator, ChartLineUp, Check, Coins, ListBullets, MagnifyingGlass, PencilLine, Receipt, Sparkle, TrendUp, Wallet, Warning, type Icon } from '@phosphor-icons/react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ConnectButton } from '@/components/ConnectButton'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAccount } from 'wagmi'
@@ -83,7 +85,17 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`flex h-full min-h-0 flex-col ${compact ? '' : 'card'}`}>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5" data-lenis-prevent>
-        {msgs.length === 0 && (
+        {!address && (
+          <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-4 text-center">
+            <span className="agent-pulse grid size-12 place-items-center rounded-full bg-accent/15 text-accent"><Wallet size={22} /></span>
+            <div>
+              <div className="text-[15px] font-medium text-ink">Connect a wallet to ask Kyte</div>
+              <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-muted">Answers are personal: your positions, your stake, your limits. The agent only ever sees your public address.</p>
+            </div>
+            <ConnectButton />
+          </div>
+        )}
+        {address && msgs.length === 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm text-muted"><Sparkle size={16} className="text-accent" /> Ask about markets, offers, prices, staking or proof. Answers come from live on-chain data.</div>
             <div className="grid gap-2">
@@ -115,7 +127,7 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
         ))}
         <div ref={end} />
       </div>
-      <form onSubmit={(e) => { e.preventDefault(); send(input) }} className="hair border-t p-3">
+      {address && <form onSubmit={(e) => { e.preventDefault(); send(input) }} className="hair border-t p-3">
         <div className="flex items-end gap-2">
           <textarea
             value={input}
@@ -132,47 +144,70 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
           <span>{DISCLAIMER}</span>
           {!compact && <Link href="/docs" className="lnk shrink-0">How it works</Link>}
         </div>
-      </form>
+      </form>}
     </div>
   )
 }
 
+const TOOL_ICON: Record<string, Icon> = {
+  list_tokens: ListBullets, find_offers: ChartLineUp, compare_offers: ChartLineUp, get_offer: ChartLineUp,
+  get_prices: TrendUp, get_chart: TrendUp, get_positions: Wallet, get_staking: Coins,
+  get_protocol_stats: Receipt, get_proof: Receipt, get_activity: Receipt, explain_offer: Calculator,
+}
+
 /**
- * What the agent is doing, as it does it: a live header while it works ("Exploring Kyte…") and one row per tool
- * call with a spinner that turns into a check. Stays visible, muted, under the answer so the sources are clear.
+ * What the agent is doing, as it does it. A radar sweeps around the magnifier while tools run, a progress bar
+ * fills as steps complete, and each tool call springs in as a chip with its own icon: spinner while running, check
+ * when done. Afterwards the block settles into a muted "checked N sources" line under the answer.
  */
 function Exploring({ steps, working }: { steps: Step[]; working: boolean }) {
   const running = steps.some((s) => s.status === 'start')
   const active = working || running
+  const done = steps.filter((s) => s.status !== 'start').length
+  const progress = steps.length === 0 ? (active ? 12 : 100) : Math.round((done / steps.length) * 100)
   return (
-    <div className={`agent-steps rounded-xl border px-3.5 py-3 transition-colors duration-500 ${active ? 'border-accent/25 bg-accent/[0.04]' : 'hair bg-transparent'}`}>
-      <div className="flex items-center gap-2 text-[12px]">
-        <span className={`grid size-5 place-items-center rounded-full ${active ? 'agent-pulse bg-accent/15 text-accent' : 'bg-white/[0.06] text-muted'}`}>
-          {active ? <MagnifyingGlass size={12} weight="bold" /> : <Check size={12} weight="bold" />}
+    <div className={`agent-steps relative overflow-hidden rounded-2xl border px-4 py-3.5 transition-colors duration-500 ${active ? 'border-accent/25 bg-accent/[0.04]' : 'hair bg-transparent'}`}>
+      {active && <div aria-hidden className="agent-sheen pointer-events-none absolute inset-0" />}
+      <div className="relative flex items-center gap-3">
+        <span className="relative grid size-9 shrink-0 place-items-center">
+          {active && <span aria-hidden className="agent-radar absolute inset-0 rounded-full" />}
+          {active && <span aria-hidden className="agent-radar-ring absolute inset-0 rounded-full border border-accent/40" />}
+          <span className={`relative grid size-7 place-items-center rounded-full ${active ? 'bg-accent/15 text-accent' : 'bg-white/[0.06] text-muted'}`}>
+            {active ? <MagnifyingGlass size={14} weight="bold" /> : <Check size={14} weight="bold" />}
+          </span>
         </span>
-        <span className={active ? 'agent-shimmer font-medium' : 'text-muted'}>
-          {active ? (steps.length ? 'Exploring Kyte' : 'Reading your question') : `Checked ${steps.length} source${steps.length === 1 ? '' : 's'} on chain`}
-        </span>
-      </div>
-      {active && (
-        /* a miniature page the agent "browses": faux rows that scan, and a pointer gliding over them */
-        <div aria-hidden className="agent-browse relative mt-3 h-12 overflow-hidden rounded-lg border border-white/[0.06] bg-black/30">
-          <div className="absolute inset-x-3 top-2.5 space-y-2">
-            {[72, 48, 60].map((w, i) => <div key={i} className="agent-browse-row h-1.5 rounded-full bg-white/[0.08]" style={{ width: `${w}%`, animationDelay: `${i * 0.35}s` }} />)}
+        <div className="min-w-0 flex-1">
+          <div className={`text-[13px] ${active ? 'agent-shimmer font-medium' : 'text-muted'}`}>
+            {active ? (steps.length ? 'Exploring Kyte' : 'Reading your question') : `Checked ${steps.length} source${steps.length === 1 ? '' : 's'} on chain`}
           </div>
-          <div className="agent-browse-scan absolute inset-y-0 w-16" />
-          <CursorClick size={14} weight="fill" className="agent-browse-cursor absolute text-accent drop-shadow-[0_0_6px_rgba(77,252,169,.6)]" />
+          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+            <motion.div className={`h-full rounded-full ${active ? 'agent-bar' : 'bg-accent/60'}`} initial={false} animate={{ width: `${progress}%` }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} />
+          </div>
         </div>
-      )}
+        {active && steps.length > 0 && <span className="mono shrink-0 text-[10px] text-muted">{done}/{steps.length}</span>}
+      </div>
       {steps.length > 0 && (
-        <ol className="mt-2 space-y-1.5 border-l border-white/[0.08] pl-3.5">
-          {steps.map((st, i) => (
-            <li key={i} className="agent-step flex items-center gap-2 text-[12px]" style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}>
-              {st.status === 'start' ? <span className="agent-spin size-3 rounded-full border-[1.5px] border-accent/30 border-t-accent" /> : st.status === 'error' ? <Warning size={12} className="text-warn" /> : <Check size={12} className="text-accent" weight="bold" />}
-              <span className={st.status === 'start' ? 'text-ink/85' : 'text-muted'}>{st.label}</span>
-            </li>
-          ))}
-        </ol>
+        <div className="relative mt-3 flex flex-wrap gap-2">
+          <AnimatePresence initial={false}>
+            {steps.map((st, i) => {
+              const I = TOOL_ICON[st.name] ?? (st.name.startsWith('prepare_') ? PencilLine : MagnifyingGlass)
+              return (
+                <motion.span
+                  key={i}
+                  layout
+                  initial={{ opacity: 0, y: 8, scale: 0.92 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+                  className={`inline-flex items-center gap-1.5 rounded-full border py-1 pl-1.5 pr-2.5 text-[12px] transition-colors duration-500 ${st.status === 'start' ? 'border-accent/35 bg-accent/[0.08] text-ink' : st.status === 'error' ? 'border-warn/30 text-warn' : 'border-white/[0.08] text-muted'}`}
+                >
+                  <span className={`grid size-5 place-items-center rounded-full ${st.status === 'start' ? 'bg-accent/20 text-accent' : 'bg-white/[0.06]'}`}><I size={12} weight={st.status === 'start' ? 'fill' : 'regular'} /></span>
+                  {st.label}
+                  {st.status === 'start' ? <span className="agent-spin ml-0.5 size-3 rounded-full border-[1.5px] border-accent/30 border-t-accent" /> : st.status === 'error' ? <Warning size={12} /> : <Check size={12} className="text-accent" weight="bold" />}
+                </motion.span>
+              )
+            })}
+          </AnimatePresence>
+        </div>
       )}
     </div>
   )

@@ -29,8 +29,20 @@ const MAX_CHARS = 2_000
 
 const Body = z.object({
   messages: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(MAX_CHARS) })).min(1).max(MAX_TURNS),
-  address: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
+  address: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
 })
+
+// Each answer gets a different angle so two identical questions never read like a canned reply.
+const STYLE_HINTS = [
+  'open with the single most important number, then explain it',
+  'open with a one-line takeaway, then the details',
+  'open with a short table, then two sentences of context',
+  'walk through it step by step, numbered',
+  'answer as a quick briefing: three short lines, then the detail that matters',
+  'lead with what has changed recently, then the current state',
+  'start with the question behind the question, then answer both',
+  'keep it to the essentials, under 120 words unless a table is needed',
+]
 
 // ---- daily limit per wallet, or per IP when no wallet is connected (in memory: one web instance)
 const hits = new Map<string, { day: string; n: number }>()
@@ -67,7 +79,7 @@ Rules you never break:
 
 Protocol facts (fixed in the contracts): premium fee ${FEES.premiumBps / 100}% of the premium (seller pays, deducted on fill); exercise fee ${FEES.exerciseBps / 100}% of the strike (holder pays on exercise); fee split ${SPLIT.stakersBps / 100}% to $KYTE stakers in WETH, ${SPLIT.buybackBps / 100}% buyback and burn, ${SPLIT.opsBps / 100}% operations, once per ${LIMITS.epochSec / 3600} hour epoch; expiry 1 hour to 90 days; minimum premium ${LIMITS.minPremiumEth} ETH; strikes and premiums are in ETH; options are ERC-721 NFTs, whoever holds one can exercise; no oracle, no auto-exercise, exercise needs a confirmed transaction before the expiry timestamp. New stake is pending until the epoch ends, then active and locked for one epoch; pending stake can be unstaked any time.
 
-Style: short, concrete, numbers first. Use a small table for several offers. Link offers with the links the tools return (site: ${SITE}). Do not repeat the disclaimer more than once per answer. If the user has no wallet connected and asks about their positions, ask them to connect or to give an address.`
+Style: short, concrete, numbers first. Each answer should read freshly written: vary structure and wording between answers, and never repeat a sentence from an earlier answer in this conversation. Use a small table for several offers. Link offers with the links the tools return (site: ${SITE}). Do not repeat the disclaimer more than once per answer. If the user has no wallet connected and asks about their positions, ask them to connect or to give an address.`
 
 /** What the user sees while a tool runs: a short line built from the tool name and its safe, cleaned arguments. */
 function stepLabel(name: string, input: unknown): string {
@@ -106,13 +118,15 @@ export async function POST(req: NextRequest) {
   const parsed = Body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'bad request' }, { status: 400 })
   const { messages, address } = parsed.data
-  const ip = (req.headers.get('x-forwarded-for') ?? '').split(',').at(-1)?.trim() || 'local'
-  if (overLimit(address?.toLowerCase() ?? `ip:${ip}`)) return NextResponse.json({ error: `Daily limit of ${DAILY_LIMIT} questions reached. Try again tomorrow.` }, { status: 429 })
+  if (overLimit(address.toLowerCase())) return NextResponse.json({ error: `Daily limit of ${DAILY_LIMIT} questions reached. Try again tomorrow.` }, { status: 429 })
 
   const client = GATEWAY_KEY ? new Anthropic({ apiKey: GATEWAY_KEY, baseURL: GATEWAY_URL }) : new Anthropic()
   const history: Anthropic.Beta.BetaMessageParam[] = messages.map((m) => ({ role: m.role, content: m.content }))
-  // The connected address is context for the tools, passed as data, never as an instruction.
-  if (address) history.push({ role: 'user', content: `[context] connected wallet address: ${address}` })
+  // The connected address is context for the tools, passed as data, never as an instruction. The style hint and the
+  // time vary per request so repeated questions get fresh wording; they sit in the messages, not the cached system prompt.
+  const hint = STYLE_HINTS[Math.floor(Math.random() * STYLE_HINTS.length)]
+  const now = new Date().toISOString().slice(0, 16).replace('T', ' ')
+  history.push({ role: 'user', content: `[context] connected wallet address: ${address}. Now (UTC): ${now}. For this answer, ${hint}. Vary your phrasing and closing line from answer to answer; never reuse the same opening sentence twice in a row.` })
   if (history[0].role !== 'user') history.unshift({ role: 'user', content: '(start)' })
 
   const stream = new ReadableStream({

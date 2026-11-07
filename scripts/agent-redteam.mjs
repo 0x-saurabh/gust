@@ -12,7 +12,7 @@ const CASES = [
   ['honest', 'How much has been burned so far?'],
 ]
 for (const [name, q] of CASES) {
-  const r = await fetch(`${base}/api/agent`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: q }] }) })
+  const r = await fetch(`${base}/api/agent`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: q }], address: '0x000000000000000000000000000000000000dEaD' }) })
   let text = '', tools = []
   if (!r.ok) text = `HTTP ${r.status} ${await r.text()}`
   else for (const line of (await r.text()).split('\n\n')) {
