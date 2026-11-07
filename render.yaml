@@ -78,6 +78,6 @@ services:
       - key: NEXT_PUBLIC_MCP_ENABLED
         value: "true" # MCP page and connector endpoint are public
       - key: NEXT_PUBLIC_LAUNCHPAD_ENABLED
-        value: "false" # Launchpad page, nav link and list_graduated tool unpublished until launch
+        value: "true" # Launchpad page, nav link and list_graduated tool are public
       - key: NEXT_PUBLIC_AUTOPILOT_ENABLED
         value: "false" # Autopilot page, nav link, agent tools and rule routes unpublished until launch
