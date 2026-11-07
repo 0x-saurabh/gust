@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { parseEther } from 'viem'
 import { useAccount, usePublicClient } from 'wagmi'
 import { TimeLeft } from '@/components/TimeLeft'
@@ -24,6 +25,14 @@ export default function StakePage() {
   const balances = useBalances()
   const [mode, setMode] = useState<'stake' | 'unstake'>('stake')
   const [amount, setAmount] = useState('')
+  // /stake?action=stake|unstake|claim&amount= (from the agent's prepare_stake link)
+  const params = useSearchParams()
+  useEffect(() => {
+    const a = params.get('action')
+    if (a === 'stake' || a === 'unstake') setMode(a)
+    const v = Number(params.get('amount')); if (Number.isFinite(v) && v > 0) setAmount(String(v))
+    if (a === 'claim') document.getElementById('claim')?.scrollIntoView({ block: 'center' })
+  }, [params])
 
   const s = stake.data
   const max = mode === 'stake' ? (balances.data?.kyte ?? 0) : (s?.myActive ?? 0) + (s?.myPending ?? 0)
@@ -96,7 +105,7 @@ export default function StakePage() {
             <div className="border-t border-line" />
             <Row k="Claimable" v={eth(s?.claimable ?? 0, 6)} strong />
           </dl>
-          <button className="btn btn-accent mt-6 w-full" disabled={!isConnected || !live || !canClaim || tx.busy} onClick={claim}>Claim WETH</button>
+          <button id="claim" className="btn btn-accent mt-6 w-full" disabled={!isConnected || !live || !canClaim || tx.busy} onClick={claim}>Claim WETH</button>
           {(s?.minClaim ?? 0) > 0 && <p className="mt-2 text-xs text-faint">Minimum claim {eth(s!.minClaim)}.</p>}
         </div>
         <WalletHoldings />

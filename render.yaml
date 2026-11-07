@@ -65,5 +65,11 @@ services:
           property: hostport
       - key: NEXT_PUBLIC_PRIVY_APP_ID
         sync: false
+      - key: ANTHROPIC_API_KEY # Kyte agent (/api/agent); server only, entered in the dashboard
+        sync: false
+      - key: AGENT_MODEL
+        value: claude-sonnet-5-5
+      - key: AGENT_DAILY_LIMIT
+        value: "30"
       - key: NEXT_PUBLIC_SITE_URL
         value: https://kyte.sh # link previews and canonical URLs use this domain

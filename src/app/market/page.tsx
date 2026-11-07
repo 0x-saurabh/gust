@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { BuyDialog } from '@/components/BuyDialog'
 import { TimeLeft } from '@/components/TimeLeft'
 import { TokenChart, type PriceLine } from '@/components/TokenChart'
@@ -23,6 +24,16 @@ export default function MarketPage() {
   const offers = useOffers()
   const assets = useAssets()
   const prices = usePrices()
+  // /market?buy=<offer id> (from the agent's prepare_buy link): open that offer's dialog and select its token
+  const params = useSearchParams()
+  const [opened, setOpened] = useState<string | null>(null)
+  useEffect(() => {
+    const id = params.get('buy')
+    if (!id || opened === id || !offers.data) return
+    const o = offers.data.find((x) => x.id.toString() === id)
+    if (o) { setSymbol(o.symbol); if (isFillable(o)) setBuying(o) }
+    setOpened(id)
+  }, [params, offers.data, opened])
 
   // Only tokens the AssetRegistry has enabled: one the guardian disables leaves the market on its own.
   const enabled = useMemo(() => (assets.data ?? []).filter((a) => a.enabled), [assets.data])

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAccount, usePublicClient } from 'wagmi'
 import { AddToWallet } from '@/components/AddToWallet'
 import { TimeLeft } from '@/components/TimeLeft'
@@ -20,6 +21,10 @@ export default function PositionsPage() {
   const live = useLive()
   const [tab, setTab] = useState<Tab>('holding')
   const pos = usePositions()
+  // /positions?exercise=<id> (from the agent): show the holding tab with that position highlighted
+  const focusId = useSearchParams().get('exercise')
+  useEffect(() => { if (focusId) setTab('holding') }, [focusId])
+  useEffect(() => { if (focusId) document.getElementById(`pos-${focusId}`)?.scrollIntoView({ block: 'center' }) }, [focusId, pos.holding.length])
   const balances = useBalances()
   const tx = useTx()
   const rows = tab === 'holding' ? pos.holding : tab === 'selling' ? pos.selling : pos.history
@@ -80,7 +85,7 @@ export default function PositionsPage() {
                 : o.status === 'filled' ? (tab === 'holding' ? 'You hold this option' : 'Sold: collateral locked')
                 : o.status
               return (
-                <div key={o.id.toString()} className="flex flex-wrap items-center gap-4 p-5">
+                <div key={o.id.toString()} id={`pos-${o.id}`} className={`flex flex-wrap items-center gap-4 p-5 ${focusId === o.id.toString() ? 'bg-accent-soft ring-1 ring-accent/40' : ''}`}>
                   <KindBadge kind={o.kind} />
                   <div className="min-w-40 flex-1">
                     <div className="font-mono font-medium">{num(o.amount, 4)} {o.symbol} @ {eth(o.strike)}</div>

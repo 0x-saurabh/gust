@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { parseEther, parseUnits } from 'viem'
 import { useAccount, usePublicClient } from 'wagmi'
 import { TokenChart } from '@/components/TokenChart'
@@ -38,6 +39,18 @@ export default function SellPage() {
   const [premium, setPremium] = useState('')
   const [durationSec, setDurationSec] = useState(DURATIONS[2].sec)
   const [fillSec, setFillSec] = useState(FILL_WINDOWS[1].sec)
+  // Pre-filled by the agent's prepare tools: /sell?kind=call&token=PONS&amount=1000&strike=0.0002&premium=0.001&expiry=604800&deadline=86400
+  const params = useSearchParams()
+  useEffect(() => {
+    const k = params.get('kind'); if (k === 'call' || k === 'put') setKind(k)
+    const t = params.get('token'); if (t && /^[A-Za-z0-9]{1,16}$/.test(t)) setSymbol(t)
+    const num = (key: string) => { const v = Number(params.get(key)); return Number.isFinite(v) && v > 0 ? v : null }
+    const am = num('amount'); if (am) setAmount(String(am))
+    const st = num('strike'); if (st) setStrikePer(String(st))
+    const pr = num('premium'); if (pr) setPremium(String(pr))
+    const ex = num('expiry'); if (ex) setDurationSec(DURATIONS.reduce((best, d) => (Math.abs(d.sec - ex) < Math.abs(best - ex) ? d.sec : best), DURATIONS[0].sec))
+    const dl = num('deadline'); if (dl) setFillSec(dl >= (ex ?? Infinity) ? Infinity : FILL_WINDOWS.filter((w) => Number.isFinite(w.sec)).reduce((best, w) => (Math.abs(w.sec - dl) < Math.abs(best - dl) ? w.sec : best), FILL_WINDOWS[0].sec))
+  }, [params])
 
   const assets = (assetsQ.data ?? []).filter((a) => a.enabled && (kind === 'put' ? a.putsEnabled : true))
   const a = assets.find((x) => x.symbol === symbol) ?? assets[0]

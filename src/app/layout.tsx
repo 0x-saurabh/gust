@@ -3,6 +3,7 @@ import { connection } from 'next/server'
 import { GeistMono } from 'geist/font/mono'
 import { GeistSans } from 'geist/font/sans'
 import { Inter_Tight, Space_Grotesk } from 'next/font/google'
+import { AgentPanel } from '@/components/agent/AgentPanel'
 import { DemoBanner } from '@/components/DemoBanner'
 import { Footer } from '@/components/Footer'
 import { Nav } from '@/components/Nav'
@@ -46,6 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Nav />
             <main id="content" className="mx-auto w-full max-w-6xl px-4 pb-8 md:px-6">{children}</main>
             <Footer />
+            <AgentPanel />
           </SmoothScroll>
         </Providers>
       </body>
