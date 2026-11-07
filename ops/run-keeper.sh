@@ -10,6 +10,7 @@ export PATH="$HOME/.nvm/versions/node/v25.9.0/bin:/usr/local/bin:/opt/homebrew/b
 export CHAIN_ID="${CHAIN_ID:-4663}"
 export START_BLOCK="${START_BLOCK:-$(node -e "console.log(require('./src/lib/generated/deployments.json')['$CHAIN_ID'].deployBlock)")}"
 export INTERVAL_MS="${INTERVAL_MS:-60000}"
+export INDEXER_URL="${INDEXER_URL:-http://127.0.0.1:4201}" # Pons listings: which tokens graduated
 # Hosted (Render): the key arrives as a secret environment variable. keeper/src/index.mjs reads it and then
 # deletes it from its own environment.
 if [ -n "${KEEPER_PRIVATE_KEY:-}" ]; then

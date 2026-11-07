@@ -701,7 +701,7 @@ function readJson(req) {
 }
 
 // ---- Pons launchpad: launches, graduation, quotes; /pons/tokens. Mainnet only (the factories live there).
-const pons = CHAIN_ID === 4663 ? installPons({ db, all, client }) : null
+const pons = CHAIN_ID === 4663 ? installPons({ db, all, client, lister: dep.ponsLister ? getAddress(dep.ponsLister) : null }) : null
 if (pons) { routes['/pons/tokens'] = pons.route; pons.start(); pons.onTokens((set) => { ponsSet = set }); console.log('[pons] watching the Pons factories; /pons/tokens ready') }
 else console.log(`[pons] off (chain ${CHAIN_ID})`)
 

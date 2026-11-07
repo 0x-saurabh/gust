@@ -15,7 +15,7 @@ type PonsToken = {
   pairIsWeth: boolean; legacy: boolean; launchedAt: number; pairedEth: number | null; thresholdEth: number | null; progress: number | null
   graduated: boolean; graduatedAt: number | null
   priceUsd: number | null; priceEth: number | null; mcapUsd: number | null; change24h: number | null; liquidityUsd: number | null; volume24hUsd: number | null
-  kyte: 'listed' | 'disabled' | 'unlisted'; ponsUrl: string
+  kyte: 'listed' | 'disabled' | 'scheduled' | 'unlisted'; ponsUrl: string
   address: string; deployer: string; pool: string; launchTx: string; supply: number | null
   socials: Array<{ type: string; url: string }>
   links: { pons: string; deployerOnPons: string; dexscreener: string; token: string; pool: string; deployer: string; launchTx: string }
@@ -91,8 +91,8 @@ export function LaunchpadPage() {
                     {!t.pairIsWeth && <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5">not ETH-paired</span>}
                   </div>
                 </div>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${t.kyte === 'listed' ? 'bg-accent/15 text-accent' : t.kyte === 'disabled' ? 'bg-white/[0.06] text-muted' : 'border border-white/10 text-muted'}`}>
-                  {t.kyte === 'listed' ? 'On Kyte' : t.kyte === 'disabled' ? 'Paused' : 'Not listed'}
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${t.kyte === 'listed' ? 'bg-accent/15 text-accent' : t.kyte === 'scheduled' ? 'bg-accent/10 text-accent' : t.kyte === 'disabled' ? 'bg-white/[0.06] text-muted' : 'border border-white/10 text-muted'}`}>
+                  {t.kyte === 'listed' ? 'On Kyte' : t.kyte === 'disabled' ? 'Paused' : t.kyte === 'scheduled' ? 'Listing in 10 min' : 'Not listed'}
                 </span>
               </div>
 

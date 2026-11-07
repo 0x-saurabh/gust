@@ -165,9 +165,52 @@ async function checkBalance() {
   if (bal < MIN_ETH) await alert(`keeper ${account.address} low on gas: ${formatEther(bal)} ETH`)
 }
 
+// ---- Pons listings: the indexer says what graduated; PonsLister verifies on chain and runs the timelock operation.
+// Needs deployments.ponsLister (set after the Safe grants it the timelock roles) and INDEXER_URL.
+const INDEXER_URL = (process.env.INDEXER_URL || '').replace(/\/$/, '')
+const LISTER_ABI = [
+  { type: 'function', name: 'list', stateMutability: 'nonpayable', inputs: [{ name: 'token', type: 'address' }], outputs: [{ type: 'bytes32' }] },
+  { type: 'function', name: 'execute', stateMutability: 'nonpayable', inputs: [{ name: 'token', type: 'address' }], outputs: [] },
+  { type: 'function', name: 'check', stateMutability: 'view', inputs: [{ name: 'token', type: 'address' }], outputs: [{ type: 'uint256' }, { type: 'address' }] },
+  { type: 'function', name: 'operationOf', stateMutability: 'view', inputs: [{ name: 'token', type: 'address' }], outputs: [{ type: 'bytes32' }] },
+  { type: 'function', name: 'paused', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'timelockController', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+]
+const TL_ABI = [
+  { type: 'function', name: 'isOperationReady', stateMutability: 'view', inputs: [{ name: 'id', type: 'bytes32' }], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'isOperationDone', stateMutability: 'view', inputs: [{ name: 'id', type: 'bytes32' }], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'isOperationPending', stateMutability: 'view', inputs: [{ name: 'id', type: 'bytes32' }], outputs: [{ type: 'bool' }] },
+]
+const ZERO32 = '0x' + '0'.repeat(64)
+const listerSkip = new Map() // token -> until (ms): don't re-check a token that failed its on-chain checks for an hour
+async function jobPonsList() {
+  const lister = dep.ponsLister
+  if (!lister || !INDEXER_URL) return
+  if (await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'paused' })) return
+  const r = await fetch(`${INDEXER_URL}/pons/tokens?status=graduated&limit=200`, { signal: AbortSignal.timeout(10_000) })
+  if (!r.ok) throw new Error(`indexer ${r.status}`)
+  const { tokens } = await r.json()
+  const timelockAddr = await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'timelockController' })
+  for (const t of tokens) {
+    if (!t.pairIsWeth || t.kyte !== 'unlisted') continue
+    const token = getAddress(t.address)
+    if ((listerSkip.get(token) ?? 0) > Date.now()) continue
+    const op = await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'operationOf', args: [token] })
+    if (op === ZERO32) {
+      try { await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'check', args: [token] }) }
+      catch (e) { listerSkip.set(token, Date.now() + 3_600_000); log(`pons ${t.symbol}: not listable (${e.shortMessage ?? e.message})`); continue }
+      await send(`ponsLister.list ${t.symbol}`, { address: lister, abi: LISTER_ABI, functionName: 'list', args: [token] })
+    } else if (await pub.readContract({ address: timelockAddr, abi: TL_ABI, functionName: 'isOperationReady', args: [op] })) {
+      await send(`ponsLister.execute ${t.symbol}`, { address: lister, abi: LISTER_ABI, functionName: 'execute', args: [token] })
+    } else if (!(await pub.readContract({ address: timelockAddr, abi: TL_ABI, functionName: 'isOperationPending', args: [op] }))) {
+      listerSkip.set(token, Date.now() + 3_600_000) // done or cancelled; the timelock can reset() if it should run again
+    }
+  }
+}
+
 async function tick() {
   await checkBalance().catch(() => {})
-  for (const [name, job] of [['expire', jobExpire], ['split', jobSplit], ['buyback', jobBuyback]]) {
+  for (const [name, job] of [['expire', jobExpire], ['split', jobSplit], ['buyback', jobBuyback], ['ponsList', jobPonsList]]) {
     try { await job() } catch (e) { await alert(`${name} failed: ${e.shortMessage ?? e.message}`) }
   }
 }

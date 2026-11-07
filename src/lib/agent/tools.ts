@@ -408,7 +408,7 @@ export const listStrategies = {
   },
 }
 
-export type PonsToken = { address: string; symbol: string; name: string; pairIsWeth: boolean; launchedAt: number; pairedEth: number | null; thresholdEth: number | null; progress: number | null; graduated: boolean; graduatedAt: number | null; priceUsd: number | null; priceEth: number | null; mcapUsd: number | null; change24h: number | null; liquidityUsd: number | null; volume24hUsd: number | null; kyte: 'listed' | 'disabled' | 'unlisted'; ponsUrl: string }
+export type PonsToken = { address: string; symbol: string; name: string; pairIsWeth: boolean; launchedAt: number; pairedEth: number | null; thresholdEth: number | null; progress: number | null; graduated: boolean; graduatedAt: number | null; priceUsd: number | null; priceEth: number | null; mcapUsd: number | null; change24h: number | null; liquidityUsd: number | null; volume24hUsd: number | null; kyte: 'listed' | 'disabled' | 'scheduled' | 'unlisted'; ponsUrl: string }
 export const listGraduated = {
   name: 'list_graduated',
   description: 'Tokens from the Pons launchpad on Robinhood Chain: graduated (locked liquidity crossed 4.2 ETH), near graduation, or the ones listed on Kyte. Each has price, market cap, 24h change, liquidity, graduation time and whether Kyte lists it. Options on Pons tokens expire within 24 hours. Read-only.',

@@ -26,8 +26,11 @@ const logoUrl = (v) => (!v ? null : v.startsWith('ipfs://') ? `/api/pons-logo/${
 const logoFallback = (v) => (v && v.startsWith('ipfs://') ? `https://dbk-vercel.vercel.app/api/ipfs/content/${v.slice(7)}` : null)
 const clean = (s) => String(s ?? '').replace(/[^\x20-\x7E -￿]/g, '').slice(0, STR_MAX)
 
-/** deps: { db, all, client, log }; returns { route, start } */
-export function installPons({ db, all, client, log = console.log }) {
+const LISTER_ABI = parseAbi(['function operationOf(address token) view returns (bytes32)'])
+const ZERO32 = '0x' + '0'.repeat(64)
+
+/** deps: { db, all, client, lister?, log }; returns { route, start } */
+export function installPons({ db, all, client, lister = null, log = console.log }) {
   const tryExec = (sql) => { try { db.exec(sql) } catch {} }
   db.exec(`
     CREATE TABLE IF NOT EXISTS pons_tokens (address TEXT PRIMARY KEY, symbol TEXT, name TEXT, decimals INTEGER, supply TEXT, logo TEXT, description TEXT,
@@ -106,8 +109,20 @@ export function installPons({ db, all, client, log = console.log }) {
     return newly
   }
 
+  // ---- lister state: which graduated, unlisted tokens have a listing scheduled in the timelock
+  async function refreshScheduled() {
+    if (!lister) return
+    const listed = new Set(all('SELECT address FROM assets').map((a) => a.address.toLowerCase()))
+    for (const r of all('SELECT address FROM pons_tokens WHERE graduated = 1')) {
+      if (listed.has(r.address.toLowerCase())) { scheduled.delete(r.address.toLowerCase()); continue }
+      const op = await client.readContract({ address: lister, abi: LISTER_ABI, functionName: 'operationOf', args: [r.address] }).catch(() => ZERO32)
+      if (op !== ZERO32) scheduled.add(r.address.toLowerCase()); else scheduled.delete(r.address.toLowerCase())
+    }
+  }
+
   // ---- quotes: DexScreener, 30 addresses per call, graduated tokens first
   async function quote() {
+    await refreshScheduled().catch((e) => log(`[pons] lister: ${e.shortMessage ?? e.message}`))
     const rows = all('SELECT address FROM pons_tokens ORDER BY graduated DESC, quoted_at ASC LIMIT 150')
     const now = Math.floor(Date.now() / 1000)
     for (let i = 0; i < rows.length; i += 30) {
@@ -145,6 +160,7 @@ export function installPons({ db, all, client, log = console.log }) {
     return urls.filter((u) => /^https?:\/\//.test(u.url)).slice(0, 8).map((u) => ({ type: String(u.type).toLowerCase().slice(0, 20), url: u.url.slice(0, 300) }))
   }
   const guessType = (url) => /x\.com|twitter\.com/.test(url) ? 'twitter' : /t\.me|telegram/.test(url) ? 'telegram' : /discord/.test(url) ? 'discord' : /github/.test(url) ? 'github' : 'website'
+  const scheduled = new Set() // tokens with a pending PonsLister operation (refreshed with the quotes)
   function out(r, listed) {
     const k = listed.get(r.address.toLowerCase())
     return {
@@ -155,7 +171,7 @@ export function installPons({ db, all, client, log = console.log }) {
       progress: r.paired_principal && r.threshold && Number(r.threshold) > 0 ? Math.min(1, Number(r.paired_principal) / Number(r.threshold)) : null,
       graduated: !!r.graduated, graduatedAt: r.graduated_at,
       priceUsd: r.price_usd, priceEth: r.price_eth, mcapUsd: r.mcap_usd, change24h: r.change24h, liquidityUsd: r.liquidity_usd, volume24hUsd: r.volume24h_usd, quotedAt: r.quoted_at,
-      kyte: k ? (k.enabled ? 'listed' : 'disabled') : 'unlisted',
+      kyte: k ? (k.enabled ? 'listed' : 'disabled') : scheduled.has(r.address.toLowerCase()) ? 'scheduled' : 'unlisted',
       supply: r.supply ? Number(r.supply) / 10 ** (r.decimals || 18) : null,
       socials: parseSocials(r.socials),
       links: {
