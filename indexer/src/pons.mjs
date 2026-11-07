@@ -21,8 +21,9 @@ const RECENT_MAX_H = 168 // 'recent' window: ?hours=24|36|…, up to a week
 const STR_MAX = 200
 
 // Pons stores logos as ipfs:// URIs; serve them through a public gateway.
-const logoUrl = (v) => (!v ? null : v.startsWith('ipfs://') ? `https://dbk-vercel.vercel.app/api/ipfs/content/${v.slice(7)}` : /^https?:\/\//.test(v) ? v : null)
-const logoFallback = (v) => (v && v.startsWith('ipfs://') ? `https://gateway.pinata.cloud/ipfs/${v.slice(7)}` : null)
+// ipfs:// logos are served by the site's own /api/pons-logo/<cid> (the CSP allows only same-origin images); https logos pass through
+const logoUrl = (v) => (!v ? null : v.startsWith('ipfs://') ? `/api/pons-logo/${v.slice(7).split('/')[0]}` : /^https?:\/\//.test(v) ? v : null)
+const logoFallback = (v) => (v && v.startsWith('ipfs://') ? `https://dbk-vercel.vercel.app/api/ipfs/content/${v.slice(7)}` : null)
 const clean = (s) => String(s ?? '').replace(/[^\x20-\x7E -￿]/g, '').slice(0, STR_MAX)
 
 /** deps: { db, all, client, log }; returns { route, start } */

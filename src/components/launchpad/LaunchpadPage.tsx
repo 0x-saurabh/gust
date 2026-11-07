@@ -31,7 +31,7 @@ const when = (t: number | null) => (t ? new Date(t * 1000).toLocaleString(undefi
 const ethp = (n: number | null) => (n == null || !Number.isFinite(n) || n === 0 ? '—' : n >= 0.001 ? `${num(n, 5)} ETH` : `${n.toPrecision(3)} ETH`)
 function Logo({ t }: { t: PonsToken }) {
   const [stage, setStage] = useState(0) // 0 primary, 1 fallback gateway, 2 initials
-  const src = stage === 0 ? t.logo : stage === 1 ? t.logoFallback ?? null : null
+  const src = stage === 0 ? t.logo : null // the fallback gateway is outside the CSP; initials after the proxy
   if (!src) return <TokenLogo symbol={t.symbol} name={t.name} address={t.address} size={40} />
   return <img src={src} alt="" width={40} height={40} loading="lazy" onError={() => setStage((s) => s + 1)} className="h-10 w-10 shrink-0 rounded-full border border-white/10 object-cover" />
 }
