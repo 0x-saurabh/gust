@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * Interactive dot field for the agent's wallet gate. A grid of dots that each grow, brighten and lean toward the
+ * Interactive dot field for the agent's wallet gate: white dots only, no colour. A grid of dots that each grow, brighten and lean toward the
  * pointer by distance, so the "zoom" is continuous and travels with the mouse. The pointer is eased so the field
  * flows rather than snaps; without a pointer it breathes gently. Canvas, DPR aware, pauses off-screen.
  */
@@ -32,15 +32,6 @@ export function DotField({ className = '' }: { className?: string }) {
       const wantHover = target.x > -9000 ? 1 : 0
       hover += (wantHover - hover) * 0.08
       ctx.clearRect(0, 0, w, h)
-      // the Kyte-green glow lives under the pointer: it appears where you hover and fades when you leave
-      if (hover > 0.01) {
-        const gr = RADIUS * 1.5
-        const glow = ctx.createRadialGradient(cur.x, cur.y, 0, cur.x, cur.y, gr)
-        glow.addColorStop(0, `rgba(77, 252, 169, ${(0.2 * hover).toFixed(3)})`)
-        glow.addColorStop(0.45, `rgba(77, 252, 169, ${(0.06 * hover).toFixed(3)})`)
-        glow.addColorStop(1, 'rgba(77, 252, 169, 0)')
-        ctx.fillStyle = glow; ctx.fillRect(cur.x - gr, cur.y - gr, gr * 2, gr * 2)
-      }
       const cx = w / 2, cy = h / 2, edge = Math.max(w, h) * 0.55
       const ox = (w % GAP) / 2, oy = (h % GAP) / 2
       for (let y = oy; y <= h; y += GAP) {
@@ -59,9 +50,7 @@ export function DotField({ className = '' }: { className?: string }) {
           // dots lean slightly toward the pointer
           const pull = k * 6, px = d > 0 ? x - (dx / d) * pull : x, py = d > 0 ? y - (dy / d) * pull : y
           const a = vignette * (0.16 + 0.1 * wave + 0.75 * k)
-          // white near the pointer, Kyte green at the halo's rim
-          const g = Math.sin(Math.PI * Math.min(1, k * 1.15))
-          ctx.fillStyle = `rgba(${Math.round(255 - 60 * g)}, ${Math.round(255 - 10 * g)}, ${Math.round(255 - 70 * g)}, ${a.toFixed(3)})`
+          ctx.fillStyle = `rgba(255, 255, 255, ${a.toFixed(3)})`
           ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill()
         }
       }
