@@ -21,14 +21,12 @@ export function AgentPanel() {
   if (path === '/agent') return null
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Ask Kyte"
-        className="btn btn-glass btn-glass-sm fixed bottom-5 right-5 z-30 shadow-lg md:bottom-6 md:right-6"
-      >
-        <Sparkle size={15} className="text-accent" /> Ask Kyte
-      </button>
+      {/* wrapper carries the fixed position: .btn-glass sets position relative for its ring */}
+      <div className="fixed bottom-5 right-5 z-30 md:bottom-6 md:right-6">
+        <button type="button" onClick={() => setOpen(true)} aria-label="Ask Kyte" className="btn btn-glass btn-glass-sm shadow-lg">
+          <Sparkle size={15} className="text-accent" /> Ask Kyte
+        </button>
+      </div>
       <AnimatePresence>
         {open && (
           <>
