@@ -8,7 +8,7 @@
 //   - No private keys, seed phrases or wallet secrets anywhere in these inputs or outputs.
 import { z } from 'zod'
 import { RuleSchema, describeRule, ruleLink } from './autopilot.ts'
-import { FEES, LIMITS, SPLIT, AUTOPILOT_ENABLED } from '../config.ts'
+import { FEES, LIMITS, SPLIT, AUTOPILOT_ENABLED, LAUNCHPAD_ENABLED } from '../config.ts'
 
 // ------------------------------------------------------------------ indexer access
 
@@ -423,6 +423,6 @@ export const listGraduated = {
   },
 }
 
-export const READ_TOOLS = [listTokens, findOffers, getOffer, getPositions, getPrices, getChart, getStaking, getProtocolStats, getProof, getActivity, explainOffer, compareOffers, listGraduated, ...(AUTOPILOT_ENABLED ? [listStrategies] : [])] as const
+export const READ_TOOLS = [listTokens, findOffers, getOffer, getPositions, getPrices, getChart, getStaking, getProtocolStats, getProof, getActivity, explainOffer, compareOffers, ...(LAUNCHPAD_ENABLED ? [listGraduated] : []), ...(AUTOPILOT_ENABLED ? [listStrategies] : [])] as const
 export const PREPARE_TOOLS = [prepareBuy, prepareCoveredCall, prepareCashSecuredPut, prepareExercise, prepareStake, ...(AUTOPILOT_ENABLED ? [designStrategy] : [])] as const
 export const ALL_TOOLS = [...READ_TOOLS, ...PREPARE_TOOLS] as const

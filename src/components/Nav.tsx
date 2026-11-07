@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { isDevnet } from '@/lib/chains'
-import { AUTOPILOT_ENABLED, MCP_ENABLED, BRAND } from '@/lib/config'
+import { AUTOPILOT_ENABLED, LAUNCHPAD_ENABLED, MCP_ENABLED, BRAND } from '@/lib/config'
 import { ConnectButton } from './ConnectButton'
 import { Faucet } from './Faucet'
 import { Logo } from './Logo'
@@ -13,7 +13,7 @@ import { Logo } from './Logo'
 export const DOCS_URL = 'https://docs.kyte.sh/'
 const LINKS = [
   { href: '/market', label: 'Market' },
-  { href: '/launchpad', label: 'Launchpad' },
+  ...(LAUNCHPAD_ENABLED ? [{ href: '/launchpad', label: 'Launchpad' }] : []),
   { href: '/sell', label: 'Sell' },
   { href: '/positions', label: 'Positions' },
   { href: '/stake', label: 'Stake' },

@@ -36,3 +36,5 @@ export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''
 export const MCP_ENABLED = process.env.NEXT_PUBLIC_MCP_ENABLED !== 'false'
 /** Autopilot (page, nav, agent tools, rule routes). Off in production until launch; on locally. */
 export const AUTOPILOT_ENABLED = process.env.NEXT_PUBLIC_AUTOPILOT_ENABLED !== 'false'
+/** Launchpad (Pons graduations page, nav link, list_graduated tool). Off in production until launch; on locally. */
+export const LAUNCHPAD_ENABLED = process.env.NEXT_PUBLIC_LAUNCHPAD_ENABLED !== 'false'
