@@ -14,6 +14,7 @@ what it costs, what can go wrong, and where the contracts are. The same content 
 | [Rules and limits](rules.md) | Expiry window, caps, pause semantics |
 | [Risks](risks.md) | Read before trading |
 | [Contracts](contracts.md) | Live addresses and listed markets |
+| [Ask Kyte](agent.md) | The in-app agent and the MCP server for Claude, ChatGPT and Cursor |
 | [Glossary](glossary.md) | Terms |
 
 ## The whole system on one page

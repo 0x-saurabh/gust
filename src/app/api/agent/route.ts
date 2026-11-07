@@ -84,7 +84,10 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       try {
         let toolCalls = 0
+        let rounds = 0
+        const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
         for (let round = 0; round < MAX_ROUNDS; round++) {
+          rounds += 1
           const s = client.beta.messages.stream({
             model: MODEL,
             max_tokens: 4_000,
@@ -97,6 +100,8 @@ export async function POST(req: NextRequest) {
           })
           s.on('text', (delta) => sse(controller, { type: 'text', delta }))
           const msg = await s.finalMessage()
+          usage.input += msg.usage.input_tokens; usage.output += msg.usage.output_tokens
+          usage.cacheRead += msg.usage.cache_read_input_tokens ?? 0; usage.cacheWrite += msg.usage.cache_creation_input_tokens ?? 0
           history.push({ role: 'assistant', content: msg.content })
           if (msg.stop_reason === 'refusal') { sse(controller, { type: 'text', delta: 'I cannot help with that request.' }); break }
           if (msg.stop_reason !== 'tool_use') break
@@ -129,7 +134,8 @@ export async function POST(req: NextRequest) {
           }
           history.push({ role: 'user', content: results })
         }
-        sse(controller, { type: 'done' })
+        sse(controller, { type: 'done', usage })
+        console.log(JSON.stringify({ agent: 'answer', model: MODEL, rounds, toolCalls, ...usage }))
       } catch (e) {
         const message = e instanceof Anthropic.RateLimitError ? 'The agent is busy, try again in a moment.' : e instanceof Anthropic.APIError ? 'The agent hit an error.' : 'Something went wrong.'
         console.error('[agent]', e instanceof Error ? e.message : e)
