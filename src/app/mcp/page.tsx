@@ -6,11 +6,11 @@ import { useEffect, useState } from 'react'
 import { Reveal } from '@/components/landing/kit'
 import { PillButton } from '@/components/PillButton'
 import { Segmented } from '@/components/ui'
-import { PREPARE_TOOLS, READ_TOOLS } from '@/lib/agent/tools'
+import { PREPARE_TOOLS, READ_TOOLS, SITE } from '@/lib/agent/tools'
 import { BRAND } from '@/lib/config'
 
 const EASE = [0.22, 1, 0.36, 1] as const
-const URL_ = (typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || 'https://kyte.sh')) + '/api/mcp'
+const URL_ = `${SITE}/api/mcp`
 
 type Client = 'claude' | 'chatgpt' | 'cursor' | 'code'
 const STEPS: Record<Client, { label: string; steps: string[]; snippet?: string }> = {
