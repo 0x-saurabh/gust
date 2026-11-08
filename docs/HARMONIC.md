@@ -1,7 +1,9 @@
 # Kyte and Harmonic Agent: integration plan
 
 Status as of 8 November 2026: **Phase 1 shipped** (indexer session poll, `/prices` and `/assets` carry `session`,
-Market and Sell badges, MCP warnings, Autopilot gating). Phases 2 and 3 are still plans. Written from a read of
+Market and Sell badges, MCP warnings, Autopilot gating). **Phase 2 shipped except two user steps** (the ERC-8004
+mint and the webhook secret, below). **Phase 3 shipped as code, not deployed** (interfaces, vendored halt gate,
+unit and fork tests; no Kyte contract reads the oracle on chain yet). Written from a read of
 [harmonicagent.solutions](https://harmonicagent.solutions), its `skill.md` files, its MCP server and its public
 JSON routes, plus the Kyte indexer, Autopilot spec and MCP tools.
 
@@ -107,7 +109,60 @@ What landed, for maintenance:
 Effort: 2 days indexer and site, half a day MCP and Autopilot, half a day webhooks. No new secrets except the
 webhook HMAC secret (shown once at subscribe) in the indexer's env.
 
-## Phase 2: distribution on Harmonic's agent surfaces
+## Phase 2: distribution on Harmonic's agent surfaces. Shipped 8 Nov 2026, two steps left for a human.
+
+What landed:
+
+- **`GET /options` and `GET /options/<SYMBOL>`** on the indexer, proxied at `kyte.sh/api/indexer/options[/SYM]`:
+  one row per listed token (calls and puts enabled, open calls and puts, best premium over strike, soonest expiry,
+  session state, market and sell links), and one token in full with its open offers. This is the route for
+  Harmonic's atlas to read.
+- **Webhook receiver** `POST kyte.sh/api/harmonic/webhook` (`src/app/api/harmonic/webhook/route.ts`): verifies
+  `x-harmonic-signature: v1=<hex>` as HMAC-SHA256 over `<x-harmonic-timestamp>.<raw body>` with
+  `HARMONIC_WEBHOOK_SECRET`, five minute skew, then relays `{type, symbol}` to the indexer's internal
+  `POST /harmonic/event`, which refreshes the session rows at once. Until the secret env is set on `kyte-web`, every
+  call is answered 200 and ignored so Harmonic never disables the subscription for failures.
+- **MCP page**: "Pair it with Harmonic Agent" section with the two-server config and three prompts.
+- **ERC-8004**: `public/.well-known/agent-registration.json` (registration-v1, `registrations` empty until the
+  mint) and `scripts/mainnet/erc8004-register.sh`.
+
+Two steps that need a key or a dashboard:
+
+1. **Mint the identity.** After Render has deployed the site (so the file is live at
+   `https://kyte.sh/.well-known/agent-registration.json`):
+   ```bash
+   scripts/mainnet/erc8004-register.sh      # deployer keystore password once; writes the agentId into the JSON
+   git add public/.well-known/agent-registration.json && git commit -m "ERC-8004: Kyte agent id" && git push
+   ```
+   Then `https://harmonicagent.solutions/api/erc8004?id=<agentId>` should read `namesItBack: true`. Transfer the
+   token to the ops Safe later if wanted (command in the script header).
+2. **Subscribe the webhook and set its secret.** After the deploy:
+   ```bash
+   curl -s -X POST https://www.harmonicagent.solutions/api/keeper/webhooks -H 'content-type: application/json' \
+     -d '{"url":"https://kyte.sh/api/harmonic/webhook","events":["halt","reopen","weekend-mark"],
+          "tokens":["NVDA","AAPL","SPY","TSLA","MSFT","AMZN","GOOGL","META","AMD","COIN","MSTR","PLTR","QQQ","INTC","GME","CRCL","MU","HOOD","AVGO","TSM"]}'
+   ```
+   The reply carries the subscription id and a secret, shown once. Put the secret in Render, service `kyte-web`,
+   env `HARMONIC_WEBHOOK_SECRET`, and keep the id (`GET /api/keeper/webhooks/<id>` with `Authorization: Bearer
+   <secret>` reads it, `DELETE` removes it). Twenty tokens is Harmonic's cap per subscription; the 5 minute poll
+   still covers the other 180.
+
+Optional, skipped on purpose for now: `registry_register` on Harmonic's agent registry (name `Kyte`, kind `mcp`,
+url `https://kyte.sh/api/mcp`). It returns a secret that only matters for filing directional calls, which Kyte does
+not do. One curl if ever wanted:
+```bash
+curl -s -X POST https://www.harmonicagent.solutions/api/registry/agents -H 'content-type: application/json' \
+  -d '{"name":"Kyte","kind":"mcp","url":"https://kyte.sh/api/mcp"}'
+```
+
+**Outreach to Harmonic** (X `@HarmonicAgents` or Telegram `@HarmonicAgent_Bot`), ready to send:
+
+> Kyte (kyte.sh) writes covered calls and cash-secured puts on ~200 Robinhood stock tokens. We now read your
+> session oracle and weekend mark into every stock-token price and warn agents when a quote is Friday's print.
+> Would the atlas take an `options` column? One JSON per token: `https://kyte.sh/api/indexer/options/NVDA`, the
+> whole list at `https://kyte.sh/api/indexer/options`. Links back to `kyte.sh/market?token=NVDA`. Our MCP server
+> is `https://kyte.sh/api/mcp`, keyless, never signs.
+
 
 Mirrors what we did for HOL (`docs/HOL.md`) and Oak (`docs/OAK.md`).
 
@@ -132,7 +187,25 @@ Mirrors what we did for HOL (`docs/HOL.md`) and Oak (`docs/OAK.md`).
 
 Effort: one day, plus the outreach.
 
-## Phase 3: on-chain reads, only where Kyte needs a price on chain
+## Phase 3: on-chain reads, only where Kyte needs a price on chain. Code shipped 8 Nov 2026, nothing deployed.
+
+What landed:
+
+- `contracts/src/interfaces/IHarmonicOracle.sol`: `IHarmonicOracle` (verdictOf, isOpenWithin, canRead, paidUntil,
+  the Verdict enum) and `IHarmonicRiskFeed` (statusOf, markOf, sessionNow, canRead).
+- `contracts/src/lib/harmonic/HarmonicHaltGate.sol`: Harmonic's gate vendored verbatim (MIT) with the pragma widened
+  to `^0.8.24`. Any Kyte hook, lender or vault that trades stock tokens inherits it and calls `_requireOpen(token)`.
+- `contracts/test/HarmonicHaltGate.t.sol`: 9 unit tests against a mock oracle (every verdict, the age rule, the paid
+  seat, seat expiry, constructor guards).
+- `contracts/test/ForkHarmonicOracle.t.sol`: `FORK=1 forge test --match-contract ForkHarmonicOracle`. On 8 Nov 2026
+  it read NVDA as verdict 3 (held), row 14 hours old, the risk feed session 3 (weekend), and confirmed an unpaid
+  contract gets `Unreadable` from the gate rather than a verdict.
+
+Not done, by design: no Kyte contract inherits the gate or reads the risk feed on chain. The two consumers that
+would (an AutopilotVault for stock-token rules, or a stock-token pool hook) do not exist, the risk feed is not
+live-priced, and a contract seat costs 100 USDG a month. When the vault is real: inherit `HarmonicHaltGate`, pay
+`subscribe(vault, months)` from ops, and read `markOf(token, 9)` for the spot with an on-chain ETH/USD feed to turn
+its 1e8 USD into wei.
 
 - **Autopilot mode B** (`AUTOPILOT_SPEC.md`, open decision 2: "per-pool TWAP source for tokens other than $KYTE").
   Stock tokens have no Kyte pool and no TWAP. `IHarmonicRiskFeed.markOf(token, 9)` is the per-token on-chain mark

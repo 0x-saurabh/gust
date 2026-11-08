@@ -436,6 +436,7 @@ async function quoteLoop() {
 // Robinhood's quote stands still through a halt and all weekend, so without this the last price looks live.
 // Kept in memory, keyed by lowercase token address; a failed poll keeps the last good rows. docs/HARMONIC.md.
 const HARMONIC_URL = process.env.HARMONIC_URL || 'https://www.harmonicagent.solutions'
+const SITE_URL = (process.env.SITE_URL || 'https://kyte.sh').replace(/\/$/, '')
 const SESSION_MS = Number(process.env.SESSION_MS || 300_000)
 const SESSION_STATES = new Set(['open', 'held', 'halted', 'paused', 'stale', 'unknown'])
 const session = new Map() // address -> { state, why, until, at, issuerUsd, weekendMarkUsd, offFridayBps }
@@ -545,6 +546,24 @@ const routes = {
       symbol, limit,
     ).map(describeEvent)
   },
+  // One line per listed token for outside directories (Harmonic Agent's atlas, docs/HARMONIC.md): what can be
+  // written on it and what is open right now. `/options/<SYMBOL>` gives one token with its open offers.
+  '/options': cached(10_000, async () => {
+    const now = Math.floor(Date.now() / 1000)
+    const open = all('SELECT * FROM offers WHERE status = ? AND deadline > ?', 'open', now).map(offerOut).filter((o) => o.fillable)
+    const bySym = new Map()
+    for (const o of open) { const b = bySym.get(o.symbol) ?? { calls: 0, puts: 0, bestPremiumOverStrike: null, soonestExpiry: null }; b[o.kind === 'call' ? 'calls' : 'puts'] += 1; const r = o.premium / o.strike; if (b.bestPremiumOverStrike == null || r > b.bestPremiumOverStrike) b.bestPremiumOverStrike = r; if (b.soonestExpiry == null || o.expiry < b.soonestExpiry) b.soonestExpiry = o.expiry; bySym.set(o.symbol, b) }
+    return {
+      ok: true, at: now, site: SITE_URL, chainId: CHAIN_ID,
+      tokens: all('SELECT * FROM assets WHERE enabled = 1 ORDER BY symbol').map((a) => ({
+        symbol: a.symbol, address: a.address, callsEnabled: true, putsEnabled: !!a.puts_enabled,
+        openCalls: bySym.get(a.symbol)?.calls ?? 0, openPuts: bySym.get(a.symbol)?.puts ?? 0,
+        bestPremiumOverStrike: bySym.get(a.symbol)?.bestPremiumOverStrike ?? null, soonestExpiry: bySym.get(a.symbol)?.soonestExpiry ?? null,
+        session: sessionOf(a.address, a.symbol)?.state ?? null,
+        links: { market: `${SITE_URL}/market?token=${encodeURIComponent(a.symbol)}`, sell: `${SITE_URL}/sell?token=${encodeURIComponent(a.symbol)}`, json: `${SITE_URL}/api/indexer/options/${encodeURIComponent(a.symbol)}` },
+      })),
+    }
+  }),
   '/prices': async () => {
     const out = {}
     for (const sym of new Set([...Object.values(POOLS).map((p) => p.symbol), ...quoteSource.keys()])) {
@@ -769,7 +788,8 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'OPTIONS') return send(res, 204, '')
   const isAutopilot = (req.url ?? '').startsWith('/autopilot/')
-  if (req.method !== 'GET' && req.method !== 'HEAD' && !(isAutopilot && (req.method === 'POST' || req.method === 'DELETE'))) return send(res, 405, { error: 'method not allowed' })
+  const isHarmonicEvent = req.method === 'POST' && (req.url ?? '').split('?')[0] === '/harmonic/event'
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !isHarmonicEvent && !(isAutopilot && (req.method === 'POST' || req.method === 'DELETE'))) return send(res, 405, { error: 'method not allowed' })
   if ((req.url ?? '').length > 2048) return send(res, 414, { error: 'uri too long' })
   if (overLimit(req)) { res.setHeader('retry-after', '60'); return send(res, 429, { error: 'rate limited' }) }
 
@@ -794,7 +814,23 @@ const server = http.createServer(async (req, res) => {
       }
       return send(res, 200, body)
     }
-    if (Object.hasOwn(routes, u.pathname)) body = await routes[u.pathname](u)
+    const opt = u.pathname.match(/^\/options\/([A-Za-z0-9]{1,16})$/)
+    if (req.method === 'POST' && u.pathname === '/harmonic/event') {
+      // Relayed by the website's /api/harmonic/webhook after it verified Harmonic's signature (the indexer is a
+      // private service; nothing reaches it from outside). A halt, reopen or weekend mark: refresh the session rows now.
+      const ev = await readJson(req)
+      console.log(`[indexer] harmonic event ${clip(ev?.type, 24) ?? '?'} ${clip(ev?.symbol, 16) ?? ''}: refreshing session rows`)
+      pollSession().catch((e) => console.error('[indexer] session error:', e.message))
+      return send(res, 200, { ok: true })
+    }
+    if (opt) {
+      const a = all('SELECT * FROM assets WHERE symbol = ? COLLATE NOCASE', opt[1])[0]
+      if (!a) return send(res, 404, { error: 'not listed' })
+      const now = Math.floor(Date.now() / 1000)
+      const offers = all('SELECT * FROM offers WHERE symbol = ? AND status = ? AND deadline > ?', a.symbol, 'open', now).map(offerOut).filter((o) => o.fillable).sort((x, y) => x.expiry - y.expiry)
+      body = { ok: true, at: now, symbol: a.symbol, address: a.address, name: a.name, callsEnabled: !!a.enabled, putsEnabled: !!a.puts_enabled, ...assetRule(a.address), session: sessionOf(a.address, a.symbol), price: (await routes['/prices']())[a.symbol] ?? null, openOffers: offers.map((o) => ({ ...o, link: `${SITE_URL}/market?buy=${o.id}` })), links: { market: `${SITE_URL}/market?token=${encodeURIComponent(a.symbol)}`, sell: `${SITE_URL}/sell?token=${encodeURIComponent(a.symbol)}` } }
+    }
+    else if (Object.hasOwn(routes, u.pathname)) body = await routes[u.pathname](u)
     else if (m?.[1] === 'offers') {
       if (!/^\d{1,80}$/.test(m[2])) throw new BadRequest('bad id')
       const r = q.getOffer.get(m[2])

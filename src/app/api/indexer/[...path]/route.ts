@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  * only on the internal network). Set NEXT_PUBLIC_INDEXER_URL=/api/indexer and INDEXER_INTERNAL_URL (or
  * INDEXER_INTERNAL_HOSTPORT) on the web service. Read-only: GET only, known routes only, no cookies forwarded.
  */
-const ALLOWED = /^(health|assets|offers|activity|prices|candles|markers|expirable|proof|stats|positions\/0x[0-9a-fA-F]{40}|stake\/0x[0-9a-fA-F]{40}|offers\/\d{1,80}|autopilot\/(rules|triggers)\/0x[0-9a-fA-F]{40}|pons\/tokens)$/
+const ALLOWED = /^(health|assets|offers|activity|prices|candles|markers|expirable|proof|stats|options|options\/[A-Za-z0-9]{1,16}|positions\/0x[0-9a-fA-F]{40}|stake\/0x[0-9a-fA-F]{40}|offers\/\d{1,80}|autopilot\/(rules|triggers)\/0x[0-9a-fA-F]{40}|pons\/tokens)$/
 // Autopilot writes: signed by the wallet, verified by the indexer. Bodies are small JSON.
 const ALLOWED_WRITE = /^autopilot\/(rules|rules\/\d{1,12}|rules\/pause|rules\/resume|triggers\/\d{1,12}\/seen)$/
 
