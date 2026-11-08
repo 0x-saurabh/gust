@@ -16,6 +16,20 @@ const FACTORY_ABI = parseAbi(['function graduationStatus(address token) view ret
 const TOKEN_ABI = parseAbi(['function name() view returns (string)', 'function symbol() view returns (string)', 'function decimals() view returns (uint8)', 'function totalSupply() view returns (uint256)', 'function logo() view returns (string)', 'function description() view returns (string)', 'function socials() view returns (string)'])
 
 const GRAD_POLL_MS = Number(process.env.PONS_POLL_MS || 120_000)
+// Graduation has no event: it is the factory's view of the pool's paired principal, which only moves when the pool
+// trades or its liquidity changes. So every cycle reads the chain's Uniswap V3 Swap/Mint/Burn logs since the last
+// cycle and re-checks exactly the Pons tokens whose pools moved, plus near-graduation and fresh launches, plus a
+// slow sweep of everything else as a safety net.
+const POOL_TOPICS = [
+  '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67', // Swap
+  '0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde', // Mint
+  '0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c', // Burn
+]
+const LAUNCH_TOPIC = '0xdb51ea9ad51ab453a65a4cb7e60c3cb378c9501bb002609f8f97778fb6c4235a'
+const PONS_OWNER = '0x263ed295dafae1d9aadd6e56c4b6f9f38ee019dd' // owner of both known Pons factories
+const ACTIVITY_SPAN = 2_000n // blocks per eth_getLogs call (about 8 minutes of chain time)
+const ACTIVITY_MAX_CALLS = 30 // per cycle; catches up over a few cycles after downtime
+const SWEEP = 200 // slow safety-net sweep per cycle
 const QUOTE_MS = Number(process.env.PONS_QUOTE_MS || 60_000)
 const RECENT_MAX_H = 168 // 'recent' window: ?hours=24|36|…, up to a week
 const STR_MAX = 200
@@ -39,6 +53,8 @@ export function installPons({ db, all, client, lister = null, log = console.log 
       price_usd REAL, price_eth REAL, mcap_usd REAL, change24h REAL, liquidity_usd REAL, volume24h_usd REAL, quoted_at INTEGER, socials TEXT, dex_url TEXT);
 
     CREATE INDEX IF NOT EXISTS pons_tokens_grad ON pons_tokens(graduated, graduated_at DESC);
+    CREATE INDEX IF NOT EXISTS pons_tokens_pool ON pons_tokens(lower(pool));
+    CREATE INDEX IF NOT EXISTS pons_tokens_checked ON pons_tokens(graduated, checked_at);
   `)
   tryExec('ALTER TABLE pons_tokens ADD COLUMN socials TEXT'); tryExec('ALTER TABLE pons_tokens ADD COLUMN dex_url TEXT')
   const ins = db.prepare(`INSERT OR IGNORE INTO pons_tokens(address, symbol, name, decimals, supply, logo, description, deployer, pair_token, pool, factory, legacy, launch_block, launched_at, launch_tx, socials)
@@ -93,20 +109,76 @@ export function installPons({ db, all, client, lister = null, log = console.log 
     }
   }
 
-  // ---- graduation: poll the factory for tokens not yet graduated (and refresh graduated ones rarely)
+  // ---- graduation
+  const knownFactories = new Set(FACTORIES.map((f) => f.address.toLowerCase()))
+  const alerted = new Set()
+  const rpc = (method, params) => client.request({ method, params })
+
+  // pools that traded or changed liquidity since the last cycle -> their Pons tokens (ungraduated only)
+  async function activeTokens() {
+    const head = (await client.getBlock()).number
+    const key = 'pons:activity'
+    let from = BigInt(getMeta.get(key)?.value ?? String(head - ACTIVITY_SPAN)) + 1n
+    if (head - from > ACTIVITY_SPAN * BigInt(ACTIVITY_MAX_CALLS) * 20n) from = head - ACTIVITY_SPAN * BigInt(ACTIVITY_MAX_CALLS) // long downtime: the sweep covers the gap
+    const pools = new Set()
+    for (let calls = 0; from <= head && calls < ACTIVITY_MAX_CALLS; calls += 1) {
+      const to = from + ACTIVITY_SPAN - 1n > head ? head : from + ACTIVITY_SPAN - 1n
+      const hex = (n) => '0x' + n.toString(16)
+      const logs = await rpc('eth_getLogs', [{ fromBlock: hex(from), toBlock: hex(to), topics: [[...POOL_TOPICS, LAUNCH_TOPIC]] }])
+      for (const l of logs) {
+        if (l.topics[0] === LAUNCH_TOPIC) { await checkUnknownFactory(l.address); continue }
+        pools.add(l.address.toLowerCase())
+      }
+      setMeta.run(key, String(to))
+      from = to + 1n
+    }
+    if (!pools.size) return []
+    const list = [...pools]
+    const rows = []
+    for (let i = 0; i < list.length; i += 400) {
+      const chunk = list.slice(i, i + 400)
+      rows.push(...all(`SELECT address, factory, graduated FROM pons_tokens WHERE graduated = 0 AND lower(pool) IN (${chunk.map(() => '?').join(',')})`, ...chunk))
+    }
+    return rows
+  }
+
+  // a TokenLaunched log from a contract we do not index: alert if it belongs to the Pons owner (a new Pons factory)
+  async function checkUnknownFactory(address) {
+    const a = address.toLowerCase()
+    if (knownFactories.has(a) || alerted.has(a)) return
+    alerted.add(a)
+    const owner = await client.readContract({ address, abi: parseAbi(['function owner() view returns (address)']), functionName: 'owner' }).catch(() => null)
+    if (owner && owner.toLowerCase() === PONS_OWNER) log(`[pons] ALERT new Pons factory ${address}: add it to FACTORIES here and to the PonsLister (addFactory) so its tokens list automatically`)
+  }
+
+  async function checkGraduation(r, now) {
+    try {
+      const [paired, threshold, graduated] = await client.readContract({ address: r.factory, abi: FACTORY_ABI, functionName: 'graduationStatus', args: [r.address] })
+      setGrad.run(String(paired), String(threshold), graduated ? 1 : 0, graduated ? now : null, now, r.address)
+      if (graduated && !r.graduated) { log(`[pons] graduated: ${r.address}`); return 1 }
+    } catch (e) {
+      setGrad.run(null, null, r.graduated, null, now, r.address)
+    }
+    return 0
+  }
+
   async function pollGraduation() {
     const now = Math.floor(Date.now() / 1000)
-    const rows = all('SELECT address, factory, graduated, checked_at FROM pons_tokens WHERE graduated = 0 OR checked_at IS NULL OR checked_at < ? ORDER BY checked_at ASC LIMIT 400', now - 6 * 3600)
+    const seen = new Set()
+    const queue = []
+    const add = (rows) => { for (const r of rows) { const k = r.address.toLowerCase(); if (!seen.has(k)) { seen.add(k); queue.push(r) } } }
+    // 1. tokens whose pools moved since the last cycle
+    add(await activeTokens().catch((e) => { log(`[pons] activity: ${e.shortMessage ?? e.message}`); return [] }))
+    // 2. close to the threshold (half way or more), and launches from the last two days
+    add(all('SELECT address, factory, graduated FROM pons_tokens WHERE graduated = 0 AND paired_principal IS NOT NULL AND threshold IS NOT NULL AND CAST(paired_principal AS REAL) >= 0.5 * CAST(threshold AS REAL) LIMIT 300'))
+    add(all('SELECT address, factory, graduated FROM pons_tokens WHERE graduated = 0 AND launched_at >= ? LIMIT 300', now - 48 * 3600))
+    // 3. never checked, then the oldest checks (slow sweep), plus graduated tokens refreshed every 6 hours
+    add(all('SELECT address, factory, graduated FROM pons_tokens WHERE checked_at IS NULL LIMIT ?', SWEEP))
+    add(all('SELECT address, factory, graduated FROM pons_tokens WHERE graduated = 0 ORDER BY checked_at ASC LIMIT ?', SWEEP))
+    add(all('SELECT address, factory, graduated FROM pons_tokens WHERE graduated = 1 AND checked_at < ? LIMIT 50', now - 6 * 3600))
     let newly = 0
-    for (const r of rows) {
-      try {
-        const [paired, threshold, graduated] = await client.readContract({ address: r.factory, abi: FACTORY_ABI, functionName: 'graduationStatus', args: [r.address] })
-        setGrad.run(String(paired), String(threshold), graduated ? 1 : 0, graduated ? now : null, now, r.address)
-        if (graduated && !r.graduated) { newly += 1; log(`[pons] graduated: ${r.address}`) }
-      } catch (e) {
-        setGrad.run(null, null, r.graduated, null, now, r.address)
-      }
-    }
+    for (let i = 0; i < queue.length; i += 8) newly += (await Promise.all(queue.slice(i, i + 8).map((r) => checkGraduation(r, now)))).reduce((x, y) => x + y, 0)
+    if (newly) notify()
     return newly
   }
 
