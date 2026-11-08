@@ -1,0 +1,49 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 9bf31a9..381b6d6 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -3,6 +3,7 @@
+ What shipped on Kyte, newest first. Dates are UTC. Contracts and addresses: https://kyte.sh/docs.
+ 
+ ## 2026-11-08
++- Stock-token session state from Harmonic Agent's oracle: `get_prices`, `list_tokens`, `find_offers`, `get_offer` and the prepare tools return `session` (open, held over the weekend, halted, paused, stale) and a `warning` when the quote is not live, with the weekend on-chain mark. Market, Sell and Positions on kyte.sh show the same as a badge. Plan and status: gust `docs/HARMONIC.md`.
+ - Oak Agent Kit recipes published: `oak recipes add kyte-oak-recipes` gives any Oak agent 23 Kyte recipes (buy, sell, exercise, cancel, expire, stake) on Robinhood Chain. https://www.npmjs.com/package/kyte-oak-recipes
+ - Listed on the HOL (Hashgraph Online) registry and AI Plugin Registry; HOL Guard catalog entry. https://hol.org/registry/plugins/usekyte%2Fkyte-mcp
+ - Autopilot public on production: plain-language rules the user signs once; Kyte prepares the transaction when the condition holds.
+diff --git a/README.md b/README.md
+index 0a9ac3f..abf4fd4 100644
+--- a/README.md
++++ b/README.md
+@@ -101,11 +101,11 @@ Install this repository as a plugin or extension: `.codex-plugin/plugin.json` an
+ 
+ | Tool | What it returns |
+ |---|---|
+-| `list_tokens` | Listed tokens, puts on or off, exposure cap, minimum strike; Pons tokens are marked with their 24 h expiry rule |
+-| `find_offers` | Open offers to buy now, by token and kind, soonest expiry first |
++| `list_tokens` | Listed tokens, puts on or off, exposure cap, minimum strike; Pons tokens are marked with their 24 h expiry rule; stock tokens carry a `session` state and a `warning` when the stock is not trading |
++| `find_offers` | Open offers to buy now, by token and kind, soonest expiry first; a `warning` on rows whose underlying is halted or in its weekend hold |
+ | `get_offer` | One offer or position in full: terms, seller, holder, status, fees, creating transaction |
+ | `get_positions` | What an address holds, is selling, and its recent history |
+-| `get_prices` | Live price in ETH per token, 1 h change and source (Uniswap v4 or Robinhood quote) |
++| `get_prices` | Price in ETH per token, 1 h change, source (Uniswap v4 or Robinhood quote) and, for stock tokens, `session`: `open`, `held` (weekend), `halted`, `paused` or `stale`, with a `warning` when the quote is the last print rather than live |
+ | `get_chart` | Recent OHLC candles for a token |
+ | `get_staking` | $KYTE staked, epoch timing, rewards, and an address's stake and claimable WETH |
+ | `get_protocol_stats` | Volume, fees, open interest, $KYTE burned and staked, stakers, offers |
+@@ -128,7 +128,16 @@ Install this repository as a plugin or extension: `.codex-plugin/plugin.json` an
+ | `design_strategy` | An Autopilot rule from plain language, with a 30-day look back and a link to sign it |
+ 
+ Every prepare tool returns a preview and a `https://kyte.sh/...` link. Nothing happens until the user opens it and
+-signs in their wallet.
++signs in their wallet. On a stock token that is halted or in its weekend hold, the result also carries a `warning`
++first: the spot is the last print, not a live price.
++
++### Stock-token sessions
++
++Robinhood stock tokens stop printing when the stock is halted and from Friday 20:00 to Sunday 20:00 New York, while
++the token keeps trading on chain. Kyte reads [Harmonic Agent's](https://harmonicagent.solutions/) session oracle
++and weekend mark, so `get_prices`, `list_tokens`, `find_offers`, `get_offer` and the prepare tools say when a spot
++is Friday's print and where the token traded on chain over the weekend. Pair this server with Harmonic's
++(`https://harmonicagent.solutions/mcp/registry`) for the oracle rows themselves.
+ 
+ ## Prompts and resources
+ 
