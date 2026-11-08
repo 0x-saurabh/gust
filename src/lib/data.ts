@@ -28,6 +28,21 @@ export type Asset = {
   minStrike: bigint
   spotEth: number // display only (demo hint or 0 when unknown)
   vol: number
+  /** Stock tokens: the session behind the token, from Harmonic Agent's oracle via the indexer. Absent for crypto. */
+  session?: Session | null
+}
+
+/** Session state of the stock behind a token (docs/HARMONIC.md). `open` is the only state where the quote is live. */
+export type Session = {
+  state: 'open' | 'held' | 'halted' | 'paused' | 'stale' | 'unknown'
+  why: string | null
+  /** Unix seconds when a weekend hold ends, when known. */
+  until: number | null
+  at: number
+  issuerUsd: number | null
+  /** During a weekend hold: what the token traded at on chain (USD) and how far that sits from Friday's print. */
+  weekendMarkUsd?: number
+  offFridayBps?: number | null
 }
 
 export type Offer = {
@@ -151,13 +166,16 @@ export function useAssets() {
     queryKey: ['assets', live],
     queryFn: async (): Promise<Asset[]> => {
       if (!live || !client) return demo.ASSETS.map((a) => ({ ...a, enabled: true, cap: 0n, minStrike: 0n }))
-      const list = await viaIndexer('/assets', () => assetsFromChain(client), (x) =>
+      const list: Asset[] = await viaIndexer('/assets', () => assetsFromChain(client), (x) =>
         (x as ApiAsset[]).map((a) => ({ ...a, cap: BigInt(a.cap), minStrike: BigInt(a.minStrike), ...hint(a.symbol, a.name) })),
       )
       if (INDEXER_URL) {
         try {
-          const prices = await api<Record<string, { price: number }>>('/prices')
-          for (const a of list) if (prices[a.symbol]?.price) a.spotEth = prices[a.symbol].price
+          const prices = await api<Record<string, { price: number; session?: Session | null }>>('/prices')
+          for (const a of list) {
+            if (prices[a.symbol]?.price) a.spotEth = prices[a.symbol].price
+            if (prices[a.symbol]?.session) a.session = prices[a.symbol].session
+          }
         } catch {}
       }
       for (const a of list) if (HIDDEN.test(a.name)) a.enabled = a.putsEnabled = false
@@ -475,7 +493,7 @@ export function useHealth() {
 
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number }
 export type Marker = { time: number; name: 'OfferCreated' | 'OptionBought' | 'Exercised' | 'Expired' | 'OfferCancelled'; kind: Kind; tx: string; strikePerToken: number }
-export type Quote = { price: number; at: number; change1h: number; source?: 'uniswap-v4' | 'robinhood' | 'dexscreener' }
+export type Quote = { price: number; at: number; change1h: number; source?: 'uniswap-v4' | 'robinhood' | 'dexscreener'; session?: Session | null }
 
 export function useCandles(symbol: string, interval = 60) {
   const live = useLive()

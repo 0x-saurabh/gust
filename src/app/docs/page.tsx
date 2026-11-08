@@ -220,6 +220,7 @@ export default function DocsPage() {
               <Tile title="If you buy">You can lose the whole premium if the option is never worth exercising.</Tile>
               <Tile title="Timing">Exercise needs a confirmed transaction before the expiry timestamp. Do not wait for the last minute.</Tile>
               <Tile title="Token risk">Listed tokens can be volatile, illiquid, or carry issuer controls such as blocklists and pauses.</Tile>
+              <Tile title="Halts and weekends" badge="stock tokens">A stock token's quote stands still when the stock is halted and from Friday 20:00 to Sunday 20:00 New York, while the token keeps trading on chain. {name} shows a Halted or Weekend hold badge next to the price then, with the weekend on-chain mark, read from Harmonic Agent's session oracle. Options settle at their strike regardless; only the spot you compare against is affected.</Tile>
             </div>
             <Callout tone="warn" title="Smart contract risk">
               The contracts are tested, but any contract can have bugs. Only use funds you can afford to lose.

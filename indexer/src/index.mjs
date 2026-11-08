@@ -430,6 +430,56 @@ async function quoteLoop() {
   setTimeout(quoteLoop, QUOTE_MS).unref?.()
 }
 
+// Session state for stock tokens, from Harmonic Agent's session oracle (harmonicagent.solutions, free, keyless):
+// per token whether the stock behind it is open, halted, paused, held over the weekend, stale or unknown, and
+// during the weekend hold what the token actually traded at on chain against Friday's print (the Weekend Mark).
+// Robinhood's quote stands still through a halt and all weekend, so without this the last price looks live.
+// Kept in memory, keyed by lowercase token address; a failed poll keeps the last good rows. docs/HARMONIC.md.
+const HARMONIC_URL = process.env.HARMONIC_URL || 'https://www.harmonicagent.solutions'
+const SESSION_MS = Number(process.env.SESSION_MS || 300_000)
+const SESSION_STATES = new Set(['open', 'held', 'halted', 'paused', 'stale', 'unknown'])
+const session = new Map() // address -> { state, why, until, at, issuerUsd, weekendMarkUsd, offFridayBps }
+const sessionBySymbol = new Map() // symbol -> same row (for tokens matched by ticker, e.g. Ondo AAPLon -> AAPL)
+const clip = (s, n) => (typeof s === 'string' ? s.replace(/[^\x20-\x7E]/g, '').slice(0, n) : null)
+function sessionOf(address, symbol) {
+  const row = (address && session.get(address.toLowerCase())) || (symbol && (sessionBySymbol.get(symbol) || (symbol.endsWith('on') ? sessionBySymbol.get(symbol.slice(0, -2)) : null)))
+  if (!row) return null
+  const { state, why, until, at, issuerUsd, weekendMarkUsd, offFridayBps } = row
+  return { state, why, until, at, issuerUsd, ...(weekendMarkUsd ? { weekendMarkUsd, offFridayBps } : {}) }
+}
+async function pollSession() {
+  if (CHAIN_ID !== 4663) return
+  const eq = await fetchJson(`${HARMONIC_URL}/api/oracle/equities`)
+  const rows = Array.isArray(eq?.rows) ? eq.rows : []
+  if (!rows.length) throw new Error('session oracle returned no rows')
+  const now = Math.floor(Date.now() / 1000)
+  const next = new Map(), nextSym = new Map()
+  for (const r of rows) {
+    const addr = typeof r.address === 'string' ? r.address.toLowerCase() : null
+    const state = SESSION_STATES.has(r.verdict) ? r.verdict : 'unknown'
+    const row = { state, why: clip(r.why, 200), until: r.session?.until ? Math.floor(Date.parse(r.session.until) / 1000) : null, at: now, issuerUsd: Number(r.issuer?.price) > 0 ? Number(r.issuer.price) : null, weekendMarkUsd: null, offFridayBps: null }
+    if (addr) next.set(addr, row)
+    if (typeof r.symbol === 'string') nextSym.set(r.symbol, row)
+  }
+  // Weekend mark: only while a hold is running; marks are per symbol with the token address beside them.
+  try {
+    const wk = await fetchJson(`${HARMONIC_URL}/api/weekend`)
+    if (wk?.hold?.state === 'running') for (const m of wk.marks ?? []) {
+      if (!m.ok || !(Number(m.mark) > 0)) continue
+      const row = next.get(String(m.token ?? '').toLowerCase()) ?? nextSym.get(m.symbol)
+      if (row) { row.weekendMarkUsd = Number(m.mark); row.offFridayBps = Number.isFinite(Number(m.offFridayBps)) ? Number(m.offFridayBps) : null }
+    }
+  } catch (e) { console.error('[indexer] weekend mark:', e.message) }
+  session.clear(); for (const [k, v] of next) session.set(k, v)
+  sessionBySymbol.clear(); for (const [k, v] of nextSym) sessionBySymbol.set(k, v)
+  const counts = {}; for (const r of next.values()) counts[r.state] = (counts[r.state] ?? 0) + 1
+  console.log(`[indexer] session oracle: ${next.size} tokens`, counts)
+}
+async function sessionLoop() {
+  try { await pollSession() } catch (e) { console.error('[indexer] session error:', e.message) }
+  setTimeout(sessionLoop, SESSION_MS).unref?.()
+}
+
 async function loop() {
   try { await syncOnce() } catch (e) { console.error('[indexer] sync error:', e.shortMessage ?? e.message) }
   setTimeout(loop, POLL_MS)
@@ -469,7 +519,7 @@ const routes = {
   }),
   '/assets': async () => all('SELECT * FROM assets ORDER BY symbol').map((a) => ({
     address: a.address, symbol: a.symbol, name: a.name, decimals: a.decimals, enabled: !!a.enabled, putsEnabled: !!a.puts_enabled,
-    cap: a.cap, minStrike: a.min_strike, ...assetRule(a.address),
+    cap: a.cap, minStrike: a.min_strike, ...assetRule(a.address), session: sessionOf(a.address, a.symbol),
   })),
   '/offers': async (u) => {
     const status = oneOf(u.searchParams.get('status'), ['open', 'filled', 'exercised', 'expired', 'cancelled', 'all'], 'open')
@@ -501,7 +551,8 @@ const routes = {
       const last = all('SELECT price, at FROM prices WHERE symbol = ? ORDER BY at DESC, block DESC LIMIT 1', sym)[0]
       if (!last) continue
       const ago = all('SELECT price FROM prices WHERE symbol = ? AND at <= ? ORDER BY at DESC LIMIT 1', sym, last.at - 3600)[0]
-      out[sym] = { price: last.price, at: last.at, change1h: ago ? (last.price - ago.price) / ago.price : 0, source: quoteSource.get(sym) ?? 'uniswap-v4' }
+      const asset = all('SELECT address FROM assets WHERE symbol = ?', sym)[0]
+      out[sym] = { price: last.price, at: last.at, change1h: ago ? (last.price - ago.price) / ago.price : 0, source: quoteSource.get(sym) ?? 'uniswap-v4', session: sessionOf(asset?.address, sym) }
     }
     return out
   },
@@ -785,3 +836,4 @@ server.listen(PORT, HOST, () => console.log(`[indexer] chain ${CHAIN_ID} → htt
 loop()
 backfillLoop()
 quoteLoop()
+sessionLoop()

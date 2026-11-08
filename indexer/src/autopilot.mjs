@@ -141,8 +141,11 @@ export function installAutopilot({ db, all, client, routes, offerOut, site, pons
       const p = rule.params
       const asset = rule.token ? bySym[rule.token.toLowerCase()] : null
       const spot = rule.token ? prices[rule.token]?.price ?? prices[asset?.symbol]?.price : undefined
+      // Stock tokens: no trigger while the stock is halted, paused or in its weekend hold. The quote stands still
+      // then, so "spot" would be Friday's or the pre-halt print (session state from Harmonic's oracle, /prices).
+      const sessionOpen = (sym) => { const st = prices[sym]?.session?.state; return !st || st === 'open' }
       if (rule.type === 'list_call' || rule.type === 'list_put') {
-        if (!asset || !spot) continue
+        if (!asset || !spot || !sessionOpen(asset.symbol)) continue
         if (rule.type === 'list_put' && !asset.puts_enabled) continue
         const kind = rule.type === 'list_call' ? 'call' : 'put'
         const open = all('SELECT id FROM offers WHERE seller = ? AND symbol = ? AND kind = ? AND status = ?', r.address, asset.symbol, kind, 'open')
@@ -158,7 +161,7 @@ export function installAutopilot({ db, all, client, routes, offerOut, site, pons
         const target = `list:${open.length}:${r.runs}`
         emit(target, `List a ${kind} on ${p.amount} ${asset.symbol}`, `Spot is ${fmt(spot, 8)} ETH. Strike ${fmt(strikePer, 8)} ETH per token (${p.pct}% ${kind === 'call' ? 'above' : 'below'} spot${strikePer > strike ? ', raised to the token minimum' : ''}), premium ${premium} ETH, expires in ${expirySec >= 86400 ? Math.round(expirySec / 86400) + ' day' + (Math.round(expirySec / 86400) === 1 ? '' : 's') : Math.round(expirySec / 3600) + ' h'}${expirySec < p.expirySec ? ' (capped at 24 h: launchpad token)' : ''}.`, sellLink(kind, asset.symbol, p.amount, fmt(strikePer, 10), premium, expirySec, Math.min(p.fillWindowSec, expirySec)))
       } else if (rule.type === 'buy_call' || rule.type === 'buy_put') {
-        if (!asset || !spot) continue
+        if (!asset || !spot || !sessionOpen(asset.symbol)) continue
         const kind = rule.type === 'buy_call' ? 'call' : 'put'
         const offers = all('SELECT * FROM offers WHERE symbol = ? AND kind = ? AND status = ? AND deadline > ?', asset.symbol, kind, 'open', now).map(offerOut).filter((o) => o.fillable && o.seller.toLowerCase() !== r.address.toLowerCase())
         for (const o of offers) {
@@ -172,7 +175,7 @@ export function installAutopilot({ db, all, client, routes, offerOut, site, pons
         const held = all('SELECT * FROM offers WHERE holder = ? AND status = ?', r.address, 'filled').map(offerOut)
         for (const o of held) {
           const sp = prices[o.symbol]?.price
-          if (!sp) continue
+          if (!sp || !sessionOpen(o.symbol)) continue
           const strikePer = o.strike / o.amount
           const hrs = hoursLeft(o.expiry, now)
           if (hrs < p.minHoursBeforeExpiry || (p.maxHoursBeforeExpiry && hrs > p.maxHoursBeforeExpiry)) continue

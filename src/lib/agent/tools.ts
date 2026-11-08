@@ -45,13 +45,28 @@ async function api<T>(path: string): Promise<T> {
 
 // ------------------------------------------------------------------ shapes (as the indexer returns them)
 
-export type Asset = { address: string; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | null; maxDurationSec?: number }
+export type Asset = { address: string; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | null; maxDurationSec?: number; session?: Session | null }
+/** Session of the stock behind a stock token, from Harmonic Agent's oracle via the indexer (docs/HARMONIC.md). */
+export type Session = { state: 'open' | 'held' | 'halted' | 'paused' | 'stale' | 'unknown'; why: string | null; until: number | null; at: number; issuerUsd: number | null; weekendMarkUsd?: number; offFridayBps?: number | null }
+/** One sentence an agent should pass on when the underlying is not trading; null when it is open or has no session. */
+export function sessionWarning(symbol: string, s?: Session | null): string | null {
+  if (!s || s.state === 'open') return null
+  const sym = clean(symbol, 16)
+  if (s.state === 'held') {
+    const mark = s.weekendMarkUsd ? ` On chain it has traded near $${s.weekendMarkUsd.toFixed(2)} this weekend${s.offFridayBps != null ? ` (${(s.offFridayBps / 100).toFixed(2)}% from Friday)` : ''}.` : ''
+    return `${sym} is in its weekend hold${s.until ? ` until ${new Date(s.until * 1000).toISOString()}` : ''}: the spot is Friday's print, not a live price.${mark}`
+  }
+  if (s.state === 'halted') return `Trading in ${sym} is halted: the spot is the last print before the halt and may be stale.`
+  if (s.state === 'paused') return `${sym} is paused for a corporate action: the spot may not apply afterwards.`
+  if (s.state === 'stale') return `The quote behind ${sym} is stale: the issuer has not printed recently.`
+  return `The session behind ${sym} could not be read: treat the spot with care.`
+}
 export type Offer = {
   id: string; kind: 'call' | 'put'; market: string; seller: string; holder: string | null; token: string; symbol: string; decimals: number
   amount: number; strike: number; premium: number; expiry: number; offerDeadline: number
   status: 'open' | 'filled' | 'exercised' | 'expired' | 'cancelled'; fillable: boolean; createdAt: number; createdTx: string
 }
-export type Quote = { price: number; at: number; change1h: number; source?: string }
+export type Quote = { price: number; at: number; change1h: number; source?: string; session?: Session | null }
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number }
 export type Stake = { myActive: number; myPending: number; claimable: number; epoch: number; epochEndsAt: number; minClaim: number; totalStaked: number; lastEpochRewards: number }
 export type Stats = { volumeEth: number; feesEth: number; openInterestEth: number; burnedTokens: number; stakedTokens: number; stakers: number; activeOffers: number; totalOffers: number }
@@ -99,6 +114,7 @@ export const listTokens = {
         symbol: clean(a.symbol, 16), name: clean(a.name), address: a.address, putsEnabled: a.putsEnabled,
         capTokens: Number(BigInt(a.cap) / 10n ** BigInt(a.decimals)), minStrikeEthPerToken: Number(a.minStrike) / 1e18,
         ...(a.source === 'pons' ? { source: 'pons', maxExpiry: '24h', note: 'Launchpad token: options on it must expire within 24 hours.' } : {}),
+        ...(a.session ? { session: a.session.state, ...(sessionWarning(a.symbol, a.session) ? { warning: sessionWarning(a.symbol, a.session) } : {}) } : {}),
       })),
       truncated: rows.length > 60,
     }
@@ -118,20 +134,22 @@ export const findOffers = {
     const now = Date.now() / 1000
     return {
       count: offers.length,
-      offers: offers.slice(0, limit).map((o) => offerRow(o, prices[o.symbol]?.price, now)),
+      offers: offers.slice(0, limit).map((o) => offerRow(o, prices[o.symbol]?.price, now, prices[o.symbol]?.session)),
       note: offers.length === 0 ? `No open ${kind ?? ''} offers${token ? ` on ${clean(token, 16)}` : ''} right now.` : undefined,
     }
   },
 }
 
-function offerRow(o: Offer, spot: number | undefined, now: number) {
+function offerRow(o: Offer, spot: number | undefined, now: number, session?: Session | null) {
   const strikePerToken = o.strike / o.amount
+  const warning = sessionWarning(o.symbol, session)
   return {
     id: o.id, kind: o.kind, symbol: clean(o.symbol, 16), amount: o.amount, strikeTotalEth: o.strike, strikePerTokenEth: strikePerToken,
     premiumEth: o.premium, premiumPerTokenEth: o.premium / o.amount, premiumOverStrike: o.premium / o.strike,
     spotEthPerToken: spot ?? null, strikeVsSpot: spot ? pct(strikePerToken / spot - 1) : null,
     expiresIn: when(hoursLeft(o.expiry, now)), fillBy: when(hoursLeft(o.offerDeadline, now)), expiry: o.expiry,
     status: o.status, link: `${SITE}/market?buy=${o.id}`,
+    ...(session ? { session: session.state } : {}), ...(warning ? { warning } : {}),
   }
 }
 
@@ -142,7 +160,7 @@ export const getOffer = {
   async run({ id }: { id: string }) {
     const o = await api<Offer & { premiumFee: number | null; exerciseFee: number | null }>(`/offers/${id}`)
     const prices = await api<Record<string, Quote>>('/prices')
-    return { ...offerRow(o, prices[o.symbol]?.price, Date.now() / 1000), seller: o.seller, holder: o.holder, token: o.token, createdAt: o.createdAt, createdTx: o.createdTx, premiumFee: o.premiumFee, exerciseFee: o.exerciseFee }
+    return { ...offerRow(o, prices[o.symbol]?.price, Date.now() / 1000, prices[o.symbol]?.session), seller: o.seller, holder: o.holder, token: o.token, createdAt: o.createdAt, createdTx: o.createdTx, premiumFee: o.premiumFee, exerciseFee: o.exerciseFee }
   },
 }
 
@@ -162,13 +180,19 @@ export const getPositions = {
 
 export const getPrices = {
   name: 'get_prices',
-  description: 'Live price in ETH per token for every listed token with a feed, the 1 hour change and the source (Uniswap v4 swaps or a Robinhood quote). Read-only.',
+  description: 'Live price in ETH per token for every listed token with a feed, the 1 hour change, the source (Uniswap v4 swaps or a Robinhood quote) and, for stock tokens, the session state (open, held over the weekend, halted, paused, stale) with a warning when the quote is not live. Read-only.',
   input: z.object({ tokens: z.array(SYMBOL).max(20).optional().describe('Symbols to include; all when omitted') }),
   async run({ tokens }: { tokens?: string[] }) {
     const all = await api<Record<string, Quote>>('/prices')
     const want = tokens?.map((t) => t.toLowerCase())
     const rows = Object.entries(all).filter(([s]) => !want || want.includes(s.toLowerCase()))
-    return { prices: Object.fromEntries(rows.map(([s, q]) => [clean(s, 16), { ethPerToken: q.price, change1h: pct(q.change1h), at: q.at, source: q.source ?? 'uniswap-v4' }])) }
+    return {
+      prices: Object.fromEntries(rows.map(([s, q]) => [clean(s, 16), {
+        ethPerToken: q.price, change1h: pct(q.change1h), at: q.at, source: q.source ?? 'uniswap-v4',
+        ...(q.session ? { session: q.session.state, ...(sessionWarning(s, q.session) ? { warning: sessionWarning(s, q.session) } : {}) } : {}),
+      }])),
+      note: 'session: open means a live quote. held (weekend), halted, paused or stale means the price shown is the last print and not live; on-chain trading continues. Source: Harmonic Agent session oracle.',
+    }
   },
 }
 
@@ -282,6 +306,10 @@ export const compareOffers = {
 
 // ------------------------------------------------------------------ prepare tools (never sign, never send)
 
+async function sessionWarningFor(symbol: string): Promise<string | null> {
+  try { const prices = await api<Record<string, Quote>>('/prices'); return sessionWarning(symbol, prices[symbol]?.session) } catch { return null }
+}
+
 const EXPIRY_CHOICES = { '1h': 3600, '1d': 86400, '3d': 3 * 86400, '1w': 7 * 86400, '2w': 14 * 86400, '1m': 30 * 86400, '3m': 90 * 86400 } as const
 type ExpiryKey = keyof typeof EXPIRY_CHOICES
 
@@ -292,7 +320,8 @@ export const prepareBuy = {
   async run({ id }: { id: string }) {
     const o = await getOffer.run({ id })
     if (o.status !== 'open') return { error: `Offer ${id} is ${o.status}, it cannot be bought.` }
-    return { preview: `Pay ${eth(o.premiumEth)} premium for the right to ${o.kind === 'call' ? 'buy' : 'sell'} ${o.amount} ${o.symbol} at ${eth(o.strikePerTokenEth, 8)} per token until expiry (${o.expiresIn}).`, link: `${SITE}/market?buy=${id}`, signs: 'You review and sign in your wallet. Kyte never holds your keys.', disclaimer: DISCLAIMER }
+    const warning = await sessionWarningFor(o.symbol)
+    return { ...(warning ? { warning } : {}), preview: `Pay ${eth(o.premiumEth)} premium for the right to ${o.kind === 'call' ? 'buy' : 'sell'} ${o.amount} ${o.symbol} at ${eth(o.strikePerTokenEth, 8)} per token until expiry (${o.expiresIn}).`, link: `${SITE}/market?buy=${id}`, signs: 'You review and sign in your wallet. Kyte never holds your keys.', disclaimer: DISCLAIMER }
   },
 }
 
@@ -328,7 +357,8 @@ export const prepareCoveredCall = {
     const v = await validateOffer({ ...i, kind: 'call', expiry: i.expiry ?? '1w' })
     if ('error' in v) return v
     const fee = i.premium * (FEES.premiumBps / 10_000)
-    return { preview: `Lock ${i.amount} ${v.asset.symbol}. Strike ${i.strikePerToken} ETH per token (${eth(i.strikePerToken * i.amount)} total), premium ${eth(i.premium)}, expires in ${i.expiry ?? '1w'}. If filled you receive ${eth(i.premium - fee)} after the ${FEES.premiumBps / 100}% fee.`, link: sellLink('call', v.asset.symbol, i.amount, i.strikePerToken, i.premium, v.expirySec, v.fillSec), signs: 'One approval for the token, then createOffer, both signed in your wallet.', disclaimer: DISCLAIMER }
+    const warning = sessionWarning(v.asset.symbol, v.asset.session)
+    return { ...(warning ? { warning } : {}), preview: `Lock ${i.amount} ${v.asset.symbol}. Strike ${i.strikePerToken} ETH per token (${eth(i.strikePerToken * i.amount)} total), premium ${eth(i.premium)}, expires in ${i.expiry ?? '1w'}. If filled you receive ${eth(i.premium - fee)} after the ${FEES.premiumBps / 100}% fee.`, link: sellLink('call', v.asset.symbol, i.amount, i.strikePerToken, i.premium, v.expirySec, v.fillSec), signs: 'One approval for the token, then createOffer, both signed in your wallet.', disclaimer: DISCLAIMER }
   },
 }
 
@@ -340,7 +370,8 @@ export const prepareCashSecuredPut = {
     const v = await validateOffer({ ...i, kind: 'put', expiry: i.expiry ?? '1w' })
     if ('error' in v) return v
     const fee = i.premium * (FEES.premiumBps / 10_000)
-    return { preview: `Lock ${eth(i.strikePerToken * i.amount)} as WETH. You promise to buy ${i.amount} ${v.asset.symbol} at ${i.strikePerToken} ETH per token until expiry (${i.expiry ?? '1w'}), premium ${eth(i.premium)}. If filled you receive ${eth(i.premium - fee)} after fees.`, link: sellLink('put', v.asset.symbol, i.amount, i.strikePerToken, i.premium, v.expirySec, v.fillSec), signs: 'One WETH approval, then createOffer, both signed in your wallet.', disclaimer: DISCLAIMER }
+    const warning = sessionWarning(v.asset.symbol, v.asset.session)
+    return { ...(warning ? { warning } : {}), preview: `Lock ${eth(i.strikePerToken * i.amount)} as WETH. You promise to buy ${i.amount} ${v.asset.symbol} at ${i.strikePerToken} ETH per token until expiry (${i.expiry ?? '1w'}), premium ${eth(i.premium)}. If filled you receive ${eth(i.premium - fee)} after fees.`, link: sellLink('put', v.asset.symbol, i.amount, i.strikePerToken, i.premium, v.expirySec, v.fillSec), signs: 'One WETH approval, then createOffer, both signed in your wallet.', disclaimer: DISCLAIMER }
   },
 }
 
@@ -353,7 +384,8 @@ export const prepareExercise = {
     if (o.status !== 'filled') return { error: `Position ${id} is ${o.status}; only a filled option can be exercised.` }
     if (o.expiry <= Date.now() / 1000) return { error: `Position ${id} has expired; it can no longer be exercised.` }
     const fee = o.strikeTotalEth * (FEES.exerciseBps / 10_000)
-    return { preview: o.kind === 'call' ? `Pay ${eth(o.strikeTotalEth)} plus ${eth(fee)} fee, receive ${o.amount} ${o.symbol}.` : `Deliver ${o.amount} ${o.symbol}, receive ${eth(o.strikeTotalEth - fee)} after the ${FEES.exerciseBps / 100}% fee.`, expiresIn: o.expiresIn, link: `${SITE}/positions?exercise=${id}`, signs: 'Signed in your wallet from the Positions page.', disclaimer: DISCLAIMER }
+    const warning = await sessionWarningFor(o.symbol)
+    return { ...(warning ? { warning } : {}), preview: o.kind === 'call' ? `Pay ${eth(o.strikeTotalEth)} plus ${eth(fee)} fee, receive ${o.amount} ${o.symbol}.` : `Deliver ${o.amount} ${o.symbol}, receive ${eth(o.strikeTotalEth - fee)} after the ${FEES.exerciseBps / 100}% fee.`, expiresIn: o.expiresIn, link: `${SITE}/positions?exercise=${id}`, signs: 'Signed in your wallet from the Positions page.', disclaimer: DISCLAIMER }
   },
 }
 

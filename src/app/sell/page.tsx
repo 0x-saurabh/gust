@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { parseEther, parseUnits } from 'viem'
 import { useAccount, usePublicClient } from 'wagmi'
+import { SessionBadge, sessionSentence } from '@/components/SessionBadge'
 import { TokenChart } from '@/components/TokenChart'
 import { TokenPicker } from '@/components/TokenPicker'
 import { TxStatus } from '@/components/TxStatus'
@@ -140,6 +141,11 @@ export default function SellPage() {
               {myTokens !== undefined && <>You hold {num(myTokens, 4)} {a?.symbol}. </>}
               Only listed tokens can be used.
             </Hint>
+            {sessionSentence(a?.session) && (
+              <Note tone="warn">
+                <span className="flex flex-wrap items-center gap-2"><SessionBadge session={a?.session} />{sessionSentence(a?.session)} Check the strike against where the token really trades before you list.</span>
+              </Note>
+            )}
           </Field>
 
           <Field label={`Amount (${a?.symbol ?? ''})`}>
@@ -192,7 +198,7 @@ export default function SellPage() {
             <div className="card overflow-hidden">
               <div className="flex items-center justify-between border-b border-line px-5 py-3">
                 <span className="label">{a.symbol} · Uniswap v4</span>
-                <span className="font-mono text-xs text-muted">{a.spotEth ? `${a.spotEth.toPrecision(4)} ETH` : 'no price feed'}</span>
+                <span className="flex items-center gap-2 font-mono text-xs text-muted"><SessionBadge session={a.session} />{a.spotEth ? `${a.spotEth.toPrecision(4)} ETH` : 'no price feed'}</span>
               </div>
               <TokenChart symbol={a.symbol} interval={300} height={200} showMarkers={false} lines={strikeEach > 0 ? [{ price: strikeEach, title: 'your strike', color: kind === 'call' ? '#4dfca9' : '#05edfa' }] : []} />
             </div>

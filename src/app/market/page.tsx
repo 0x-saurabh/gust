@@ -8,6 +8,7 @@ import { TokenChart, type PriceLine } from '@/components/TokenChart'
 import { TokenLogo } from '@/components/TokenLogo'
 import { TokenPicker } from '@/components/TokenPicker'
 import { TradeHistory } from '@/components/TradeHistory'
+import { SessionBadge, sessionSentence } from '@/components/SessionBadge'
 import { KindBadge, Note, PageHeader, Segmented } from '@/components/ui'
 import { isFillable, useAssets, useOffers, usePrices, type Kind, type Offer } from '@/lib/data'
 import { eth, num, shortAddr } from '@/lib/format'
@@ -87,9 +88,11 @@ export default function MarketPage() {
             <span className="text-xl text-ink tabular">{quote ? `${quote.price.toPrecision(4)} ETH` : asset?.spotEth ? `${asset.spotEth.toPrecision(4)} ETH` : '…'}</span>
             {quote && <span className={quote.change1h >= 0 ? 'text-accent' : 'text-danger'}>{quote.change1h >= 0 ? '+' : ''}{(quote.change1h * 100).toFixed(2)}% 1h</span>}
             {quote && <span className="text-[10px] uppercase tracking-wider text-muted">{quote.source === 'robinhood' ? 'Robinhood quote' : quote.source === 'dexscreener' ? 'DEX price' : 'Uniswap v4'}</span>}
+            <SessionBadge session={quote?.session} />
           </div>
           <div className="ml-auto"><Segmented value={interval} onChange={setInterval} options={INTERVALS.map((i) => ({ value: i.sec, label: i.label }))} /></div>
         </div>
+        {sessionSentence(quote?.session) && <div className="border-b border-line px-4 py-2 text-xs text-muted">{sessionSentence(quote?.session)}</div>}
         {symbol && <TokenChart symbol={symbol} interval={Number(interval)} lines={lines} height={340} className="px-2 pt-2" />}
       </div>
 
