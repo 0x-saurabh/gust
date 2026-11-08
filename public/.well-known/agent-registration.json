@@ -4,15 +4,41 @@
   "description": "Kyte is a non-custodial, fully collateralised options market on Robinhood Chain: covered calls and cash-secured puts on Robinhood stock tokens, Pons launchpad tokens and $KYTE, with fees split to stakers, buyback and burn, and a public proof page. Its MCP server reads live markets and prepares kyte.sh links that a person signs in their own wallet; it never signs, sends or sees a key.",
   "image": "https://kyte.sh/brand/kyte-mark.png",
   "services": [
-    { "name": "web", "endpoint": "https://kyte.sh/" },
-    { "name": "MCP", "endpoint": "https://kyte.sh/api/mcp", "version": "2025-06-18" },
-    { "name": "docs", "endpoint": "https://docs.kyte.sh/" },
-    { "name": "proofs", "endpoint": "https://kyte.sh/proof" },
-    { "name": "options", "endpoint": "https://kyte.sh/api/indexer/options" },
-    { "name": "GitHub", "endpoint": "https://github.com/usekyte-org/kyte-mcp" }
+    {
+      "name": "web",
+      "endpoint": "https://kyte.sh/"
+    },
+    {
+      "name": "MCP",
+      "endpoint": "https://kyte.sh/api/mcp",
+      "version": "2025-06-18"
+    },
+    {
+      "name": "docs",
+      "endpoint": "https://docs.kyte.sh/"
+    },
+    {
+      "name": "proofs",
+      "endpoint": "https://kyte.sh/proof"
+    },
+    {
+      "name": "options",
+      "endpoint": "https://kyte.sh/api/indexer/options"
+    },
+    {
+      "name": "GitHub",
+      "endpoint": "https://github.com/usekyte-org/kyte-mcp"
+    }
   ],
   "x402Support": false,
   "active": true,
-  "registrations": [],
-  "supportedTrust": ["reputation"]
+  "registrations": [
+    {
+      "agentId": 22541,
+      "agentRegistry": "eip155:4663:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ],
+  "supportedTrust": [
+    "reputation"
+  ]
 }
