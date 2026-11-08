@@ -230,7 +230,7 @@ export function McpPage() {
               </div>
               <div className="mt-9 flex flex-wrap gap-3">
                 <PillButton href="/agent" tone="premium">Ask Kyte on the site</PillButton>
-                <a href="https://github.com/usekyte/kyte-docs/blob/main/agent.md" target="_blank" rel="noopener noreferrer" className="btn btn-glass">Read the docs <ArrowUpRight size={16} /></a>
+                <a href="https://github.com/usekyte-org/kyte-docs/blob/main/agent.md" target="_blank" rel="noopener noreferrer" className="btn btn-glass">Read the docs <ArrowUpRight size={16} /></a>
               </div>
               <p className="mt-6 text-[12px] text-ink/45">Options are risky and can expire worthless. Nothing here is investment advice. Rate limited per client. Kyte is not affiliated with or endorsed by Robinhood.</p>
             </div>

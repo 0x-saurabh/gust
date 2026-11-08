@@ -4,7 +4,7 @@ ABIs, addresses and TypeScript types for every Kyte contract on Robinhood Chain.
 transactions or index events without copying anything from the app.
 
 ```bash
-npm install github:usekyte/kyte-abis
+npm install github:usekyte-org/kyte-abis
 ```
 
 ```ts

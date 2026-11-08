@@ -13,9 +13,9 @@ or agreed on a timeline. We will credit you in the fix unless you prefer otherwi
 
 ## Scope
 
-- Contracts in [usekyte/kyte-contract-v2](https://github.com/usekyte/kyte-contract-v2) and
-  [usekyte/Kyte-StakingPool](https://github.com/usekyte/Kyte-StakingPool) at the addresses in `CONTRACTS.md`
-- The web app and indexer in [usekyte/Kyte-Market](https://github.com/usekyte/Kyte-Market) and at kyte.sh
+- Contracts in [usekyte-org/kyte-contract-v2](https://github.com/usekyte-org/kyte-contract-v2) and
+  [usekyte-org/Kyte-StakingPool](https://github.com/usekyte-org/Kyte-StakingPool) at the addresses in `CONTRACTS.md`
+- The web app and indexer in [usekyte-org/Kyte-Market](https://github.com/usekyte-org/Kyte-Market) and at kyte.sh
 
 Out of scope: issues in third-party protocols (Uniswap v4, Robinhood Chain, wallet providers) unless Kyte's integration
 makes them exploitable, social engineering, and denial of service against public RPCs.

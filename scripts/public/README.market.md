@@ -46,8 +46,8 @@ never come from the indexer: they come from the deployment config and are re-che
 | `public/` | Brand assets |
 | `contracts/deployments/4663.json` | Addresses the app and indexer read |
 
-Contract sources: [usekyte/kyte-contract-v2](https://github.com/usekyte/kyte-contract-v2). Staking:
-[usekyte/Kyte-StakingPool](https://github.com/usekyte/Kyte-StakingPool).
+Contract sources: [usekyte-org/kyte-contract-v2](https://github.com/usekyte-org/kyte-contract-v2). Staking:
+[usekyte-org/Kyte-StakingPool](https://github.com/usekyte-org/Kyte-StakingPool).
 
 ## Protocol contracts
 

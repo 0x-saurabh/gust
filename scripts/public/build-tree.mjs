@@ -79,7 +79,7 @@ function marketsFile() {
 }
 
 // ---- allowlists (paths relative to the repo root; directories are copied whole, minus `skip`)
-const CONTRACT_SKIP = ['contracts/test/ForkMarketsV3.t.sol', 'contracts/test/ForkRobinhoodStocks.t.sol', 'contracts/script/CreateSafes.s.sol', 'contracts/script/DeployKyteLaunch.s.sol']
+const CONTRACT_SKIP = ['contracts/test/ForkMarketsV3.t.sol', 'contracts/test/ForkRobinhoodStocks.t.sol', 'contracts/test/ForkPonsLister.t.sol', 'contracts/script/CreateSafes.s.sol', 'contracts/script/DeployKyteLaunch.s.sol']
 const STAKING_TESTS = ['Base.t.sol', 'StakingPool.t.sol', 'BuybackBurner.t.sol', 'UniswapV4Adapter.t.sol', 'mocks/Mocks.sol', 'mocks/MockSwapAdapter.sol']
 const PLAN = {
   contracts: {
@@ -166,14 +166,14 @@ export declare const addresses: typeof import('./addresses.json')['4663']
 declare const _default: { chainId: typeof chainId; abis: typeof abis; addresses: typeof addresses }
 export default _default
 `)
-  fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify({ name: 'kyte-abis', version: '1.0.0', description: 'ABIs, addresses and types for the Kyte options market on Robinhood Chain', license: 'MIT', type: 'module', main: './index.mjs', types: './index.d.ts', exports: { '.': { types: './index.d.ts', import: './index.mjs' }, './addresses.json': './addresses.json', './abis/*': './abis/*' }, files: ['abis', 'addresses.json', 'index.mjs', 'index.d.ts'], peerDependencies: { viem: '>=2' }, peerDependenciesMeta: { viem: { optional: true } }, repository: 'github:usekyte/kyte-abis', homepage: 'https://kyte.sh' }, null, 2) + '\n')
+  fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify({ name: 'kyte-abis', version: '1.0.0', description: 'ABIs, addresses and types for the Kyte options market on Robinhood Chain', license: 'MIT', type: 'module', main: './index.mjs', types: './index.d.ts', exports: { '.': { types: './index.d.ts', import: './index.mjs' }, './addresses.json': './addresses.json', './abis/*': './abis/*' }, files: ['abis', 'addresses.json', 'index.mjs', 'index.d.ts'], peerDependencies: { viem: '>=2' }, peerDependenciesMeta: { viem: { optional: true } }, repository: 'github:usekyte-org/kyte-abis', homepage: 'https://kyte.sh' }, null, 2) + '\n')
   fs.writeFileSync(path.join(outDir, '.gitignore'), 'node_modules\n.DS_Store\n')
 }
 if (target === 'profile') fs.copyFileSync(path.join(ROOT, 'scripts/public/assets/banner.png'), path.join(outDir, 'banner.png'))
 if (target === 'docs') {
   const src = path.join(ROOT, 'scripts/public/docs')
   for (const f of fs.readdirSync(src)) fs.copyFileSync(path.join(src, f), path.join(outDir, f))
-  fs.writeFileSync(path.join(outDir, 'contracts.md'), `# Contracts\n\nAll addresses are on Robinhood Chain (chain id 4663). Sources: [usekyte/kyte-contract-v2](https://github.com/usekyte/kyte-contract-v2). ABIs and types: [usekyte/kyte-abis](https://github.com/usekyte/kyte-abis).\n\n${contractsTable()}\n\n## Listed markets\n\n${marketsSection()}\n`)
+  fs.writeFileSync(path.join(outDir, 'contracts.md'), `# Contracts\n\nAll addresses are on Robinhood Chain (chain id 4663). Sources: [usekyte-org/kyte-contract-v2](https://github.com/usekyte-org/kyte-contract-v2). ABIs and types: [usekyte-org/kyte-abis](https://github.com/usekyte-org/kyte-abis).\n\n${contractsTable()}\n\n## Listed markets\n\n${marketsSection()}\n`)
 }
 if (target === 'market') {
   const gen = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/lib/generated/deployments.json'), 'utf8'))

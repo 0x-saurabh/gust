@@ -29,8 +29,8 @@ flowchart LR
 Fees arrive in WETH from the markets and the Uniswap v4 hook. Once per epoch the FeeVault splits them: 30% to this
 pool, 20% to the BuybackBurner which buys $KYTE on Uniswap v4 and burns it, 50% to operations.
 
-All protocol contracts: [usekyte/kyte-contract-v2](https://github.com/usekyte/kyte-contract-v2). The app:
-[usekyte/Kyte-Market](https://github.com/usekyte/Kyte-Market). Listed tokens: [`MARKETS.md`](MARKETS.md).
+All protocol contracts: [usekyte-org/kyte-contract-v2](https://github.com/usekyte-org/kyte-contract-v2). The app:
+[usekyte-org/Kyte-Market](https://github.com/usekyte-org/Kyte-Market). Listed tokens: [`MARKETS.md`](MARKETS.md).
 
 ## Live addresses
 

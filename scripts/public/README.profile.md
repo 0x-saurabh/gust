@@ -33,11 +33,11 @@ flowchart LR
 
 | Repo | What it is |
 |---|---|
-| [kyte-contract-v2](https://github.com/usekyte/kyte-contract-v2) | All protocol contracts: markets, Option NFT, router, fee vault, staking, buyback, Uniswap v4 hook. Tests and deploy scripts |
-| [Kyte-StakingPool](https://github.com/usekyte/Kyte-StakingPool) | The $KYTE staking pool, fee vault and buyback burner with their tests |
-| [Kyte-Market](https://github.com/usekyte/Kyte-Market) | The web app at kyte.sh and the indexer that serves it |
-| [kyte-abis](https://github.com/usekyte/kyte-abis) | ABIs, addresses and TypeScript types for integrators |
-| [kyte-docs](https://github.com/usekyte/kyte-docs) | Protocol documentation in Markdown |
+| [kyte-contract-v2](https://github.com/usekyte-org/kyte-contract-v2) | All protocol contracts: markets, Option NFT, router, fee vault, staking, buyback, Uniswap v4 hook. Tests and deploy scripts |
+| [Kyte-StakingPool](https://github.com/usekyte-org/Kyte-StakingPool) | The $KYTE staking pool, fee vault and buyback burner with their tests |
+| [Kyte-Market](https://github.com/usekyte-org/Kyte-Market) | The web app at kyte.sh and the indexer that serves it |
+| [kyte-abis](https://github.com/usekyte-org/kyte-abis) | ABIs, addresses and TypeScript types for integrators |
+| [kyte-docs](https://github.com/usekyte-org/kyte-docs) | Protocol documentation in Markdown |
 
 ## $KYTE
 
