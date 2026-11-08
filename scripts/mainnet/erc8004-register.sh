@@ -19,7 +19,7 @@ URI=https://kyte.sh/.well-known/agent-registration.json
 FILE=public/.well-known/agent-registration.json
 
 if [[ "$($CAST chain-id --rpc-url "$RPC")" != "4663" ]]; then echo "not Robinhood Chain mainnet"; exit 1; fi
-if ! curl -sf -m 15 "$URI" | grep -q '"eip-8004#registration-v1"'; then echo "$URI is not live yet; deploy the site first"; exit 1; fi
+if ! curl -sf -m 15 "$URI" | grep -q 'eip-8004#registration-v1'; then echo "$URI is not live yet; deploy the site first"; exit 1; fi
 if grep -q '"agentId"' "$FILE"; then echo "$FILE already carries a registration"; exit 1; fi
 
 echo "== register(string) on $REGISTRY from keystore $ACCOUNT"
