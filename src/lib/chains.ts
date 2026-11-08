@@ -59,6 +59,8 @@ export type ProtocolContracts = {
   uniswapV4SwapRouter?: Address
   kyteHook?: Address
   swapAdapter?: Address
+  /** KyteHaltGate: Kyte's reader of Harmonic Agent's session oracle (docs/HARMONIC.md). */
+  harmonicHaltGate?: Address
   /** Governance: the timelock lists and re-enables; the guardian Safe pauses and disables instantly. */
   timelock?: Address
   guardian?: Address
