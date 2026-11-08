@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAccount, usePublicClient } from 'wagmi'
 import { AddToWallet } from '@/components/AddToWallet'
+import { SessionBadge } from '@/components/SessionBadge'
 import { TimeLeft } from '@/components/TimeLeft'
 import { TxStatus } from '@/components/TxStatus'
 import { KindBadge, Note, PageHeader, Segmented } from '@/components/ui'
 import { contracts, marketsFor } from '@/lib/chains'
-import { useBalances, useLive, usePositions, type Offer } from '@/lib/data'
+import { useBalances, useLive, usePositions, usePrices, type Offer } from '@/lib/data'
 import { eth, num } from '@/lib/format'
 import { ABIS } from '@/lib/generated/abis'
 import { approvalIfNeeded, useTx } from '@/lib/tx'
@@ -21,6 +22,7 @@ export default function PositionsPage() {
   const live = useLive()
   const [tab, setTab] = useState<Tab>('holding')
   const pos = usePositions()
+  const prices = usePrices()
   // /positions?exercise=<id> (from the agent): show the holding tab with that position highlighted
   const params = useSearchParams()
   const cancelId = params.get('cancel')
@@ -90,7 +92,7 @@ export default function PositionsPage() {
                 <div key={o.id.toString()} id={`pos-${o.id}`} className={`flex flex-wrap items-center gap-4 p-5 ${focusId === o.id.toString() ? 'bg-accent-soft ring-1 ring-accent/40' : ''}`}>
                   <KindBadge kind={o.kind} />
                   <div className="min-w-40 flex-1">
-                    <div className="font-mono font-medium">{num(o.amount, 4)} {o.symbol} @ {eth(o.strike)}</div>
+                    <div className="flex flex-wrap items-center gap-2 font-mono font-medium">{num(o.amount, 4)} {o.symbol} @ {eth(o.strike)}<SessionBadge session={prices.data?.[o.symbol]?.session} /></div>
                     <div className={`text-xs ${stale ? 'text-warn' : 'text-faint'}`}>{status}</div>
                   </div>
                   <div className="w-28 text-sm"><div className="label">Premium</div><div className="tabular font-mono">{eth(o.premium)}</div></div>

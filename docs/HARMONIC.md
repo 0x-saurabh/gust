@@ -56,8 +56,8 @@ What landed, for maintenance:
   `/assets` row as `session: { state, why, until, at, issuerUsd, weekendMarkUsd?, offFridayBps? }`, `null` for crypto.
   First log line after boot: `[indexer] session oracle: 203 tokens { open: 1, held: 202 }`.
 - `indexer/src/autopilot.mjs`: `list_*`, `buy_*` and `exercise` rules skip a stock token whose session is not `open`.
-- `src/components/SessionBadge.tsx`: the pill and the one-line sentence; used on Market (header and under it) and
-  Sell (warning note under the token, pill on the chart card). `Session` type in `src/lib/data.ts`; `useAssets()`
+- `src/components/SessionBadge.tsx`: the pill and the one-line sentence; used on Market (header and under it),
+  Sell (warning note under the token, pill on the chart card) and Positions (pill beside each row). `Session` type in `src/lib/data.ts`; `useAssets()`
   copies `session` from `/prices`.
 - `src/lib/agent/tools.ts`: `sessionWarning()`; `get_prices`, `list_tokens`, `find_offers`, `get_offer` (so
   `explain_offer` and `compare_offers` too) return `session` and `warning`; the four prepare tools put `warning`
@@ -140,8 +140,9 @@ Two steps that need a key or a dashboard:
    ```bash
    curl -s -X POST https://www.harmonicagent.solutions/api/keeper/webhooks -H 'content-type: application/json' \
      -d '{"url":"https://kyte.sh/api/harmonic/webhook","events":["halt","reopen","weekend-mark"],
-          "tokens":["NVDA","AAPL","SPY","TSLA","MSFT","AMZN","GOOGL","META","AMD","COIN","MSTR","PLTR","QQQ","INTC","GME","CRCL","MU","HOOD","AVGO","TSM"]}'
+          "tokens":["NVDA","AAPL","SPY","TSLA","MSFT","AMZN","GOOGL","META","AMD","COIN","MSTR","PLTR","QQQ","INTC","GME","CRCL","MU","GLD","AVGO","TSM"]}'
    ```
+   (The oracle has no row for HOOD, so it is not in the list; a token it does not know fails the whole call.)
    The reply carries the subscription id and a secret, shown once. Put the secret in Render, service `kyte-web`,
    env `HARMONIC_WEBHOOK_SECRET`, and keep the id (`GET /api/keeper/webhooks/<id>` with `Authorization: Bearer
    <secret>` reads it, `DELETE` removes it). Twenty tokens is Harmonic's cap per subscription; the 5 minute poll
