@@ -1,8 +1,10 @@
 # Kyte and Harmonic Agent: integration plan
 
 Status as of 8 November 2026: **Phase 1 shipped** (indexer session poll, `/prices` and `/assets` carry `session`,
-Market and Sell badges, MCP warnings, Autopilot gating). **Phase 2 shipped except two user steps** (the ERC-8004
-mint and the webhook secret, below). **Phase 3 shipped as code, not deployed** (interfaces, vendored halt gate,
+Market, Sell and Positions badges, MCP warnings, Autopilot gating). **Phase 2 shipped**: Kyte is ERC-8004 agent
+**#22541** on Robinhood Chain (minted from the deployer wallet, tx `0xd4397a06…02ba5`) and is registered on
+Harmonic's agent registry as `Kyte` (secret in `~/.kyte/harmonic-registry.env`); only the webhook subscription
+and its Render secret are still a user step. **Phase 3 shipped as code, not deployed** (interfaces, vendored halt gate,
 unit and fork tests; no Kyte contract reads the oracle on chain yet). Written from a read of
 [harmonicagent.solutions](https://harmonicagent.solutions), its `skill.md` files, its MCP server and its public
 JSON routes, plus the Kyte indexer, Autopilot spec and MCP tools.
@@ -128,14 +130,12 @@ What landed:
 
 Two steps that need a key or a dashboard:
 
-1. **Mint the identity.** After Render has deployed the site (so the file is live at
-   `https://kyte.sh/.well-known/agent-registration.json`):
-   ```bash
-   scripts/mainnet/erc8004-register.sh      # deployer keystore password once; writes the agentId into the JSON
-   git add public/.well-known/agent-registration.json && git commit -m "ERC-8004: Kyte agent id" && git push
-   ```
-   Then `https://harmonicagent.solutions/api/erc8004?id=<agentId>` should read `namesItBack: true`. Transfer the
-   token to the ops Safe later if wanted (command in the script header).
+1. **Mint the identity.** Done 8 Nov 2026: `scripts/mainnet/erc8004-register.sh` minted agent **#22541**
+   (`cast call 0x8004A169…a432 "tokenURI(uint256)(string)" 22541` returns the kyte.sh file, owner is the deployer
+   wallet `0xBeeda2b3…3323`), and the file at `https://kyte.sh/.well-known/agent-registration.json` names it back.
+   Harmonic's `/api/erc8004` JSON only serves its own identity; another agent is read with the bot command
+   `/erc8004 22541` on Telegram (`@HarmonicAgent_Bot`) or X. Transfer the token to the ops Safe later if wanted
+   (command in the script header).
 2. **Subscribe the webhook and set its secret.** After the deploy:
    ```bash
    curl -s -X POST https://www.harmonicagent.solutions/api/keeper/webhooks -H 'content-type: application/json' \
@@ -148,13 +148,9 @@ Two steps that need a key or a dashboard:
    <secret>` reads it, `DELETE` removes it). Twenty tokens is Harmonic's cap per subscription; the 5 minute poll
    still covers the other 180.
 
-Optional, skipped on purpose for now: `registry_register` on Harmonic's agent registry (name `Kyte`, kind `mcp`,
-url `https://kyte.sh/api/mcp`). It returns a secret that only matters for filing directional calls, which Kyte does
-not do. One curl if ever wanted:
-```bash
-curl -s -X POST https://www.harmonicagent.solutions/api/registry/agents -H 'content-type: application/json' \
-  -d '{"name":"Kyte","kind":"mcp","url":"https://kyte.sh/api/mcp"}'
-```
+Also done: `registry_register` on Harmonic's agent registry (name `Kyte`, kind `mcp`, url
+`https://kyte.sh/api/mcp`, 8 Nov 2026). The secret is in `~/.kyte/harmonic-registry.env` on the Mac and matters only
+for filing directional calls, which Kyte does not do; the listing is what we wanted.
 
 **Outreach to Harmonic** (X `@HarmonicAgents` or Telegram `@HarmonicAgent_Bot`), ready to send:
 
