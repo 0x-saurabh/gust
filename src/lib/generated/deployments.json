@@ -164,6 +164,8 @@
       }
     },
     "swapAdapter": "0xFa17818515E946180b9767f9D9c40A09EE80dda6",
+    "ponsLister": "0x7507A3ca126F4F38c880807fA82431bd33c5590F",
+    "harmonicHaltGate": "0x3Ba49951cae0e9EF38839F9080b48bD254e0bc8b",
     "deployBlock": 103214110
   },
   "31337": {

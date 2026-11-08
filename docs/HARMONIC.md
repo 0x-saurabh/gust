@@ -4,8 +4,9 @@ Status as of 8 November 2026: **Phase 1 shipped** (indexer session poll, `/price
 Market, Sell and Positions badges, MCP warnings, Autopilot gating). **Phase 2 shipped**: Kyte is ERC-8004 agent
 **#22541** on Robinhood Chain (minted from the deployer wallet, tx `0xd4397a06…02ba5`) and is registered on
 Harmonic's agent registry as `Kyte` (secret in `~/.kyte/harmonic-registry.env`); only the webhook subscription
-and its Render secret are still a user step. **Phase 3 shipped as code, not deployed** (interfaces, vendored halt gate,
-unit and fork tests; no Kyte contract reads the oracle on chain yet). Written from a read of
+and its Render secret are still a user step. **Phase 3 deployed**: `KyteHaltGate` at
+`0x3Ba49951cae0e9EF38839F9080b48bD254e0bc8b` on Robinhood Chain (Sourcify verified, 8 Nov 2026), reading
+HarmonicOracle with a 1 day max row age; its oracle seat is not paid yet, so it answers `Unreadable` until then. Written from a read of
 [harmonicagent.solutions](https://harmonicagent.solutions), its `skill.md` files, its MCP server and its public
 JSON routes, plus the Kyte indexer, Autopilot spec and MCP tools.
 
@@ -184,7 +185,7 @@ Mirrors what we did for HOL (`docs/HOL.md`) and Oak (`docs/OAK.md`).
 
 Effort: one day, plus the outreach.
 
-## Phase 3: on-chain reads, only where Kyte needs a price on chain. Code shipped 8 Nov 2026, nothing deployed.
+## Phase 3: on-chain reads, only where Kyte needs a price on chain. Deployed 8 Nov 2026 (seat unpaid).
 
 What landed:
 
@@ -201,8 +202,9 @@ What landed:
 - `contracts/src/KyteHaltGate.sol`: Kyte's own reader of the oracle, inheriting the gate. `isOpen(token)`,
   `requireOpen(token)`, `gateVerdicts(tokens[])` and the inherited `gateVerdict` and `gateSubscribed`. Immutable, no
   owner, holds nothing. One paid seat bought for this address serves every Kyte contract and script that asks it.
-  Deploy: `scripts/mainnet/halt-gate.sh` (deployer password once; records `harmonicHaltGate` in the deployments
-  file and verifies on Sourcify). Two more unit tests cover it.
+  Deployed by `scripts/mainnet/halt-gate.sh` at **`0x3Ba49951cae0e9EF38839F9080b48bD254e0bc8b`**
+  (`harmonicHaltGate` in `contracts/deployments/4663.json`, Sourcify verified). Read it:
+  `cast call 0x3Ba4…bc8b "gateVerdict(address)(uint8,uint8,uint64)" <token>`. Two more unit tests cover it.
 
 The seat: the gate answers `Unreadable` until `subscribe(gate, months)` is paid on the oracle, 100 USDG a month
 to Harmonic's operations wallet (deployer holds ~2.4 USDG and the ops Safe none as of 8 Nov, so this is a purchase
