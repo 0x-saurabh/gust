@@ -27,11 +27,19 @@ Kyte is a non-custodial options market on Robinhood Chain. Sell covered calls or
 ## Images
 
 Logo: `scripts/producthunt/logo-480.png` (480x480, PH needs 240x240 minimum).
-Gallery (1270x760 each), upload in this order:
-1. `gallery/1-hero.jpg` landing page
-2. `gallery/2-market.jpg` market page with chart and option trades (retake with open offers if possible)
-3. `gallery/3-mcp.jpg` MCP page: connect Kyte to Claude, Cursor, ChatGPT
-4. `gallery/4-claude.jpg` Claude answering with live Kyte data
+Gallery (1270x760 each, live captures of kyte.sh), upload in this order:
+1. `gallery/01-hero.jpg` landing hero
+2. `gallery/02-market.jpg` market: live Uniswap v4 price with every option trade on the chart
+3. `gallery/03-sell.jpg` sell a covered call: strike on the chart, fee summary
+4. `gallery/04-trades.jpg` every trade on-chain, newest first
+5. `gallery/05-mcp.jpg` Kyte inside any AI app: Claude, ChatGPT, Cursor, Claude Code
+6. `gallery/06-claude.jpg` Claude answering with live Kyte data
+7. `gallery/07-launchpad.jpg` Pons launchpad tokens listed on Kyte
+8. `gallery/08-stake.jpg` $KYTE staking, 30% of fees
+9. `gallery/09-proof.jpg` every fee and burn on the record
+10. `gallery/10-docs.jpg` docs
+Product Hunt shows the first 3 to 5 prominently; the rest are fine to include. Re-capture with
+`scripts/producthunt/capture.sh` after UI changes (needs Chrome).
 
 Optional video: a 30-60 s screen recording of selling a covered call and Claude finding it. PH embeds YouTube or Loom.
 
