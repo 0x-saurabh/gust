@@ -13,7 +13,7 @@ import { PillButton } from './PillButton'
 
 const COLS: { t: string; l: { h: string; n: string }[] }[] = [
   { t: 'Product', l: [{ h: '/market', n: 'Market' }, { h: '/sell', n: 'Sell an option' }, { h: '/positions', n: 'Positions' }, { h: '/trades', n: 'Trade history' }, { h: '/stake', n: 'Stake' }] },
-  { t: 'Protocol', l: [{ h: '/proof', n: 'Proof of burns' }, { h: 'https://docs.kyte.sh/', n: 'Documentation' }, { h: '/docs#contracts', n: 'Contracts' }, { h: 'https://github.com/usekyte-org/kyte-mcp', n: 'GitHub' }, { h: '/docs#risks', n: 'Risks' }] },
+  { t: 'Protocol', l: [{ h: '/proof', n: 'Proof of burns' }, { h: 'https://docs.kyte.sh/', n: 'Documentation' }, { h: '/docs#contracts', n: 'Contracts' }, { h: 'https://github.com/usekyte-org/kyte-mcp', n: 'GitHub' }, { h: 'https://heyresearch.xyz/project/kyte', n: 'HEY Research' }, { h: '/docs#risks', n: 'Risks' }] },
   { t: 'Legal', l: [{ h: '/terms', n: 'Terms of Use' }, { h: '/privacy', n: 'Privacy Policy' }, { h: X_URL, n: 'X / @useKyte' }, { h: 'mailto:contact@kyte.sh', n: 'Contact' }] },
 ]
 
