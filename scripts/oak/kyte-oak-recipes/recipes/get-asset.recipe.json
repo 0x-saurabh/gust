@@ -1,0 +1,67 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "get-asset",
+  "description": "Read a token's Kyte listing: listed, enabled, putsEnabled, decimals, exposure cap (base units) and minimum strike per token (wei).",
+  "chainId": 4663,
+  "contract": "0x02f571e10B9c7303EB7A6284A7137b146e18658D",
+  "function": {
+    "type": "function",
+    "name": "getAsset",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct AssetRegistry.Asset",
+        "components": [
+          {
+            "name": "listed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "enabled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "putsEnabled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "cap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minStrike",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "name": "token",
+      "type": "address",
+      "description": "ERC-20 token address on Robinhood Chain."
+    }
+  ],
+  "kind": "read"
+}

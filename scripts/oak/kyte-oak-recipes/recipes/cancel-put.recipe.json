@@ -1,0 +1,29 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "cancel-put",
+  "description": "Cancel your own open (unfilled) put offer and take the WETH collateral back.",
+  "chainId": 4663,
+  "contract": "0x2E2d5DfB4cf30d15688Cc2DDD30641c78DFfcb35",
+  "function": {
+    "type": "function",
+    "name": "cancelUnfilled",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": []
+  },
+  "inputs": [
+    {
+      "name": "id",
+      "type": "uint256",
+      "description": "Option id (the OptionNFT token id). Read it from kyte.sh/market, the Kyte MCP (find_offers, get_positions) or the OfferCreated event."
+    }
+  ],
+  "kind": "tx"
+}

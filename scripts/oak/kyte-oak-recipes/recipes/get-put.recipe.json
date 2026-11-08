@@ -1,0 +1,87 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "get-put",
+  "description": "Read a put option: seller, token, amount, total strike (wei), premium (wei), expiry, fill deadline and status (0 Open, 1 Filled, 2 Cancelled, 3 Exercised, 4 Expired).",
+  "chainId": 4663,
+  "contract": "0x2E2d5DfB4cf30d15688Cc2DDD30641c78DFfcb35",
+  "function": {
+    "type": "function",
+    "name": "getPosition",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct Position",
+        "components": [
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "expiry",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "feeBpsPremium",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "offerDeadline",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "feeBpsExercise",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum Status"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "strike",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "premium",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "name": "id",
+      "type": "uint256",
+      "description": "Option id (the OptionNFT token id). Read it from kyte.sh/market, the Kyte MCP (find_offers, get_positions) or the OfferCreated event."
+    }
+  ],
+  "kind": "read"
+}

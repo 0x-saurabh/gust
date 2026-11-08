@@ -1,0 +1,17 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "claim-rewards",
+  "description": "Claim your accrued WETH staking rewards.",
+  "chainId": 4663,
+  "contract": "0xD7253a90fd43507F44cF0934F3D5d7432760d17f",
+  "function": {
+    "type": "function",
+    "name": "claim",
+    "stateMutability": "nonpayable",
+    "inputs": [],
+    "outputs": []
+  },
+  "inputs": [],
+  "kind": "tx"
+}

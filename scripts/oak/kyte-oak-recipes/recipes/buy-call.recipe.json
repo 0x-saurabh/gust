@@ -1,0 +1,40 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "buy-call",
+  "description": "Buy an open call option with ETH: pay its premium and receive the OptionNFT giving the right to buy the tokens at the strike until expiry. Send maxPremium as value; the Router refunds any excess.",
+  "chainId": 4663,
+  "contract": "0xdD76956667E6423bAC56d2EbF827a9b0d7dBDF68",
+  "function": {
+    "type": "function",
+    "name": "buyWithETH",
+    "stateMutability": "payable",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "name": "maxPremium",
+        "type": "uint256"
+      }
+    ],
+    "outputs": []
+  },
+  "inputs": [
+    {
+      "name": "id",
+      "type": "uint256",
+      "description": "Option id (the OptionNFT token id). Read it from kyte.sh/market, the Kyte MCP (find_offers, get_positions) or the OfferCreated event."
+    },
+    {
+      "name": "maxPremium",
+      "type": "uint256",
+      "description": "Most you will pay in wei; the offer's premium or slightly above. Also sent as the transaction value."
+    }
+  ],
+  "kind": "tx",
+  "value": {
+    "fromInput": "maxPremium"
+  }
+}

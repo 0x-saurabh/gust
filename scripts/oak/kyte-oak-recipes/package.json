@@ -1,0 +1,11 @@
+{
+  "name": "kyte-oak-recipes",
+  "version": "1.0.0",
+  "description": "Oak Agent Kit recipes for Kyte, the on-chain options market on Robinhood Chain: buy and sell covered calls and cash-secured puts, exercise, cancel, expire, stake $KYTE. Data only (oak-recipe/v1).",
+  "oakProject": "kyte",
+  "license": "MIT",
+  "homepage": "https://kyte.sh",
+  "repository": { "type": "git", "url": "https://github.com/usekyte-org/kyte-mcp" },
+  "keywords": ["oak", "oak-recipe", "robinhood-chain", "options", "kyte", "agent"],
+  "files": ["recipes", "README.md", "LICENSE"]
+}

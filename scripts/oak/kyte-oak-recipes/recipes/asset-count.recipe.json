@@ -1,0 +1,23 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "asset-count",
+  "description": "Number of tokens ever listed on Kyte.",
+  "chainId": 4663,
+  "contract": "0x02f571e10B9c7303EB7A6284A7137b146e18658D",
+  "function": {
+    "type": "function",
+    "name": "assetCount",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  "inputs": [],
+  "kind": "read"
+}

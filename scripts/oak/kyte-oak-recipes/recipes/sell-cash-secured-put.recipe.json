@@ -1,0 +1,81 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "sell-cash-secured-put",
+  "description": "List a cash-secured put with ETH: the Router wraps strike wei of ETH as the collateral and offers the right to sell amount of token to you for it until expiry. Only tokens with putsEnabled. Send strike as value. Returns the option id.",
+  "chainId": 4663,
+  "contract": "0xdD76956667E6423bAC56d2EbF827a9b0d7dBDF68",
+  "function": {
+    "type": "function",
+    "name": "createPutOfferWithETH",
+    "stateMutability": "payable",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "name": "strike",
+        "type": "uint256"
+      },
+      {
+        "name": "premium",
+        "type": "uint256"
+      },
+      {
+        "name": "expiry",
+        "type": "uint64"
+      },
+      {
+        "name": "offerDeadline",
+        "type": "uint64"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256"
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "name": "token",
+      "type": "address",
+      "description": "Listed token address (AssetRegistry.getAsset must return listed and enabled)."
+    },
+    {
+      "name": "amount",
+      "type": "uint256",
+      "description": "Tokens in base units (token decimals). The token must have puts enabled (get-asset.putsEnabled)."
+    },
+    {
+      "name": "strike",
+      "type": "uint256",
+      "description": "Total strike for the whole amount, in wei of ETH; locked as WETH collateral and also sent as the transaction value."
+    },
+    {
+      "name": "premium",
+      "type": "uint256",
+      "description": "Premium the buyer pays, in wei of ETH. Minimum 0.0005 ETH; a 3% fee is taken from it when filled."
+    },
+    {
+      "name": "expiry",
+      "type": "uint64",
+      "description": "Unix timestamp when the option expires; 1 hour to 90 days from now (24 hours max for Pons launchpad tokens)."
+    },
+    {
+      "name": "offerDeadline",
+      "type": "uint64",
+      "description": "Unix timestamp until which the offer can be bought; at most expiry."
+    }
+  ],
+  "kind": "tx",
+  "value": {
+    "fromInput": "strike"
+  }
+}

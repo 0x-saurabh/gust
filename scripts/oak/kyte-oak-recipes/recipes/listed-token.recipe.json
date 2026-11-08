@@ -1,0 +1,35 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "listed-token",
+  "description": "Read the listed token at an index; use with asset-count to enumerate every token Kyte lists.",
+  "chainId": 4663,
+  "contract": "0x02f571e10B9c7303EB7A6284A7137b146e18658D",
+  "function": {
+    "type": "function",
+    "name": "listedTokens",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "name": "index",
+      "type": "uint256",
+      "description": "Zero-based index below asset-count."
+    }
+  ],
+  "kind": "read"
+}

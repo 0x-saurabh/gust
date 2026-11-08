@@ -1,0 +1,35 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "staking-rewards",
+  "description": "Read a wallet's claimable WETH staking rewards in wei.",
+  "chainId": 4663,
+  "contract": "0xD7253a90fd43507F44cF0934F3D5d7432760d17f",
+  "function": {
+    "type": "function",
+    "name": "pendingRewards",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "name": "user",
+      "type": "address",
+      "description": "Wallet address."
+    }
+  ],
+  "kind": "read"
+}

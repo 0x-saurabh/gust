@@ -1,0 +1,29 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "expire-call",
+  "description": "After expiry, return a call's unexercised token collateral to its seller. Anyone can call it.",
+  "chainId": 4663,
+  "contract": "0xb6759D8893601BB7c1A032eC8ea40C856a6adf80",
+  "function": {
+    "type": "function",
+    "name": "expire",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": []
+  },
+  "inputs": [
+    {
+      "name": "id",
+      "type": "uint256",
+      "description": "Option id (the OptionNFT token id). Read it from kyte.sh/market, the Kyte MCP (find_offers, get_positions) or the OfferCreated event."
+    }
+  ],
+  "kind": "tx"
+}

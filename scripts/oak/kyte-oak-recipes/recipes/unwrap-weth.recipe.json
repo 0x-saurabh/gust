@@ -1,0 +1,28 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "unwrap-weth",
+  "description": "Unwrap WETH to ETH. Premiums, strikes and staking rewards arrive as WETH.",
+  "chainId": 4663,
+  "contract": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+  "function": {
+    "type": "function",
+    "name": "withdraw",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "wad",
+        "type": "uint256"
+      }
+    ],
+    "outputs": []
+  },
+  "inputs": [
+    {
+      "name": "wad",
+      "type": "uint256",
+      "description": "WETH amount in wei."
+    }
+  ],
+  "kind": "tx"
+}

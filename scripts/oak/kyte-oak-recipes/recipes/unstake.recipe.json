@@ -1,0 +1,29 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "unstake",
+  "description": "Unstake $KYTE. Pending stake leaves at once; active stake must be past its lock epoch.",
+  "chainId": 4663,
+  "contract": "0xD7253a90fd43507F44cF0934F3D5d7432760d17f",
+  "function": {
+    "type": "function",
+    "name": "unstake",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": []
+  },
+  "inputs": [
+    {
+      "name": "amount",
+      "type": "uint256",
+      "description": "KYTE base units (18 decimals)."
+    }
+  ],
+  "kind": "tx"
+}

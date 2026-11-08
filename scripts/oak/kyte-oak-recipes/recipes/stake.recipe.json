@@ -1,0 +1,33 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "stake",
+  "description": "Stake $KYTE (approval handled). Pending until the current epoch ends, then active, locked for one epoch, and earning a share of protocol fees in WETH.",
+  "chainId": 4663,
+  "contract": "0xD7253a90fd43507F44cF0934F3D5d7432760d17f",
+  "function": {
+    "type": "function",
+    "name": "stake",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": []
+  },
+  "inputs": [
+    {
+      "name": "amount",
+      "type": "uint256",
+      "description": "KYTE base units (18 decimals)."
+    }
+  ],
+  "kind": "tx",
+  "approve": {
+    "token": "0x072D88c2F31F568C0F4B8F613692eB489541Ed45",
+    "amountFromInput": "amount"
+  }
+}

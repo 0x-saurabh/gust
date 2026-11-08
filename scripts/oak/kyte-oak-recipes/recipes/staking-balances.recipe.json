@@ -1,0 +1,40 @@
+{
+  "schema": "oak-recipe/v1",
+  "project": "kyte",
+  "name": "staking-balances",
+  "description": "Read a wallet's staked $KYTE: active (earning) and pending (activates at the next epoch), in base units (18 decimals).",
+  "chainId": 4663,
+  "contract": "0xD7253a90fd43507F44cF0934F3D5d7432760d17f",
+  "function": {
+    "type": "function",
+    "name": "balancesOf",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "active",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "pending",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "name": "user",
+      "type": "address",
+      "description": "Wallet address."
+    }
+  ],
+  "kind": "read"
+}
