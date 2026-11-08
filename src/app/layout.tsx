@@ -32,6 +32,8 @@ export const metadata: Metadata = {
     description: shortDescription,
     images: [{ url: ogImage.url, alt: ogImage.alt }],
   },
+  // HEY Research (heyresearch.xyz) ownership claim; also served at /.well-known/hey-research.txt.
+  other: { 'hey-research-verification': '3DLbtlOqbaJ3uk6fopXO0WGgFAE5foMc' },
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
