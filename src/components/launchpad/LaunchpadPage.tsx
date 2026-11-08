@@ -48,7 +48,7 @@ const usd = (n: number | null) => (n == null || !Number.isFinite(n) || n === 0 ?
 
 export function LaunchpadPage() {
   const [tab, setTab] = useState<Tab>('graduated')
-  const [hours, setHours] = useState<'24' | '36' | '0'>('0')
+  const [hours, setHours] = useState<'24' | '36'>('36')
   const q = useQuery({
     queryKey: ['pons', tab, hours],
     queryFn: async (): Promise<Resp> => { const r = await fetch(`${INDEXER_URL}/pons/tokens?status=${tab}&hours=${hours}&limit=200`, { cache: 'no-store' }); if (!r.ok) throw new Error(`indexer ${r.status}`); return r.json() },
@@ -66,7 +66,7 @@ export function LaunchpadPage() {
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         {counts && <p className="text-sm text-muted">{counts.graduated} graduated of {counts.launched} launched. Data from the Pons factory on chain and DexScreener; refreshed every minute.</p>}
-        {tab === 'graduated' && <Segmented value={hours} onChange={setHours} options={[{ value: '24', label: 'Last 24 hours' }, { value: '36', label: 'Last 36 hours' }, { value: '0', label: 'All' }]} />}
+        {tab === 'graduated' && <Segmented value={hours} onChange={setHours} options={[{ value: '24', label: 'Last 24 hours' }, { value: '36', label: 'Last 36 hours' }]} />}
       </div>
 
       {q.isLoading ? (
@@ -74,7 +74,7 @@ export function LaunchpadPage() {
       ) : q.isError ? (
         <Note tone="warn">The indexer is not reachable right now. Try again in a minute.</Note>
       ) : tokens.length === 0 ? (
-        <p className="text-sm text-muted">{tab === 'listed' ? 'No Pons token is listed on Kyte yet.' : hours !== '0' ? `Nothing graduated in the last ${hours} hours.` : 'Nothing graduated yet.'}</p>
+        <p className="text-sm text-muted">{tab === 'listed' ? 'No Pons token is listed on Kyte yet.' : `Nothing graduated in the last ${hours} hours.`}</p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tokens.map((t) => (

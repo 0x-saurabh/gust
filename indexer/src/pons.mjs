@@ -31,7 +31,7 @@ const ACTIVITY_SPAN = 2_000n // blocks per eth_getLogs call (about 8 minutes of 
 const ACTIVITY_MAX_CALLS = 30 // per cycle; catches up over a few cycles after downtime
 const SWEEP = 200 // slow safety-net sweep per cycle
 const QUOTE_MS = Number(process.env.PONS_QUOTE_MS || 60_000)
-const RECENT_MAX_H = 168 // 'recent' window: ?hours=24|36|…, up to a week
+const WINDOW_H = 36 // graduated and recent views cover the last 36 hours at most (?hours=24|36); listed tokens are always served
 const STR_MAX = 200
 
 // Pons stores logos as ipfs:// URIs; serve them through a public gateway.
@@ -186,7 +186,7 @@ export function installPons({ db, all, client, lister = null, log = console.log 
   async function refreshScheduled() {
     if (!lister) return
     const listed = new Set(all('SELECT address FROM assets').map((a) => a.address.toLowerCase()))
-    for (const r of all('SELECT address FROM pons_tokens WHERE graduated = 1')) {
+    for (const r of all('SELECT address FROM pons_tokens WHERE graduated = 1 AND graduated_at >= ?', Math.floor(Date.now() / 1000) - WINDOW_H * 3600)) {
       if (listed.has(r.address.toLowerCase())) { scheduled.delete(r.address.toLowerCase()); continue }
       const op = await client.readContract({ address: lister, abi: LISTER_ABI, functionName: 'operationOf', args: [r.address] }).catch(() => ZERO32)
       if (op !== ZERO32) scheduled.add(r.address.toLowerCase()); else scheduled.delete(r.address.toLowerCase())
@@ -196,7 +196,8 @@ export function installPons({ db, all, client, lister = null, log = console.log 
   // ---- quotes: DexScreener, 30 addresses per call, graduated tokens first
   async function quote() {
     await refreshScheduled().catch((e) => log(`[pons] lister: ${e.shortMessage ?? e.message}`))
-    const rows = all('SELECT address FROM pons_tokens ORDER BY graduated DESC, quoted_at ASC LIMIT 150')
+    // only tokens that graduated in the window, plus the ones listed on Kyte, are priced
+    const rows = all('SELECT address FROM pons_tokens WHERE (graduated = 1 AND graduated_at >= ?) OR lower(address) IN (SELECT lower(address) FROM assets) ORDER BY quoted_at ASC LIMIT 150', Math.floor(Date.now() / 1000) - WINDOW_H * 3600)
     const now = Math.floor(Date.now() / 1000)
     for (let i = 0; i < rows.length; i += 30) {
       const chunk = rows.slice(i, i + 30)
@@ -260,18 +261,16 @@ export function installPons({ db, all, client, lister = null, log = console.log 
     }
   }
 
-  /** GET /pons/tokens?status=recent|graduated|near|listed|all&hours=24&limit=N */
+  /** GET /pons/tokens?status=recent|graduated|near|listed|all&hours=24|36&limit=N (graduated and recent: last 36 hours at most) */
   async function route(u) {
     const status = u.searchParams.get('status') ?? 'graduated'
     const limit = Math.min(500, Math.max(1, Number(u.searchParams.get('limit') ?? 200) || 200))
     const listed = new Map(all('SELECT address, enabled FROM assets').map((a) => [a.address.toLowerCase(), a]))
     let rows
-    // graduated: optional ?hours= window on the graduation time (24, 36, …); absent or 0 means all
-    const hours = Math.min(RECENT_MAX_H, Math.max(0, Number(u.searchParams.get('hours') ?? 0) || 0))
-    if (status === 'recent') rows = all('SELECT * FROM pons_tokens WHERE launched_at >= ? ORDER BY launched_at DESC LIMIT ?', Math.floor(Date.now() / 1000) - (hours || 24) * 3600, limit)
-    else if (status === 'graduated') rows = hours
-      ? all('SELECT * FROM pons_tokens WHERE graduated = 1 AND graduated_at >= ? ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', Math.floor(Date.now() / 1000) - hours * 3600, limit)
-      : all('SELECT * FROM pons_tokens WHERE graduated = 1 ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', limit)
+    // graduated and recent: ?hours= window (24 or 36), default and maximum 36
+    const hours = Math.min(WINDOW_H, Math.max(1, Number(u.searchParams.get('hours') ?? WINDOW_H) || WINDOW_H))
+    if (status === 'recent') rows = all('SELECT * FROM pons_tokens WHERE launched_at >= ? ORDER BY launched_at DESC LIMIT ?', Math.floor(Date.now() / 1000) - hours * 3600, limit)
+    else if (status === 'graduated') rows = all('SELECT * FROM pons_tokens WHERE graduated = 1 AND graduated_at >= ? ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', Math.floor(Date.now() / 1000) - hours * 3600, limit)
     else if (status === 'near') rows = all('SELECT * FROM pons_tokens WHERE graduated = 0 AND paired_principal IS NOT NULL AND threshold IS NOT NULL AND CAST(paired_principal AS REAL) >= 0.5 * CAST(threshold AS REAL) ORDER BY CAST(paired_principal AS REAL) / CAST(threshold AS REAL) DESC LIMIT ?', limit)
     else if (status === 'listed') rows = all('SELECT * FROM pons_tokens WHERE (graduated = 1 OR lower(address) IN (SELECT lower(address) FROM assets)) ORDER BY mcap_usd DESC').filter((r) => listed.has(r.address.toLowerCase())).slice(0, limit)
     else rows = all('SELECT * FROM pons_tokens ORDER BY launched_at DESC LIMIT ?', limit)

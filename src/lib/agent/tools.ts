@@ -414,9 +414,9 @@ export type PonsToken = { address: string; symbol: string; name: string; pairIsW
 export const listGraduated = {
   name: 'list_graduated',
   description: 'Tokens from the Pons launchpad on Robinhood Chain: graduated (locked liquidity crossed 4.2 ETH), near graduation, or the ones listed on Kyte. Each has price, market cap, 24h change, liquidity, graduation time and whether Kyte lists it. Options on Pons tokens expire within 24 hours. Read-only.',
-  input: z.object({ status: z.enum(['recent', 'graduated', 'near', 'listed']).default('graduated').describe('recent = the newest launches'), hours: z.number().int().min(1).max(168).default(24).describe('recent window in hours, e.g. 24 or 36'), limit: z.number().int().min(1).max(50).default(20) }),
+  input: z.object({ status: z.enum(['recent', 'graduated', 'near', 'listed']).default('graduated').describe('recent = the newest launches'), hours: z.number().int().min(1).max(36).default(36).describe('window in hours for graduated and recent, 24 or 36 (36 at most)'), limit: z.number().int().min(1).max(50).default(20) }),
   async run({ status, hours, limit }: { status?: 'recent' | 'graduated' | 'near' | 'listed'; hours?: number; limit?: number }) {
-    const r = (await api<{ tokens: PonsToken[]; counts: { launched: number; graduated: number } }>(`/pons/tokens?status=${status ?? 'graduated'}&hours=${hours ?? 24}&limit=${limit ?? 20}`))
+    const r = (await api<{ tokens: PonsToken[]; counts: { launched: number; graduated: number } }>(`/pons/tokens?status=${status ?? 'graduated'}&hours=${hours ?? 36}&limit=${limit ?? 20}`))
     return {
       counts: r.counts, ...(status === 'recent' ? { windowHours: hours ?? 24 } : {}), rule: 'Kyte lists graduated, ETH-paired Pons tokens after review; options on them must expire within 24 hours.',
       tokens: r.tokens.map((t) => ({ symbol: clean(t.symbol, 16), name: clean(t.name), address: t.address, graduated: t.graduated, graduatedAt: t.graduatedAt, progress: t.progress, pairedEth: t.pairedEth, priceEth: t.priceEth, priceUsd: t.priceUsd, mcapUsd: t.mcapUsd, change24h: t.change24h, liquidityUsd: t.liquidityUsd, onKyte: t.kyte, pons: t.ponsUrl, kyteMarket: t.kyte === 'listed' ? `${SITE}/market?token=${encodeURIComponent(t.symbol)}` : undefined })),
