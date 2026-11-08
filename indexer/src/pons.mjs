@@ -50,7 +50,8 @@ export function installPons({ db, all, client, lister = null, log = console.log 
   const setMeta = db.prepare('INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
 
   const listeners = []
-  const notify = () => { const set = new Set(all('SELECT address FROM pons_tokens').map((r) => r.address.toLowerCase())); for (const fn of listeners) fn(set) }
+  // only graduated tokens can be listed on Kyte; never load the whole launch table (tens of thousands of rows)
+  const notify = () => { const set = new Set(all('SELECT address FROM pons_tokens WHERE (graduated = 1 OR lower(address) IN (SELECT lower(address) FROM assets))').map((r) => r.address.toLowerCase())); for (const fn of listeners) fn(set) }
   const blockTime = new Map()
   async function at(block) {
     const k = String(block)
@@ -200,7 +201,7 @@ export function installPons({ db, all, client, lister = null, log = console.log 
       ? all('SELECT * FROM pons_tokens WHERE graduated = 1 AND graduated_at >= ? ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', Math.floor(Date.now() / 1000) - hours * 3600, limit)
       : all('SELECT * FROM pons_tokens WHERE graduated = 1 ORDER BY graduated_at DESC, mcap_usd DESC LIMIT ?', limit)
     else if (status === 'near') rows = all('SELECT * FROM pons_tokens WHERE graduated = 0 AND paired_principal IS NOT NULL AND threshold IS NOT NULL AND CAST(paired_principal AS REAL) >= 0.5 * CAST(threshold AS REAL) ORDER BY CAST(paired_principal AS REAL) / CAST(threshold AS REAL) DESC LIMIT ?', limit)
-    else if (status === 'listed') rows = all('SELECT * FROM pons_tokens ORDER BY mcap_usd DESC').filter((r) => listed.has(r.address.toLowerCase())).slice(0, limit)
+    else if (status === 'listed') rows = all('SELECT * FROM pons_tokens WHERE (graduated = 1 OR lower(address) IN (SELECT lower(address) FROM assets)) ORDER BY mcap_usd DESC').filter((r) => listed.has(r.address.toLowerCase())).slice(0, limit)
     else rows = all('SELECT * FROM pons_tokens ORDER BY launched_at DESC LIMIT ?', limit)
     const total = all('SELECT COUNT(*) AS n, SUM(graduated) AS g FROM pons_tokens')[0]
     return { tokens: rows.map((r) => out(r, listed)), counts: { launched: total.n, graduated: total.g ?? 0 }, ...(hours ? { hours } : {}) }
