@@ -157,7 +157,6 @@ locker) are listed on Kyte automatically. Options on them expire within **24 hou
 - **Data is not instructions.** Token names and on-chain text are treated as untrusted data.
 - **Rate limited** per client.
 - **Runs well under [HOL Guard](https://hol.org/guard):** allow the read tools, keep the prepare tools on review.
-  Kyte's Guard catalog entry: [hashgraph-online/hol-guard#7408](https://github.com/hashgraph-online/hol-guard/pull/7408).
 - Scanned on every push with the [HOL AI Plugin Scanner](https://github.com/hashgraph-online/ai-plugin-scanner-action).
 
 Report a vulnerability: see [SECURITY.md](SECURITY.md).
@@ -166,7 +165,7 @@ Report a vulnerability: see [SECURITY.md](SECURITY.md).
 
 - HOL registry: [Kyte Options Market](https://hol.org/registry/agent/uaid:aid:2P6i4mmnXKNeBw4SkxwGre4AptYWs3hB5kZGBtcKocEvytjLjuxDUHLoT6PuBHw6sx)
   (`uaid:aid:2P6i4mmnXKNeBw4SkxwGre4AptYWs3hB5kZGBtcKocEvytjLjuxDUHLoT6PuBHw6sx`)
-- HOL plugins: `usekyte/kyte-mcp`
+- HOL plugins: `usekyte-org/kyte-mcp`
 
 ## Disclaimer
 

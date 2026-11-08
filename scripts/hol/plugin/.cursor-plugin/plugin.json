@@ -8,7 +8,7 @@
   },
   "publisher": "Kyte",
   "homepage": "https://kyte.sh/mcp",
-  "repository": "https://github.com/usekyte/kyte-mcp",
+  "repository": "https://github.com/usekyte-org/kyte-mcp",
   "license": "MIT",
   "logo": "./assets/icon.png",
   "keywords": [

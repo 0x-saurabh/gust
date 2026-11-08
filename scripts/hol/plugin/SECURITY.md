@@ -16,4 +16,4 @@ We aim to acknowledge reports within 2 business days and to fix confirmed issues
 ## Out of scope
 
 The Kyte smart contracts and the kyte.sh web app have their own repositories under
-[github.com/usekyte](https://github.com/usekyte).
+[github.com/usekyte-org](https://github.com/usekyte-org).
