@@ -131,3 +131,47 @@ contract HarmonicHaltGateTest is Test {
         new GatedDesk(address(oracle), 0);
     }
 }
+
+import {KyteHaltGate} from "../src/KyteHaltGate.sol";
+
+/// @notice KyteHaltGate on the same mock oracle: isOpen, requireOpen and the batch read.
+contract KyteHaltGateTest is Test {
+    MockHarmonicOracle oracle;
+    KyteHaltGate gate;
+    address constant NVDA = 0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC;
+    address constant AAPL = 0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9;
+
+    function setUp() public {
+        vm.warp(1_794_000_000);
+        oracle = new MockHarmonicOracle();
+        gate = new KyteHaltGate(address(oracle), 1 days);
+    }
+
+    function test_unpaidIsNotOpenAndSaysWhy() public {
+        oracle.set(NVDA, uint8(IHarmonicOracle.Verdict.Open), uint64(block.timestamp));
+        assertFalse(gate.isOpen(NVDA));
+        vm.expectRevert(abi.encodeWithSelector(HarmonicHaltGate.OracleUnreadable.selector, NVDA));
+        gate.requireOpen(NVDA);
+    }
+
+    function test_paidSeatAnswers() public {
+        oracle.pay(address(gate), uint64(block.timestamp + 30 days));
+        oracle.set(NVDA, uint8(IHarmonicOracle.Verdict.Open), uint64(block.timestamp - 2 hours));
+        oracle.set(AAPL, uint8(IHarmonicOracle.Verdict.Held), uint64(block.timestamp));
+        assertTrue(gate.isOpen(NVDA));
+        assertFalse(gate.isOpen(AAPL));
+        gate.requireOpen(NVDA);
+        vm.expectRevert(abi.encodeWithSelector(HarmonicHaltGate.NotOpen.selector, AAPL, 3));
+        gate.requireOpen(AAPL);
+        address[] memory t = new address[](2);
+        t[0] = NVDA;
+        t[1] = AAPL;
+        (HarmonicHaltGate.GateVerdict[] memory g, uint8[] memory v, uint64[] memory a) = gate.gateVerdicts(t);
+        assertEq(uint8(g[0]), uint8(HarmonicHaltGate.GateVerdict.Open));
+        assertEq(uint8(g[1]), uint8(HarmonicHaltGate.GateVerdict.NotOpen));
+        assertEq(v[0], 5);
+        assertEq(v[1], 3);
+        assertEq(a[0], 2 hours);
+        assertEq(a[1], 0);
+    }
+}

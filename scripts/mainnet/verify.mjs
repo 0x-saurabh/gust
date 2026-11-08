@@ -39,6 +39,8 @@ const targets = [
   ['router', 'src/Router.sol:Router'],
   ['kyteHook', 'src/hooks/KyteHook.sol:KyteHook', hookArgs],
   ['swapAdapter', 'src/adapters/UniswapV4Adapter.sol:UniswapV4Adapter'],
+  ['ponsLister', 'src/PonsLister.sol:PonsLister'],
+  ['harmonicHaltGate', 'src/KyteHaltGate.sol:KyteHaltGate'],
   // Markets v2 (DeployMarketsV2.s.sol)
   ['v2.assetRegistry', 'src/AssetRegistry.sol:AssetRegistry'],
   ['v2.optionNft', 'src/OptionNFT.sol:OptionNFT'],

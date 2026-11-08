@@ -198,7 +198,18 @@ What landed:
   it read NVDA as verdict 3 (held), row 14 hours old, the risk feed session 3 (weekend), and confirmed an unpaid
   contract gets `Unreadable` from the gate rather than a verdict.
 
-Not done, by design: no Kyte contract inherits the gate or reads the risk feed on chain. The two consumers that
+- `contracts/src/KyteHaltGate.sol`: Kyte's own reader of the oracle, inheriting the gate. `isOpen(token)`,
+  `requireOpen(token)`, `gateVerdicts(tokens[])` and the inherited `gateVerdict` and `gateSubscribed`. Immutable, no
+  owner, holds nothing. One paid seat bought for this address serves every Kyte contract and script that asks it.
+  Deploy: `scripts/mainnet/halt-gate.sh` (deployer password once; records `harmonicHaltGate` in the deployments
+  file and verifies on Sourcify). Two more unit tests cover it.
+
+The seat: the gate answers `Unreadable` until `subscribe(gate, months)` is paid on the oracle, 100 USDG a month
+to Harmonic's operations wallet (deployer holds ~2.4 USDG and the ops Safe none as of 8 Nov, so this is a purchase
+decision). Harmonic's `defi_oracle_subscribe_build` MCP tool builds the approve and subscribe transactions.
+
+Not done, by design: no Kyte contract reads the risk feed on chain, and no market contract calls the gate (the live
+markets are immutable; exercise stays ungated on purpose). The two consumers that
 would (an AutopilotVault for stock-token rules, or a stock-token pool hook) do not exist, the risk feed is not
 live-priced, and a contract seat costs 100 USDG a month. When the vault is real: inherit `HarmonicHaltGate`, pay
 `subscribe(vault, months)` from ops, and read `markOf(token, 9)` for the spot with an on-chain ETH/USD feed to turn
