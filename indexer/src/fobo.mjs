@@ -193,14 +193,14 @@ export function installFobo({ db, all, client, lister = null, log = console.log 
       kyte: k ? (k.enabled ? 'listed' : 'disabled') : scheduled.has(r.address.toLowerCase()) ? 'scheduled' : 'unlisted',
       supply: r.supply ? Number(r.supply) / 10 ** (r.decimals || 18) : null,
       links: {
-        fobo: `https://fobo.fun/${r.address.toLowerCase()}`,
+        fobo: `https://fobo.fun/?token=${r.address.toLowerCase()}`,
         dexscreener: r.dex_url || `https://dexscreener.com/robinhood/${r.address.toLowerCase()}`,
         token: `https://robin.etherscan.io/token/${r.address}`,
         hook: `https://robin.etherscan.io/address/${FOBO_HOOK}`,
         creator: `https://robin.etherscan.io/address/${r.creator}`,
         launchTx: `https://robin.etherscan.io/tx/${r.launch_tx}`,
       },
-      foboUrl: `https://fobo.fun/${r.address.toLowerCase()}`,
+      foboUrl: `https://fobo.fun/?token=${r.address.toLowerCase()}`,
     }
   }
 

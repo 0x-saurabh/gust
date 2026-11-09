@@ -105,8 +105,7 @@ The contracts stay oracle-free: the floor rules are UI and agent rules only.
 
 1. Run `scripts/mainnet/fobo-lister.sh` (deployer keystore + Safe owners). Writes `foboLister` to the deployments
    file; commit and push so Render redeploys the keeper. From then on qualifying tokens list themselves.
-2. Confirm the fobo.fun token page URL. The site returns 403 to non-browser clients, so `https://fobo.fun/<address>`
-   is unverified; it is one constant in `indexer/src/fobo.mjs`.
+2. fobo.fun token page URL confirmed as `https://fobo.fun/?token=<address>` (fixed 9 Nov 2026).
 3. Ask FOBO for a partner slot in `FoboRevenue` (referrals credit `tx.origin`, so a frontend cannot earn them) and a
    "Kyte options" link on token pages. Co-post at go-live.
 4. Registry room: `MAX_ASSETS` is 300, 247 listed. The 4.2 ETH bar keeps FOBO listings few (4 today).
