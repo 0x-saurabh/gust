@@ -167,7 +167,8 @@
     "ponsLister": "0x7507A3ca126F4F38c880807fA82431bd33c5590F",
     "harmonicHaltGate": "0x3Ba49951cae0e9EF38839F9080b48bD254e0bc8b",
     "foboLister": "0xb30890A6A803D2d0aD76Dd9f1aB327d3b0DE84e4",
-    "usdgRewards": "0xAd56f0ba0e75c712B9Eb6537e3dEe7c9eA1B2956",
+    "usdgRewards": "0xA6777B8D42FAad0D92fF0C24F391b0F82Fad69fC",
+    "legacyUsdgRewards": "0xAd56f0ba0e75c712B9Eb6537e3dEe7c9eA1B2956",
     "deployBlock": 103214110
   },
   "31337": {
