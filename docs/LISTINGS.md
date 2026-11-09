@@ -7,7 +7,7 @@ Status on 9 Nov 2026. Copy-paste text for the forms that need a human account. L
 |---|---|---|
 | DefiLlama (TVL + staking adapter) | **PR open** | https://github.com/DefiLlama/DefiLlama-Adapters/pull/22099 |
 | Hermes plugin catalog | **PR open** | https://github.com/NousResearch/hermes-agent/pull/151992 |
-| Official MCP Registry (`sh.kyte/kyte`) | see `scripts/mcp-registry/README.md` | https://registry.modelcontextprotocol.io |
+| Official MCP Registry (`sh.kyte/kyte`) | **Published** 9 Nov 2026, v1.0.0 (republish notes in `scripts/mcp-registry/README.md`) | https://registry.modelcontextprotocol.io/v0.1/servers?search=kyte |
 | Glama, PulseMCP, GitHub MCP Registry | Auto-import from the official registry | — |
 | DappRadar | **Needs your account** (steps below) | https://dappradar.com/dashboard (Submit Dapp) |
 | Alchemy Dapp Store | **Needs your account** | https://www.alchemy.com/dapps/submit |
