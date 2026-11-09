@@ -1,5 +1,7 @@
 # Kyte: covered options on Robinhood Chain
 
+[![mcptry](https://mcptry.com/badge/sh.kyte/kyte)](https://mcptry.com/servers/sh.kyte/kyte)
+
 Covered calls, cash-secured puts, $KYTE staking, on-chain fee split and burn proof. A port of Gust (Solana) to
 Robinhood Chain, built from `../SPEC.md`, `../BUILD_PLAN.md` and `../GUST_REVERSE_ENGINEERING.md`.
 Separate codebase from the Kyte rewards app in `../rh-rewards`.
