@@ -9,10 +9,11 @@ import { useEffect, useRef, useState } from 'react'
  */
 type Client = { id: string; name: string; logo: string; angle: number }
 const CLIENTS: Client[] = [
-  { id: 'claude', name: 'Claude', logo: '/brand/clients/claude.svg', angle: -135 },
-  { id: 'chatgpt', name: 'ChatGPT', logo: '/brand/clients/chatgpt.svg', angle: -45 },
-  { id: 'cursor', name: 'Cursor', logo: '/brand/clients/cursor.svg', angle: 45 },
-  { id: 'code', name: 'Claude Code', logo: '/brand/clients/anthropic.svg', angle: 135 },
+  { id: 'claude', name: 'Claude', logo: '/brand/clients/claude.svg', angle: -144 },
+  { id: 'chatgpt', name: 'ChatGPT', logo: '/brand/clients/chatgpt.svg', angle: -72 },
+  { id: 'cursor', name: 'Cursor', logo: '/brand/clients/cursor.svg', angle: 0 },
+  { id: 'hermes', name: 'Hermes', logo: '/brand/clients/hermes.svg', angle: 72 },
+  { id: 'code', name: 'Claude Code', logo: '/brand/clients/anthropic.svg', angle: 144 },
 ]
 type State = { status: 'idle' | 'connecting' | 'ok' | 'fail'; ms?: number; tools?: number }
 
@@ -22,11 +23,11 @@ function pos(angle: number) {
   const a = (angle * Math.PI) / 180
   return { x: CX + Math.cos(a) * R * 1.35, y: CY + Math.sin(a) * R * 0.78 }
 }
-/** Curved thread from a client to the hub, bowing a little so the four do not overlap. */
+/** Curved thread from a client to the hub, bowing a little so the five do not overlap. */
 function thread(c: Client) {
   const p = pos(c.angle)
   const mx = (p.x + CX) / 2, my = (p.y + CY) / 2
-  const bow = c.angle < 0 ? -28 : 28
+  const bow = c.angle === 0 ? 0 : c.angle < 0 ? -28 : 28
   return { d: `M ${p.x} ${p.y} Q ${mx} ${my + bow} ${CX} ${CY}`, p }
 }
 
@@ -51,7 +52,7 @@ export function McpConnections() {
       setSt((s) => ({ ...s, [id]: { status: 'fail' } }))
     }
   }
-  // on mount: connect the four clients one after another, so the threads light up in sequence
+  // on mount: connect the clients one after another, so the threads light up in sequence
   useEffect(() => {
     if (busy.current) return
     busy.current = true
@@ -61,7 +62,7 @@ export function McpConnections() {
   const online = CLIENTS.filter((c) => st[c.id].status === 'ok').length
   return (
     <div className="mcp-net relative select-none">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Kyte MCP server connected to Claude, ChatGPT, Cursor and Claude Code">
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Kyte MCP server connected to Claude, ChatGPT, Cursor, Hermes and Claude Code">
         <defs>
           <radialGradient id="mcp-hub" cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#4dfca9" stopOpacity="0.35" /><stop offset="1" stopColor="#4dfca9" stopOpacity="0" /></radialGradient>
           <linearGradient id="mcp-thread" x1="0" x2="1"><stop offset="0" stopColor="#6eff85" /><stop offset="1" stopColor="#4affec" /></linearGradient>

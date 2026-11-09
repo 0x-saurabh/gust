@@ -34,6 +34,12 @@ function build() {
     { name: 'kyte', version: '1.0.0' },
     { instructions: `Kyte is a non-custodial, fully collateralised options market on Robinhood Chain. These tools read live market data (offers, prices, positions, staking, fee proof) and prepare actions as kyte.sh links the user reviews and signs in their own wallet. Nothing here can send a transaction or see a key. Stock tokens carry a session state (open, held over the weekend, halted, paused, stale); any state but open means the spot is the last print, not live, and rows then carry a warning to pass on. ${DISCLAIMER}` },
   )
+  // one log line per initialize, so traffic can be split by client (Claude, Cursor, Hermes, ...) in the host's logs
+  server.server.oninitialized = () => {
+    const c = server.server.getClientVersion()
+    const safe = (v: unknown, n: number) => String(v ?? 'unknown').replace(/[^\w.\- ]/g, '').slice(0, n)
+    console.log(`mcp initialize client=${safe(c?.name, 40)} version=${safe(c?.version, 20)}`)
+  }
   const prepare = new Set<string>(PREPARE_TOOLS.map((t) => t.name))
   for (const t of ALL_TOOLS) {
     server.registerTool(

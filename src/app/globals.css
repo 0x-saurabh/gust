@@ -521,3 +521,9 @@ p {
 
 /* Agent wallet gate: the DotField canvas draws the dot grid and the pointer glow. */
 .agent-gate { isolation: isolate; }
+
+/* Hermes section on /mcp: terminal cursor and banner glow */
+.hermes-cursor { display: inline-block; width: 0.6em; height: 1.05em; margin-left: 2px; vertical-align: -0.15em; background: var(--color-accent, #4dfca9); animation: hermes-blink 1s steps(1) infinite; }
+@keyframes hermes-blink { 50% { opacity: 0; } }
+.hermes-banner { text-shadow: 0 0 18px rgba(77, 252, 169, 0.35); }
+@media (prefers-reduced-motion: reduce) { .hermes-cursor { animation: none; } }

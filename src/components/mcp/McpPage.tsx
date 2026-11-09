@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Reveal } from '@/components/landing/kit'
 import { PillButton } from '@/components/PillButton'
+import { HermesSection } from '@/components/mcp/HermesSection'
 import { McpConnections } from '@/components/mcp/McpConnections'
 import { Segmented } from '@/components/ui'
 import { PREPARE_TOOLS, READ_TOOLS, SITE } from '@/lib/agent/tools'
@@ -13,12 +14,13 @@ import { BRAND } from '@/lib/config'
 const EASE = [0.22, 1, 0.36, 1] as const
 const URL_ = `${SITE}/api/mcp`
 
-type Client = 'claude' | 'chatgpt' | 'cursor' | 'code'
+type Client = 'claude' | 'chatgpt' | 'cursor' | 'code' | 'hermes'
 const STEPS: Record<Client, { label: string; steps: string[]; snippet?: string }> = {
   claude: { label: 'Claude', steps: ['Open claude.ai, Settings, Connectors', 'Add custom connector', 'Paste the URL below and save', 'Ask Claude anything about Kyte'] },
   chatgpt: { label: 'ChatGPT', steps: ['Settings, Connectors', 'Create a connector', 'Paste the URL below', 'Enable it in a chat'] },
   cursor: { label: 'Cursor', steps: ['Settings, MCP', 'Add new MCP server', 'Use the JSON below', 'Kyte tools appear in chat'], snippet: `{\n  "mcpServers": {\n    "kyte": { "url": "https://kyte.sh/api/mcp" }\n  }\n}` },
   code: { label: 'Claude Code', steps: ['Run the command below once', 'Kyte tools load in every session'], snippet: `claude mcp add --transport http kyte https://kyte.sh/api/mcp` },
+  hermes: { label: 'Hermes', steps: ['Add the block below to ~/.hermes/config.yaml', 'Run /reload-mcp in a session', 'Optional: hermes skills tap add usekyte-org/hermes-kyte', 'Ask from the terminal, Telegram or Discord'], snippet: `mcp_servers:\n  kyte:\n    url: "https://kyte.sh/api/mcp"` },
 }
 
 export function McpPage() {
@@ -56,7 +58,7 @@ export function McpPage() {
             {BRAND.name}, inside <span className="grad-text">any AI app.</span>
           </motion.h1>
           <motion.p initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.2, ease: EASE }} className="mt-6 max-w-xl text-[17px] leading-relaxed text-ink/70 md:text-[19px]">
-            One URL gives Claude, ChatGPT, Cursor and Claude Code live access to Kyte&apos;s markets: offers, prices, positions, staking and fee proof. It can prepare a trade for you. It can never sign one.
+            One URL gives Claude, ChatGPT, Cursor, Claude Code and Hermes Agent live access to Kyte&apos;s markets: offers, prices, positions, staking and fee proof. It can prepare a trade for you. It can never sign one.
           </motion.p>
 
           {/* connector url */}
@@ -143,6 +145,9 @@ export function McpPage() {
           </div>
         </Reveal>
       </section>
+
+      {/* ---- Hermes Agent */}
+      <HermesSection />
 
       {/* ---- HOL Guard */}
       <section className="mx-auto mt-24 max-w-5xl">

@@ -32,7 +32,7 @@ Anyone can connect it, with no account and no keys.
 |---|---|
 | Endpoint | `https://kyte.sh/api/mcp` |
 | Transport | Streamable HTTP, stateless |
-| Tools | 20: 14 read, 6 prepare |
+| Tools | 21: 15 read, 6 prepare |
 | Resources | 6 docs |
 | Prompts | 3 |
 | Safety | Prepare tools return a kyte.sh link; the user signs in their own wallet. The server never signs or sends. |
@@ -50,6 +50,13 @@ Anyone can connect it, with no account and no keys.
   ```json
   { "mcpServers": { "kyte": { "url": "https://kyte.sh/api/mcp" } } }
   ```
+- **Hermes Agent (self-hosted, Telegram/Discord):** add to `~/.hermes/config.yaml`, then `/reload-mcp`:
+  ```yaml
+  mcp_servers:
+    kyte:
+      url: "https://kyte.sh/api/mcp"
+  ```
+  Skills: `hermes skills tap add usekyte-org/hermes-kyte`. Plan and cron recipe in `docs/HERMES.md`.
 
 ### Try it
 
