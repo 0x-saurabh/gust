@@ -12,11 +12,13 @@ Status on 9 Nov 2026. Copy-paste text for the forms that need a human account. L
 | DappRadar | **Needs your account** (steps below) | https://dappradar.com/dashboard (Submit Dapp) |
 | Alchemy Dapp Store | **Needs your account** | https://www.alchemy.com/dapps/submit |
 | CoinGecko ($KYTE) | **Needs your account** | https://www.coingecko.com/en/coins/new |
+| Arkham Intelligence (entity labels) | **Submitted 9 Nov 2026**, pending; details in `docs/LISTINGS_ARKHAM_TOKEN_TERMINAL.md` | platform.arkhamintelligence.com |
+| Token Terminal (fees / revenue metrics) | **Submitted 9 Nov 2026**, pending; depends on the DefiLlama PR; details in `docs/LISTINGS_ARKHAM_TOKEN_TERMINAL.md` | tokenterminal.com |
 | Smithery, mcp.so | Optional, free queue | smithery.ai, mcp.so |
 | Entropy Advisors Robinhood dashboard | Email | arbdata.com/ecosystems/robinhood |
 | Robinhood chain developers | Email intro | chain-developers-group@robinhood.com |
 
-Already live: ERC-8004 #22541 (8004scan), HOL registry, HEY Research, Dune, GitBook, Blockscout verified contracts, npm `kyte-oak-recipes`, GitHub tap `usekyte-org/hermes-kyte`.
+Already live: ERC-8004 #22541 (8004scan), HOL registry, HEY Research (Verified Builder; record and next steps in `docs/HEY_RESEARCH.md`), Dune, GitBook, Blockscout verified contracts, npm `kyte-oak-recipes`, GitHub tap `usekyte-org/hermes-kyte`.
 
 ## Copy text
 
