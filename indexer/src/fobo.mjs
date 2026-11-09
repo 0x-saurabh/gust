@@ -55,6 +55,9 @@ export function installFobo({ db, all, client, lister = null, log = console.log 
     CREATE INDEX IF NOT EXISTS fobo_tokens_launched ON fobo_tokens(launched_at DESC);
     CREATE INDEX IF NOT EXISTS fobo_tokens_checked ON fobo_tokens(quote, checked_at);
   `)
+  const tryExec = (sql) => { try { db.exec(sql) } catch {} }
+  for (const col of ['logo TEXT', 'description TEXT', 'socials TEXT', 'meta_fetched_at INTEGER']) tryExec(`ALTER TABLE fobo_tokens ADD COLUMN ${col}`)
+  const setMetaData = db.prepare('UPDATE fobo_tokens SET logo = COALESCE(?, logo), description = COALESCE(?, description), socials = COALESCE(?, socials), meta_fetched_at = ? WHERE address = ?')
   const ins = db.prepare(`INSERT OR IGNORE INTO fobo_tokens(address, symbol, name, decimals, supply, metadata_uri, creator, quote, pool_id, tick_start, launch_block, launched_at, launch_tx)
     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`)
   const setFloor = db.prepare('UPDATE fobo_tokens SET floor_tick = ?, floor_sqrt = ?, floor_eth = ?, backing_eth = ?, circulating = ?, eligible = ?, eligible_at = CASE WHEN ? = 1 THEN COALESCE(eligible_at, ?) ELSE eligible_at END, checked_at = ? WHERE address = ?')
@@ -145,6 +148,43 @@ export function installFobo({ db, all, client, lister = null, log = console.log 
     }
   }
 
+  // ---- metadata: the launch's metadataURI (https://images.fobo.fun/tokens/meta-<id>.json: { name, symbol, image, links })
+  // for recent, eligible and listed tokens; $FOBO's own URI is a placeholder (ipfs://fobo), so DexScreener's token
+  // image and links fill the gaps below. Only https URLs are fetched, 32 KB cap, images must be https too.
+  const META_HOSTS = /^https:\/\/(images\.fobo\.fun|fobo\.fun)\//
+  const httpsUrl = (u) => (typeof u === 'string' && /^https:\/\/[^\s"']+$/.test(u) ? u.slice(0, 300) : null)
+  const linksOf = (links) => {
+    const out = []
+    const push = (type, url) => { const u = httpsUrl(url); if (u) out.push({ type: String(type).toLowerCase().replace(/^x$/, 'twitter').slice(0, 20), url: u }) }
+    if (Array.isArray(links)) for (const l of links) push(l?.type ?? l?.label ?? 'website', l?.url ?? l)
+    else if (links && typeof links === 'object') for (const [k, v] of Object.entries(links)) push(k, v)
+    return out.slice(0, 8)
+  }
+  async function fetchMeta(r, now) {
+    let logo = null, description = null, socials = null
+    if (META_HOSTS.test(r.metadata_uri ?? '')) {
+      try {
+        const res = await fetch(r.metadata_uri, { signal: AbortSignal.timeout(8_000), headers: { accept: 'application/json' } })
+        if (res.ok) {
+          const text = (await res.text()).slice(0, 32 * 1024)
+          const j = JSON.parse(text)
+          logo = httpsUrl(j.image ?? j.logo ?? j.imageUrl)
+          description = typeof j.description === 'string' ? j.description.replace(/[^\x20-\x7E\u00A0-\uFFFF\n]/g, '').slice(0, 600) : null
+          const ls = linksOf(j.links ?? j.socials)
+          socials = ls.length ? JSON.stringify(ls) : null
+        }
+      } catch (e) { log(`[fobo] metadata ${r.symbol}: ${e.message}`) }
+    }
+    setMetaData.run(logo, description, socials, now, r.address)
+  }
+  async function pollMeta() {
+    const now = Math.floor(Date.now() / 1000)
+    // listed and eligible tokens first (they are on the site), then the newest launches
+    const rows = all('SELECT address, symbol, metadata_uri FROM fobo_tokens WHERE meta_fetched_at IS NULL AND (eligible = 1 OR launched_at >= ? OR lower(address) IN (SELECT lower(address) FROM assets)) ORDER BY (lower(address) IN (SELECT lower(address) FROM assets)) DESC, eligible DESC, launched_at DESC LIMIT 100', now - WINDOW_H * 3600)
+    for (let i = 0; i < rows.length; i += 6) await Promise.all(rows.slice(i, i + 6).map((r) => fetchMeta(r, now)))
+    return rows.length
+  }
+
   // ---- quotes: DexScreener (it indexes the FoboHook pools), 30 addresses per call
   async function quote() {
     await refreshScheduled().catch((e) => log(`[fobo] lister: ${e.shortMessage ?? e.message}`))
@@ -165,9 +205,19 @@ export function installFobo({ db, all, client, lister = null, log = console.log 
         if (!best.has(addr) || liq > best.get(addr).liq) best.set(addr, { liq, p })
       }
       for (const { p, liq } of best.values()) {
-        setQuote.run(Number(p.priceUsd ?? 0), Number(p.priceNative ?? 0), Number(p.marketCap ?? p.fdv ?? 0), Number(p.priceChange?.h24 ?? 0), liq, Number(p.volume?.h24 ?? 0), now, typeof p.url === 'string' ? p.url.slice(0, 200) : null, getAddress(p.baseToken.address))
+        const addr = getAddress(p.baseToken.address)
+        setQuote.run(Number(p.priceUsd ?? 0), Number(p.priceNative ?? 0), Number(p.marketCap ?? p.fdv ?? 0), Number(p.priceChange?.h24 ?? 0), liq, Number(p.volume?.h24 ?? 0), now, typeof p.url === 'string' ? p.url.slice(0, 200) : null, addr)
+        // fills whatever the launch metadata did not have (logo, links); never overwrites it (COALESCE keeps existing)
+        const dsLinks = [...(p.info?.websites ?? []).map((w) => ({ type: 'website', url: w.url })), ...(p.info?.socials ?? []).map((s) => ({ type: s.type, url: s.url }))]
+        const ls = linksOf(dsLinks)
+        if (httpsUrl(p.info?.imageUrl) || ls.length) db.prepare('UPDATE fobo_tokens SET logo = COALESCE(logo, ?), socials = COALESCE(socials, ?) WHERE address = ?').run(httpsUrl(p.info?.imageUrl), ls.length ? JSON.stringify(ls) : null, addr)
       }
     }
+  }
+
+  /** Logo URL (https) of a FOBO token, for the site's token logos. */
+  function logoFor(address) {
+    return all('SELECT logo FROM fobo_tokens WHERE lower(address) = ?', String(address).toLowerCase())[0]?.logo || null
   }
 
   /** The floor of a FOBO token Kyte knows (for /prices, the market and sell pages): ETH per token and what it backs. */
@@ -183,6 +233,7 @@ export function installFobo({ db, all, client, lister = null, log = console.log 
     const now = Math.floor(Date.now() / 1000)
     return {
       address: r.address, symbol: r.symbol, name: r.name, decimals: r.decimals, metadataUri: r.metadata_uri || null,
+      logo: r.logo || null, description: r.description || null, socials: (() => { try { return JSON.parse(r.socials || '[]') } catch { return [] } })(),
       creator: r.creator, quote: r.quote, quoteIsEth, poolId: r.pool_id,
       launchedAt: r.launched_at, launchTx: r.launch_tx, ageSec: Math.max(0, now - r.launched_at),
       floorEth: r.floor_eth, floorBackingEth: r.backing_eth, circulating: r.circulating ? Number(r.circulating) / 10 ** (r.decimals || 18) : null,
@@ -233,10 +284,15 @@ export function installFobo({ db, all, client, lister = null, log = console.log 
       try { await quote() } catch (e) { log(`[fobo] quote: ${e.message}`) }
       setTimeout(quoteLoop, QUOTE_MS).unref?.()
     }
+    const metaLoop = async () => {
+      try { await pollMeta() } catch (e) { log(`[fobo] metadata: ${e.message}`) }
+      setTimeout(metaLoop, 120_000).unref?.()
+    }
     setTimeout(launchLoop, 7_000).unref?.()
     setTimeout(floorLoop, 25_000).unref?.()
     setTimeout(quoteLoop, 45_000).unref?.()
+    setTimeout(metaLoop, 35_000).unref?.()
   }
 
-  return { route, start, syncLaunches, pollFloors, quote, floorFor, onTokens(fn) { listeners.push(fn); notify() } }
+  return { route, start, syncLaunches, pollFloors, pollMeta, quote, floorFor, logoFor, onTokens(fn) { listeners.push(fn); notify() } }
 }

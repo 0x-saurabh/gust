@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { contracts } from '@/lib/chains'
 import rh from '@/lib/rh-mainnet-tokens.json'
+import { indexedLogo } from '@/lib/token-logos'
 
 // Crypto icons from the mainnet token snapshot (by address), plus a few listed tokens it has no icon for.
 const BY_ADDRESS = new Map(rh.tokens.filter((t) => t.icon).map((t) => [t.address.toLowerCase(), t.icon as string]))
@@ -13,11 +14,11 @@ const BY_SYMBOL: Record<string, string> = {
 }
 const STOCK = /Robinhood Token/i
 
-/** Logo URL for a listed token: crypto icon, else the company logo for a Robinhood Stock Token, else none. */
+/** Logo URL for a listed token: crypto icon, the launchpad's logo from the indexer, else the company logo for a Robinhood Stock Token, else none. */
 export function logoUrl(t: { symbol: string; name?: string; address?: string }): string | undefined {
   // The protocol token, whatever it is called on chain: the Kyte mark (so a new $KYTE shows its logo on day one).
   if (t.address && contracts.kyteToken && t.address.toLowerCase() === contracts.kyteToken.toLowerCase()) return '/brand/kyte-mark.png'
-  const known = (t.address && BY_ADDRESS.get(t.address.toLowerCase())) || BY_SYMBOL[t.symbol]
+  const known = (t.address && BY_ADDRESS.get(t.address.toLowerCase())) || BY_SYMBOL[t.symbol] || indexedLogo(t.address)
   if (known) return known
   // Only Robinhood Stock Tokens are looked up by ticker: a crypto symbol (LIT, TI…) can collide with a real ticker.
   if (t.name && STOCK.test(t.name)) return `https://financialmodelingprep.com/image-stock/${encodeURIComponent(t.symbol)}.png`

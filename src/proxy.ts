@@ -36,7 +36,7 @@ const CONNECT = [
 // Remote images the landing page uses: token logos (CoinGecko). Option NFT art is drawn inline, no remote host.
 // Images can't run code, so allowing these exact hosts doesn't weaken the script policy.
 // financialmodelingprep.com: company logos for the Robinhood Stock Tokens (TokenLogo).
-const IMAGES = ['https://assets.coingecko.com', 'https://financialmodelingprep.com']
+const IMAGES = ['https://assets.coingecko.com', 'https://financialmodelingprep.com', 'https://images.fobo.fun', 'https://cdn.dexscreener.com']
 
 const FRAMES = ['https://auth.privy.io', 'https://verify.walletconnect.com', 'https://verify.walletconnect.org', 'https://challenges.cloudflare.com']
 

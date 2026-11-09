@@ -2,6 +2,7 @@
 
 // One data layer for every page. Order of preference: indexer API (NEXT_PUBLIC_INDEXER_URL) → direct chain
 // reads (events + view calls) → demo data (NEXT_PUBLIC_DEMO=1 or no contracts deployed).
+import { registerTokenLogos } from '@/lib/token-logos'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatUnits, parseAbiItem, type Address, type PublicClient } from 'viem'
 import { useAccount, usePublicClient } from 'wagmi'
@@ -26,6 +27,8 @@ export type Asset = {
   maxDurationSec?: number
   /** FOBO tokens: the floor's worst-case price in ETH per token. A put struck at or below it can never finish in the money. */
   floorEth?: number | null
+  /** Launchpad tokens: the launch's logo (https), from the indexer. */
+  logo?: string | null
   cap: bigint
   minStrike: bigint
   spotEth: number // display only (demo hint or 0 when unknown)
@@ -142,7 +145,7 @@ const hint = (symbol: string, name = '') => HINTS[symbol] ?? { spotEth: 0, vol: 
 // dropped, so pickers hide them (they list enabled assets only) while old positions still find their token.
 const HIDDEN = /Ondo Tokenized/i
 
-type ApiAsset = { address: Address; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | 'fobo' | null; maxDurationSec?: number }
+type ApiAsset = { address: Address; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | 'fobo' | null; maxDurationSec?: number; logo?: string | null }
 
 async function assetsFromChain(client: PublicClient): Promise<Asset[]> {
   const registry = contracts.assetRegistry!
@@ -185,6 +188,7 @@ export function useAssets() {
         } catch {}
       }
       for (const a of list) if (HIDDEN.test(a.name)) a.enabled = a.putsEnabled = false
+      registerTokenLogos(list)
       return list
     },
     staleTime: 10_000,

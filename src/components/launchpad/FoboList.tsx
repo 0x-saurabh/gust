@@ -12,6 +12,7 @@ import { compact, num, shortAddr } from '@/lib/format'
 export type FoboTab = 'eligible' | 'near' | 'recent' | 'listed'
 export type FoboToken = {
   address: string; symbol: string; name: string; decimals: number; creator: string; quote: string; quoteIsEth: boolean; poolId: string
+  logo: string | null; description: string | null; socials: Array<{ type: string; url: string }>
   launchedAt: number; launchTx: string; ageSec: number
   floorEth: number | null; floorBackingEth: number | null; circulating: number | null; floorVsPrice: number | null
   progress: number | null; barEth: number; minAgeSec: number; eligible: boolean; eligibleAt: number | null
@@ -25,6 +26,13 @@ const ago = (s: number) => (s < 3600 ? `${Math.round(s / 60)}m` : s < 86400 ? `$
 const when = (t: number | null) => (t ? new Date(t * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—')
 const ethp = (n: number | null) => (n == null || !Number.isFinite(n) || n === 0 ? '—' : n >= 0.001 ? `${num(n, 5)} ETH` : `${n.toPrecision(3)} ETH`)
 const usd = (n: number | null) => (n == null || !Number.isFinite(n) || n === 0 ? '—' : n >= 1000 ? `$${compact(n)}` : n >= 1 ? `$${num(n, 2)}` : `$${n.toPrecision(3)}`)
+const SOCIAL: Record<string, string> = { twitter: 'X', x: 'X', telegram: 'Telegram', discord: 'Discord', github: 'GitHub', website: 'Website' }
+function Logo({ t }: { t: FoboToken }) {
+  const [broken, setBroken] = useState(false)
+  if (!t.logo || broken) return <TokenLogo symbol={t.symbol} name={t.name} address={t.address} size={40} />
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={t.logo} alt="" width={40} height={40} loading="lazy" onError={() => setBroken(true)} className="h-10 w-10 shrink-0 rounded-full border border-white/10 object-cover" />
+}
 function CopyAddr({ value }: { value: string }) {
   const [done, setDone] = useState(false)
   return (
@@ -65,7 +73,7 @@ export function FoboList() {
           {tokens.map((t) => (
             <li key={t.address} className="card flex flex-col gap-4 p-5">
               <div className="flex items-start gap-3">
-                <TokenLogo symbol={t.symbol} name={t.name} address={t.address} size={40} />
+                <Logo t={t} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-base font-medium text-ink">{t.symbol}</span>
@@ -80,6 +88,8 @@ export function FoboList() {
                   </div>
                 </div>
               </div>
+
+              {t.description && <p className="line-clamp-2 text-xs text-muted">{t.description}</p>}
 
               {t.quoteIsEth && t.progress != null && (
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]" title={`Floor backs ${num(t.floorBackingEth ?? 0, 2)} of ${bar} ETH`}>
@@ -109,6 +119,7 @@ export function FoboList() {
                 <a href={t.links.fobo} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-ink">FOBO <ArrowUpRight size={11} /></a>
                 <a href={t.links.dexscreener} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-ink">DexScreener <ArrowUpRight size={11} /></a>
                 <a href={t.links.token} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-ink">Explorer <ArrowUpRight size={11} /></a>
+                {t.socials.map((s) => <a key={s.url} href={s.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-ink">{SOCIAL[s.type] ?? s.type} <ArrowUpRight size={11} /></a>)}
               </div>
 
               <div className="mt-auto flex items-center gap-2">

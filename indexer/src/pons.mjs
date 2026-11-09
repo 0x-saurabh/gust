@@ -296,5 +296,11 @@ export function installPons({ db, all, client, lister = null, log = console.log 
     setTimeout(quoteLoop, 40_000).unref?.()
   }
 
-  return { route, start, syncLaunches, pollGraduation, quote, onTokens(fn) { listeners.push(fn); notify() } }
+  /** Logo URL of a Pons token (served through the site's /api/pons-logo proxy for ipfs:// logos). */
+  function logoFor(address) {
+    const r = all('SELECT logo FROM pons_tokens WHERE lower(address) = ?', String(address).toLowerCase())[0]
+    return r ? logoUrl(r.logo) : null
+  }
+
+  return { route, start, syncLaunches, pollGraduation, quote, logoFor, onTokens(fn) { listeners.push(fn); notify() } }
 }

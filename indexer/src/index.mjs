@@ -527,6 +527,8 @@ const routes = {
   '/assets': async () => all('SELECT * FROM assets ORDER BY symbol').map((a) => ({
     address: a.address, symbol: a.symbol, name: a.name, decimals: a.decimals, enabled: !!a.enabled, putsEnabled: !!a.puts_enabled,
     cap: a.cap, minStrike: a.min_strike, ...assetRule(a.address), session: sessionOf(a.address, a.symbol),
+    // launchpad tokens carry their own logo (FOBO metadata or DexScreener; Pons: the token's ipfs logo via the site proxy)
+    logo: fobo?.logoFor(a.address) ?? pons?.logoFor(a.address) ?? null,
   })),
   '/offers': async (u) => {
     const status = oneOf(u.searchParams.get('status'), ['open', 'filled', 'exercised', 'expired', 'cancelled', 'all'], 'open')
