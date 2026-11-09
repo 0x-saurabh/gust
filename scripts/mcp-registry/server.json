@@ -4,11 +4,20 @@
   "title": "Kyte",
   "description": "Options on Robinhood Chain: live offers, prices, positions, staking; prepares trades you sign.",
   "websiteUrl": "https://kyte.sh/mcp",
+  "icons": [
+    {
+      "src": "https://kyte.sh/brand/kyte-mark.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "256x256"
+      ]
+    }
+  ],
   "repository": {
     "url": "https://github.com/usekyte-org/kyte-mcp",
     "source": "github"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "remotes": [
     {
       "type": "streamable-http",
