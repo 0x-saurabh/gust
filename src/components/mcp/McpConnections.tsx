@@ -9,11 +9,12 @@ import { useEffect, useRef, useState } from 'react'
  */
 type Client = { id: string; name: string; logo: string; angle: number }
 const CLIENTS: Client[] = [
-  { id: 'claude', name: 'Claude', logo: '/brand/clients/claude.svg', angle: -144 },
-  { id: 'chatgpt', name: 'ChatGPT', logo: '/brand/clients/chatgpt.svg', angle: -72 },
-  { id: 'cursor', name: 'Cursor', logo: '/brand/clients/cursor.svg', angle: 0 },
-  { id: 'hermes', name: 'Hermes', logo: '/brand/clients/hermes.svg', angle: 72 },
-  { id: 'code', name: 'Claude Code', logo: '/brand/clients/anthropic.svg', angle: 144 },
+  // three across the top, two at the bottom corners: the hub label sits in the free space below the hub
+  { id: 'claude', name: 'Claude', logo: '/brand/clients/claude.svg', angle: -150 },
+  { id: 'chatgpt', name: 'ChatGPT', logo: '/brand/clients/chatgpt.svg', angle: -90 },
+  { id: 'cursor', name: 'Cursor', logo: '/brand/clients/cursor.svg', angle: -30 },
+  { id: 'hermes', name: 'Hermes', logo: '/brand/clients/hermes.svg', angle: 30 },
+  { id: 'code', name: 'Claude Code', logo: '/brand/clients/anthropic.svg', angle: 150 },
 ]
 type State = { status: 'idle' | 'connecting' | 'ok' | 'fail'; ms?: number; tools?: number }
 
@@ -21,14 +22,25 @@ const W = 520, H = 400, CX = W / 2, CY = H / 2, R = 150
 
 function pos(angle: number) {
   const a = (angle * Math.PI) / 180
-  return { x: CX + Math.cos(a) * R * 1.35, y: CY + Math.sin(a) * R * 0.78 }
+  return { x: CX + Math.cos(a) * R * 1.3, y: CY + Math.sin(a) * R * 0.98 }
 }
-/** Curved thread from a client to the hub, bowing a little so the five do not overlap. */
+/**
+ * Curved thread from a client to the hub. It starts outside the client's icon-plus-label block (28px above the icon
+ * centre, 44px to each side, 66px below where the two text lines sit) so no thread runs through a label, and it
+ * bows a little away from the centre so neighbouring threads stay apart.
+ */
 function thread(c: Client) {
   const p = pos(c.angle)
-  const mx = (p.x + CX) / 2, my = (p.y + CY) / 2
-  const bow = c.angle === 0 ? 0 : c.angle < 0 ? -28 : 28
-  return { d: `M ${p.x} ${p.y} Q ${mx} ${my + bow} ${CX} ${CY}`, p }
+  const dx = CX - p.x, dy = CY - p.y
+  const len = Math.hypot(dx, dy) || 1
+  const ux = dx / len, uy = dy / len
+  const kx = Math.abs(ux) > 1e-6 ? 44 / Math.abs(ux) : Infinity
+  const ky = Math.abs(uy) > 1e-6 ? (uy > 0 ? 66 : 28) / Math.abs(uy) : Infinity
+  const k = Math.min(kx, ky)
+  const sx = p.x + ux * k, sy = p.y + uy * k
+  const mx = (sx + CX) / 2, my = (sy + CY) / 2
+  const bow = c.angle === -90 ? 0 : c.angle < 0 ? -22 : 22
+  return { d: `M ${sx} ${sy} Q ${mx} ${my + bow} ${CX} ${CY}`, p }
 }
 
 async function handshake(): Promise<{ ok: boolean; ms: number; tools: number }> {
@@ -119,7 +131,7 @@ export function McpConnections() {
               <img src={c.logo} alt="" width={26} height={26} className="size-[26px] opacity-90" />
             </span>
             <span className="text-[11px] font-medium text-ink/85">{c.name}</span>
-            <span className={`mono text-[10px] ${s.status === 'ok' ? 'text-accent' : s.status === 'fail' ? 'text-danger' : 'text-muted'}`}>
+            <span className={`mono whitespace-nowrap text-[10px] ${s.status === 'ok' ? 'text-accent' : s.status === 'fail' ? 'text-danger' : 'text-muted'}`}>
               {s.status === 'idle' ? 'standby' : s.status === 'connecting' ? 'handshake…' : s.status === 'ok' ? `${s.tools} tools · ${s.ms} ms` : 'unreachable'}
             </span>
           </button>
