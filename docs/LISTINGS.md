@@ -5,20 +5,23 @@ Status on 9 Nov 2026. Copy-paste text for the forms that need a human account. L
 
 | Where | Status | Link |
 |---|---|---|
-| DefiLlama (TVL + staking adapter) | **PR open** | https://github.com/DefiLlama/DefiLlama-Adapters/pull/22099 |
+| DefiLlama (TVL + staking adapter) | **Merged 9 Nov 2026** (PR 22099); listing appears once DefiLlama's next build runs | https://defillama.com/protocol/kyte |
+| DefiLlama fees + revenue adapter | **PR open**, CI green (dimension-adapters) | https://github.com/DefiLlama/dimension-adapters/pull/10800 |
 | Hermes plugin catalog | **PR open** | https://github.com/NousResearch/hermes-agent/pull/151992 |
-| Official MCP Registry (`sh.kyte/kyte`) | **Published** 9 Nov 2026, v1.0.0 (republish notes in `scripts/mcp-registry/README.md`) | https://registry.modelcontextprotocol.io/v0.1/servers?search=kyte |
+| Official MCP Registry (`sh.kyte/kyte`) | **Published** 9 Nov 2026, v1.0.1 with icon (republish notes in `scripts/mcp-registry/README.md`) | https://registry.modelcontextprotocol.io/v0.1/servers?search=kyte |
+| mcptry.com (`sh.kyte/kyte`) | **Claimed 9 Nov 2026**: domain verified via DNS TXT and `/.well-known/mcptry-verify.txt`, downtime alerts to contact@kyte.sh, README badge in both repos | https://mcptry.com/servers/sh.kyte/kyte |
 | Glama, PulseMCP, GitHub MCP Registry | Auto-import from the official registry | — |
-| DappRadar | **Needs your account** (steps below) | https://dappradar.com/dashboard (Submit Dapp) |
+| DappRadar | **Not possible**: DappRadar shut down in Nov 2025; the current dappradar.com is a relaunched aggregator fed by CoinGecko and DefiLlama with no self-submission, so the DefiLlama and CoinGecko listings cover it | — |
+| Zapper | **Not possible**: shut down 3 Aug 2026 (app and API); Zerion is the suggested replacement (DeFi SDK integration) | https://zerion.io |
 | Alchemy Dapp Store | **Needs your account** | https://www.alchemy.com/dapps/submit |
 | CoinGecko ($KYTE) | **Needs your account** | https://www.coingecko.com/en/coins/new |
-| Arkham Intelligence (entity labels) | **Submitted 9 Nov 2026**, pending; details in `docs/LISTINGS_ARKHAM_TOKEN_TERMINAL.md` | platform.arkhamintelligence.com |
+| Arkham Intelligence | **Token page live** (arkm.com/explorer/token/kyte, see `docs/ARKHAM.md`); entity labels **submitted 9 Nov 2026**, pending; details in `docs/LISTINGS_ARKHAM_TOKEN_TERMINAL.md` | https://arkm.com/explorer/token/kyte |
 | Token Terminal (fees / revenue metrics) | **Submitted 9 Nov 2026**, pending; depends on the DefiLlama PR; details in `docs/LISTINGS_ARKHAM_TOKEN_TERMINAL.md` | tokenterminal.com |
 | Smithery, mcp.so | Optional, free queue | smithery.ai, mcp.so |
 | Entropy Advisors Robinhood dashboard | Email | arbdata.com/ecosystems/robinhood |
 | Robinhood chain developers | Email intro | chain-developers-group@robinhood.com |
 
-Already live: ERC-8004 #22541 (8004scan), HOL registry, HEY Research (Verified Builder; record and next steps in `docs/HEY_RESEARCH.md`), Dune, GitBook, Blockscout verified contracts, npm `kyte-oak-recipes`, GitHub tap `usekyte-org/hermes-kyte`.
+Already live: ERC-8004 #22541 (8004scan), HOL registry, HEY Research (Verified Builder; record and next steps in `docs/HEY_RESEARCH.md`), Arkham token page (`docs/ARKHAM.md`), Dune, GitBook, Blockscout verified contracts, npm `kyte-oak-recipes`, GitHub tap `usekyte-org/hermes-kyte`.
 
 ## Copy text
 
