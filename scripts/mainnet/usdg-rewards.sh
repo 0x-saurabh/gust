@@ -10,7 +10,8 @@ DEP=contracts/deployments/4663.json
 j() { node -e "console.log(require('./$DEP')$1 || '')"; }
 export TIMELOCK=$(j .timelock) GUARDIAN=$(j .guardian)
 export USDG="${USDG:-0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168}"
-export PUBLISHER="${PUBLISHER:-$(j .keeper)}"
+# The live keeper wallet (Render kyte-keeper-v2), not deployments.keeper (the deploy-time key, unused).
+export PUBLISHER="${PUBLISHER:-0x377E8Ac104351173A1009Eb6bdCd9966174bBd4E}"
 export CLAIM_WINDOW="${CLAIM_WINDOW:-7776000}"
 [ -n "$PUBLISHER" ] || { echo "PUBLISHER (the keeper wallet) is required"; exit 1; }
 if [ -n "$(j .usdgRewards)" ]; then echo "usdgRewards already deployed at $(j .usdgRewards)"; exit 0; fi
