@@ -34,7 +34,7 @@ function NavLink({ href, children, ...rest }: { href: string; children: ReactNod
   return <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>{children}</a>
 }
 
-/** Floating pill bar (B7): translucent, blurred, off the top edge. Below lg the links live in a full-height, scrollable panel. */
+/** Floating pill bar (B7): translucent, blurred, off the top edge. The logo always links home. Below xl the links live in a full-height, scrollable panel; from xl the row shows every link and scrolls sideways rather than squeezing the logo or the wallet button. */
 export function Nav() {
   const path = usePathname()
   const [open, setOpen] = useState(false)
@@ -47,17 +47,17 @@ export function Nav() {
   return (
     <>
       <header className="sticky top-4 z-20 px-4">
-        <nav aria-label="Main" className="glass mx-auto flex h-12 w-full max-w-5xl items-center gap-4 rounded-full pl-2 pr-2">
-          <Link href="/" aria-label={`${BRAND.name} home`} className="flex items-center gap-2 pl-2 text-sm font-semibold">
+        <nav aria-label="Main" className="glass mx-auto flex h-12 w-full max-w-6xl items-center gap-3 rounded-full pl-2 pr-2">
+          <Link href="/" aria-label={`${BRAND.name} home`} className="flex shrink-0 items-center gap-2 pl-2 pr-1 text-sm font-semibold">
             <Logo size={20} />
             {isDevnet && <span className="ml-1 rounded-full border border-accent/30 px-2 py-0.5 font-mono text-xs uppercase tracking-wider text-accent">devnet</span>}
           </Link>
-          <div className="hidden flex-1 items-center justify-center gap-1 lg:flex">
+          <div className="no-scrollbar hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-x-auto xl:flex">
             {LINKS.map((l) => {
               const active = path === l.href
               return (
                 // Same hover as the footer links: the label rolls up and a fresh copy rolls in from below.
-                <NavLink key={l.href} href={l.href} aria-current={active ? 'page' : undefined} className={`lnk-nav relative rounded-full px-3 py-1 text-sm transition-colors duration-300 ${active ? 'text-ink' : 'text-muted hover:text-ink'}`}>
+                <NavLink key={l.href} href={l.href} aria-current={active ? 'page' : undefined} className={`lnk-nav relative shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[13px] transition-colors duration-300 2xl:px-3 2xl:text-sm ${active ? 'text-ink' : 'text-muted hover:text-ink'}`}>
                   {active && <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-white/[0.08]" transition={{ type: 'spring', stiffness: 300, damping: 28 }} />}
                   <span className="link-roll relative">
                     <span className="link-roll-text">{l.label}</span>
@@ -67,15 +67,15 @@ export function Nav() {
               )
             })}
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <span className="hidden lg:inline-flex"><Faucet /></span>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <span className="hidden xl:inline-flex"><Faucet /></span>
             <ConnectButton />
             <button
               type="button"
               aria-label={open ? 'Close menu' : 'Open menu'}
               aria-expanded={open}
               onClick={() => setOpen((o) => !o)}
-              className="relative flex size-8 items-center justify-center rounded-full lg:hidden"
+              className="relative flex size-8 items-center justify-center rounded-full xl:hidden"
             >
               <motion.span className="absolute h-px w-4 bg-ink" animate={{ rotate: open ? 45 : 0, y: open ? 0 : -3 }} transition={{ duration: 0.5, ease: EASE }} />
               <motion.span className="absolute h-px w-4 bg-ink" animate={{ rotate: open ? -45 : 0, y: open ? 0 : 3 }} transition={{ duration: 0.5, ease: EASE }} />
@@ -92,7 +92,7 @@ export function Nav() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: EASE }}
-            className="fixed inset-0 z-10 overflow-y-auto overscroll-contain bg-bg/95 pb-[max(2rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-xl lg:hidden"
+            className="fixed inset-0 z-10 overflow-y-auto overscroll-contain bg-bg/95 pb-[max(2rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-xl xl:hidden"
           >
             <ul className="mx-auto max-w-5xl px-6 sm:grid sm:grid-cols-2 sm:gap-x-10">
               {LINKS.map((l, i) => (
