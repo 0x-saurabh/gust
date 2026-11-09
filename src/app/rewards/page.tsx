@@ -104,7 +104,7 @@ export default function RewardsPage() {
               <li><span className="text-ink">Write an option</span> that fills: the same points as its buyer.</li>
               <li><span className="text-ink">Write a cash-secured put on a stock token</span>: 1.5× for the writer.</li>
               <li><span className="text-ink">Keep a position open</span> through an epoch end: 0.2× its fee, to both sides, every epoch.</li>
-              <li>The pool splits pro rata. Shares below {p ? num(p.rules.minClaimUsdg, 2) : '0.01'} USDG are not paid. Claims stay open {deployed ? '7 days' : 'for a fixed window'} after a root is published; what is not claimed by then returns to the Kyte treasury.</li>
+              <li>The pool splits pro rata. Shares below {p ? num(p.rules.minClaimUsdg, 2) : '0.01'} USDG are not paid. Claims stay open {deployed ? '1 day' : 'for a fixed window'} after a root is published; what is not claimed by then returns to the Kyte treasury.</li>
             </ul>
             <p className="mt-3 text-xs text-faint">Points come from fees paid on chain, so there is nothing to farm for free: a wash trade costs the full fee. Every epoch&apos;s tree is public at <code>/api/indexer/rewards/epoch/&lt;n&gt;</code>.</p>
           </div>

@@ -38,7 +38,7 @@ Governed like the rest of the protocol (timelock + guardian):
 - `publish(epoch, root, total)`: the `publisher` (the keeper key, timelock-set) publishes a finished epoch once; it
   reverts unless the contract's unowed balance covers `total`. `outstanding` tracks what is owed.
 - `claim(epoch, account, amount, proof)` / `claimMany`: anyone may submit, the USDG goes to `account`. **Never pausable**
-  (claims are exits). Open for `claimWindow` after publication (7 days by default, timelock-set within 1..365 days).
+  (claims are exits). Open for `claimWindow` after publication (1 day on mainnet via the timelock, deploy default 7 days, range 1..365 days).
 - `revoke(epoch)`: guardian or timelock, only while nobody has claimed; the root can then be published again.
 - `sweep(epoch)`: anyone (the keeper does it), after expiry; the unclaimed part is transferred straight back to the
   `treasury` (the ops Safe). Unclaimed USDG never stays parked in the contract. `setTreasury` is timelock-only.
