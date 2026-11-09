@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { ArrowUpRight, DownloadSimple, FileText, Package } from '@phosphor-icons/react/dist/ssr'
 import Link from 'next/link'
-import { Note, PageHeader, Stat } from '@/components/ui'
+import { PageHeader, Stat } from '@/components/ui'
 import { BRAND } from '@/lib/config'
 
 // The security self-assessment (report/kyte-security-self-assessment.html, published unchanged at /audit/report.html).
@@ -27,7 +27,6 @@ const REPORT = {
   block: '109,974,684',
   chain: 'Robinhood Chain (4663)',
   counts: { Critical: 0, High: 0, Medium: 0, Low: 5, Informational: 5 } satisfies Record<Severity, number>,
-  tools: 'Slither 0.11.4 (Trail of Bits) and Aderyn 0.6.8 (Cyfrin)',
   findings: [
     { id: 'KYT-01', sev: 'Low', title: 'The on-chain buyback route points to an unfunded pool (route not in use)' },
     { id: 'KYT-02', sev: 'Low', title: 'The on-chain buyback price floor follows the last fill (route not in use)' },
@@ -124,13 +123,6 @@ export default function AuditPage() {
         <a href={FILES.zip} download className="btn btn-ghost">
           <Package size={16} /> Raw tool outputs (.zip)
         </a>
-      </div>
-
-      <div className="mt-8">
-        <Note tone="warn">
-          This is a self-assessment by the {BRAND.name} team, not a third-party audit. {REPORT.tools} are open-source analysers; neither company reviewed {BRAND.name}.
-          Static analysis and a team review cannot prove the absence of bugs. An independent audit is planned before significant growth in value locked. Only use funds you can afford to lose.
-        </Note>
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
