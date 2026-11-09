@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
 import { ALL_TOOLS, clean, compareOffers, explainOffer, findOffers, getOffer, getPositions, getPrices, getStaking, listTokens, prepareBuy, prepareCashSecuredPut, prepareCoveredCall, prepareExercise, prepareStake, setFetcher } from '../src/lib/agent/tools.ts'
-import { designStrategy, listGraduated, listStrategies } from '../src/lib/agent/tools.ts'
+import { designStrategy, getRewards, listGraduated, listStrategies } from '../src/lib/agent/tools.ts'
 
 const fx = (n: string) => JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'fixtures', n + '.json'), 'utf8'))
 const offers = fx('offers_status_all') as { id: string; status: string; symbol: string; kind: 'call' | 'put'; expiry: number }[]
@@ -13,9 +13,10 @@ const offers = fx('offers_status_all') as { id: string; status: string; symbol: 
 const OPEN = { ...offers.find((o) => o.status === 'cancelled')!, status: 'open', fillable: true, expiry: Math.floor(Date.now() / 1000) + 5 * 86400, offerDeadline: Math.floor(Date.now() / 1000) + 2 * 86400 }
 const FILLED = { ...offers.find((o) => o.status === 'exercised')!, status: 'filled', fillable: false, expiry: Math.floor(Date.now() / 1000) + 3 * 86400 }
 
+const FLORA_ASSET = { address: '0x7BaE7a90c7328969614B3EFbeE8C4A9026beFEA8', symbol: 'FLORA', name: 'Flora', decimals: 18, enabled: true, putsEnabled: true, cap: '20000000000000000000000000', minStrike: '1000000000000', source: 'fobo', maxDurationSec: 86400 }
 setFetcher(async (p) => {
-  if (p === '/assets') return [...fx('assets'), { address: '0xe6864e4630D4d7A0cAd2E61f6BC2C0dcAD777712', symbol: 'PLINK', name: 'Pons Link', decimals: 18, enabled: true, putsEnabled: false, cap: '20000000000000000000000000', minStrike: '1000000000000', source: 'pons', maxDurationSec: 86400 }]
-  if (p === '/prices') return fx('prices')
+  if (p === '/assets') return [...fx('assets'), { address: '0xe6864e4630D4d7A0cAd2E61f6BC2C0dcAD777712', symbol: 'PLINK', name: 'Pons Link', decimals: 18, enabled: true, putsEnabled: false, cap: '20000000000000000000000000', minStrike: '1000000000000', source: 'pons', maxDurationSec: 86400 }, FLORA_ASSET]
+  if (p === '/prices') return { ...fx('prices'), FLORA: { price: 0.0003, at: 1, change1h: 0.01, source: 'dexscreener', floor: 0.00001, floorBackingEth: 11.3 } }
   if (p === '/stats') return fx('stats')
   if (p === '/proof') return fx('proof')
   if (p.startsWith('/stake/')) return fx('stake_0x0000000000000000000000000000000000000000')
@@ -27,6 +28,9 @@ setFetcher(async (p) => {
     const u = new URLSearchParams(p.slice(8))
     return [OPEN].filter((o) => (!u.get('token') || o.symbol === u.get('token')) && (!u.get('kind') || o.kind === u.get('kind')))
   }
+  if (p === '/rewards') return { ok: true, at: 1, token: 'USDG', contract: null, poolUsdg: 285.71, availableUsdg: null, rules: { pointPerEthFee: 10000, openInterestWeight: 0.2, stockPutMultiplier: 1.5, minClaimUsdg: 0.01, epochSec: 86400, finalAfterSec: 600 }, current: { epoch: 20767, startsAt: 20767 * 86400, endsAt: 20768 * 86400, poolUsdg: 285.71, totalPoints: 42.5, participants: 3 }, epochs: [{ epoch: 20766, startsAt: 0, endsAt: 20767 * 86400, poolUsdg: 285.71, totalPoints: 30, participants: 2, root: '0xab', totalUsdg: 285.7, status: 'final' }] }
+  if (/^\/rewards\/0x/.test(p)) return { ok: true, at: 1, account: p.slice(9), contract: null, token: 'USDG', current: { epoch: 20767, endsAt: 20768 * 86400, points: 12.5, share: 0.294, estimatedUsdg: 84.03, feeEth: 0.00125, detail: { bought: 10, held: 2.5 }, poolUsdg: 285.71 }, claimable: [], claimableUsdg: 0, claimedUsdg: 0, epochs: [{ epoch: 20766, endsAt: 20767 * 86400, points: 10, share: 0.333, feeEth: 0.001, detail: { bought: 10 }, amount: '95233333', amountUsdg: 95.23, proof: [], status: 'pending', expiresAt: null }] }
+  if (p.startsWith('/fobo/tokens')) return { counts: { launched: 626, ethQuoted: 450, eligible: 1 }, rule: { minAgeSec: 86400, minFloorEth: 4.2 }, tokens: [{ address: FLORA_ASSET.address, symbol: 'FLORA', name: 'Flora', quoteIsEth: true, launchedAt: 1, ageSec: 306_000, floorEth: 0.00001, floorBackingEth: 11.3, floorVsPrice: -0.967, progress: 1, barEth: 4.2, eligible: true, eligibleAt: 2, priceUsd: 0.65, priceEth: 0.0003, mcapUsd: 2_600_000, change24h: -3.1, liquidityUsd: 120_000, kyte: 'listed', foboUrl: 'https://fobo.fun/0x7bae' }] }
   if (p.startsWith('/pons/tokens')) return { counts: { launched: 349, graduated: 1 }, tokens: [{ address: '0xe6864e4630D4d7A0cAd2E61f6BC2C0dcAD777712', symbol: 'PLINK', name: 'Pons Link', pairIsWeth: true, launchedAt: 1, pairedEth: 7.9, thresholdEth: 4.2, progress: 1, graduated: true, graduatedAt: 2, priceUsd: 0.00013, priceEth: 0.00000004, mcapUsd: 130000, change24h: 5.3, liquidityUsd: 41700, volume24hUsd: 1000, kyte: 'listed', ponsUrl: 'https://ponsfamily.com/launchpad/0xe68' }] }
   if (p.startsWith('/candles?')) return Array.from({ length: 10 }, (_, i) => ({ time: i * 86400, open: 1, high: 1.1 + i * 0.01, low: 0.95, close: 1 + i * 0.01 }))
   if (p.startsWith('/autopilot/rules/')) return [{ id: 1, type: 'list_call', token: 'PONS', params: { amount: 10, pct: 20, minPremiumEth: 0.001, expirySec: 604800, fillWindowSec: 172800 }, schedule: { repeat: true }, limits: {}, status: 'active', runs: 2 }]
@@ -178,7 +182,51 @@ test('Pons tokens: list_graduated reads the launchpad and prepare tools refuse o
   assert.equal(tokens.tokens[0].source, 'pons'); assert.equal(tokens.tokens[0].maxExpiry, '24h')
 })
 
+test('FOBO tokens: list_graduated launchpad=fobo reads the floor bar, list_tokens and get_prices carry the floor, prepare tools keep the 24 h rule', async () => {
+  const g = (await listGraduated.run({ launchpad: 'fobo', limit: 5 })) as { launchpad: string; counts: { eligible: number }; rule: string; tokens: Array<{ symbol: string; eligible: boolean; floorEthPerToken: number | null; floorBackingEth: number | null; floorVsPrice: string | null; onKyte: string; kyteMarket?: string }> }
+  assert.equal(g.launchpad, 'fobo')
+  assert.equal(g.counts.eligible, 1)
+  assert.match(g.rule, /floor backs 4.2 ETH/)
+  assert.equal(g.tokens[0].symbol, 'FLORA')
+  assert.equal(g.tokens[0].eligible, true)
+  assert.equal(g.tokens[0].floorBackingEth, 11.3)
+  assert.match(String(g.tokens[0].floorVsPrice), /-96/)
+  assert.ok(g.tokens[0].kyteMarket?.endsWith('/market?token=FLORA'))
+  // the default status still answers for Pons, and a Pons-only status on fobo falls back to eligible
+  const pons = (await listGraduated.run({ status: 'graduated', limit: 5 })) as { launchpad: string }
+  assert.equal(pons.launchpad, 'pons')
+  const tokens = (await listTokens.run({ query: 'FLORA' })) as { tokens: Array<{ source?: string; maxExpiry?: string; note?: string }> }
+  assert.equal(tokens.tokens[0].source, 'fobo'); assert.equal(tokens.tokens[0].maxExpiry, '24h'); assert.match(String(tokens.tokens[0].note), /floor/)
+  const prices = (await getPrices.run({ tokens: ['FLORA'] })) as { prices: Record<string, { floorEthPerToken?: number; floorVsPrice?: string; floorNote?: string }> }
+  assert.equal(prices.prices.FLORA.floorEthPerToken, 0.00001)
+  assert.match(String(prices.prices.FLORA.floorVsPrice), /-96/)
+  assert.match(String(prices.prices.FLORA.floorNote), /cannot close below/)
+  const long = (await prepareCashSecuredPut.run({ token: 'FLORA', amount: 1000, strikePerToken: 0.0002, premium: 0.001, expiry: '1w' })) as { error?: string }
+  assert.match(String(long.error), /within 24 hours/)
+  const below = (await prepareCashSecuredPut.run({ token: 'FLORA', amount: 1000, strikePerToken: 0.000005, premium: 0.001, expiry: '1d' })) as { error?: string }
+  assert.match(String(below.error), /at or below its floor/)
+  const above = (await prepareCashSecuredPut.run({ token: 'FLORA', amount: 1000, strikePerToken: 0.0002, premium: 0.001, expiry: '1d' })) as { error?: string; link?: string }
+  assert.equal(above.error, undefined)
+  assert.ok(String(above.link).includes('kind=put'))
+})
+
 test('clean keeps non-Latin token names but strips control and bidi characters', () => {
   assert.equal(clean('富贵'), '富贵')
   assert.equal(clean('Pon\u202Egs\u0007'), 'Pongs')
+})
+
+test('USDG rewards: get_rewards explains the rules and reports a wallet\'s points, estimate and history', async () => {
+  const prog = (await getRewards.run({})) as { poolUsdgThisEpoch: number; rules: string; recentEpochs: unknown[]; note?: string; account?: string }
+  assert.equal(prog.poolUsdgThisEpoch, 285.71)
+  assert.match(prog.rules, /1 point per 0.0001 ETH/)
+  assert.equal(prog.recentEpochs.length, 1)
+  assert.match(String(prog.note), /deployed and funded/)
+  assert.equal(prog.account, undefined)
+  const me = (await getRewards.run({ address: '0x1111111111111111111111111111111111111111' })) as { thisEpoch: { points: number; share: string; estimatedUsdg: number; from: Record<string, number> }; history: Array<{ usdg: number; status: string }>; claim?: string }
+  assert.equal(me.thisEpoch.points, 12.5)
+  assert.match(me.thisEpoch.share, /29/)
+  assert.equal(me.thisEpoch.from.held, 2.5)
+  assert.equal(me.history[0].usdg, 95.23)
+  assert.equal(me.history[0].status, 'pending')
+  assert.equal(me.claim, undefined)
 })

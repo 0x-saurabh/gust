@@ -27,6 +27,8 @@ services:
         value: "1200"
       - key: SITE_URL
         value: https://kyte.sh # Autopilot trigger links point here
+      - key: REWARDS_POOL_USDG
+        value: "0" # USDG paid per 24 h epoch (docs/USDG_REWARDS.md); 0 scores points but pays nothing until the ops Safe sets a pool and funds UsdgRewards
     disk:
       name: indexer-data
       mountPath: /app/indexer/data
@@ -81,3 +83,5 @@ services:
         value: "true" # Launchpad page, nav link and list_graduated tool are public
       - key: NEXT_PUBLIC_AUTOPILOT_ENABLED
         value: "true" # Autopilot page, nav link, agent tools and rule routes are public
+      - key: NEXT_PUBLIC_REWARDS_ENABLED
+        value: "true" # USDG rewards page, nav link and get_rewards tool

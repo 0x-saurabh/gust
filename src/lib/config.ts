@@ -38,3 +38,7 @@ export const MCP_ENABLED = process.env.NEXT_PUBLIC_MCP_ENABLED !== 'false'
 export const AUTOPILOT_ENABLED = process.env.NEXT_PUBLIC_AUTOPILOT_ENABLED !== 'false'
 /** Launchpad (Pons graduations page, nav link, list_graduated tool). Off in production until launch; on locally. */
 export const LAUNCHPAD_ENABLED = process.env.NEXT_PUBLIC_LAUNCHPAD_ENABLED !== 'false'
+/** USDG rewards (page, nav link, get_rewards tool). On unless NEXT_PUBLIC_REWARDS_ENABLED=false. */
+export const REWARDS_ENABLED = process.env.NEXT_PUBLIC_REWARDS_ENABLED !== 'false'
+/** USDG on Robinhood Chain (Paxos Global Dollar, 6 decimals): the rewards token. */
+export const USDG = { address: '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168', decimals: 6, symbol: 'USDG' } as const

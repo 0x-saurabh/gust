@@ -81,7 +81,10 @@ export default function SellPage() {
   if (prem < LIMITS.minPremiumEth) errors.push(`Premium must be at least ${LIMITS.minPremiumEth} ETH.`)
   const maxDuration = Math.min(LIMITS.maxDurationSec, a?.maxDurationSec ?? LIMITS.maxDurationSec)
   const durations = DURATIONS.filter((d) => d.sec <= maxDuration)
-  if (durationSec < LIMITS.minDurationSec || durationSec > maxDuration) errors.push(a?.source === 'pons' ? `${a.symbol} is a launchpad token: options on it expire within 24 hours.` : 'Expiry must be 1 hour to 90 days away.')
+  if (durationSec < LIMITS.minDurationSec || durationSec > maxDuration) errors.push(a?.source ? `${a.symbol} is a launchpad token: options on it expire within 24 hours.` : 'Expiry must be 1 hour to 90 days away.')
+  // FOBO: the floor buys every token at or above its price, so a put struck there can never be exercised against you.
+  // Nobody should pay for one; refuse to list it (a UI rule, the contracts stay oracle-free).
+  if (kind === 'put' && a?.source === 'fobo' && a.floorEth && strikeEach > 0 && strikeEach <= a.floorEth) errors.push(`Strike ${strikeEach.toPrecision(3)} ETH is at or below the FOBO floor (${a.floorEth.toPrecision(3)} ETH): a put there can never finish in the money.`)
   if (kind === 'call' && live && myTokens !== undefined && amt > myTokens) errors.push(`You hold ${num(myTokens, 4)} ${a?.symbol}.`)
   if (kind === 'put' && live && balances.data && totalStrike > balances.data.eth) errors.push(`You need ${eth(totalStrike)} in your wallet to lock.`)
 
@@ -157,12 +160,13 @@ export default function SellPage() {
             <input className="input" inputMode="decimal" placeholder={strikeEach ? strikeEach.toPrecision(3) : '0.0001'} value={strikePer} onChange={(e) => setStrikePer(e.target.value)} />
             <Hint>
               {a?.spotEth ? <>{num((strikeEach / a.spotEth - 1) * 100, 0)}% vs spot · </> : null}
+              {a?.source === 'fobo' && a.floorEth ? <>FOBO floor {a.floorEth.toPrecision(3)} ETH{a.spotEth ? ` (${num((a.floorEth / a.spotEth - 1) * 100, 0)}% vs spot)` : ''} · </> : null}
               total strike {eth(totalStrike)}{kind === 'put' && <> · you lock {eth(totalStrike)}</>}
             </Hint>
           </Field>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <Field label={a?.source === 'pons' ? 'Expires in (24 h market)' : 'Expires in'}>
+            <Field label={a?.source ? 'Expires in (24 h market)' : 'Expires in'}>
               <select className="input" value={durationSec} onChange={(e) => setDurationSec(Number(e.target.value))}>
                 {durations.map((d) => <option key={d.sec} value={d.sec}>{d.label}</option>)}
               </select>

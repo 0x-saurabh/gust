@@ -21,9 +21,11 @@ export type Asset = {
   decimals: number
   enabled: boolean
   putsEnabled: boolean
-  /** 'pons' for launchpad tokens: options on them must expire within maxDurationSec (24 h). */
-  source?: 'pons' | null
+  /** 'pons' or 'fobo' for launchpad tokens: options on them must expire within maxDurationSec (24 h). */
+  source?: 'pons' | 'fobo' | null
   maxDurationSec?: number
+  /** FOBO tokens: the floor's worst-case price in ETH per token. A put struck at or below it can never finish in the money. */
+  floorEth?: number | null
   cap: bigint
   minStrike: bigint
   spotEth: number // display only (demo hint or 0 when unknown)
@@ -62,9 +64,12 @@ export type Offer = {
   expiry: number
   offerDeadline: number
   status: Status
-  /** 'pons' for launchpad tokens; overLimit marks an offer written past the 24 h rule (hidden from the market). */
-  source?: 'pons' | null
+  /** 'pons' or 'fobo' for launchpad tokens; overLimit marks an offer written past the 24 h rule (hidden from the market). */
+  source?: 'pons' | 'fobo' | null
   overLimit?: boolean
+  /** FOBO tokens: the floor in ETH per token, and whether this put is struck at or below it (it can never pay). */
+  floorEth?: number
+  belowFloor?: boolean
 }
 
 export type Split = { epoch: number; at: number; tx: string; stakers: number; buyback: number; ops: number }
@@ -137,7 +142,7 @@ const hint = (symbol: string, name = '') => HINTS[symbol] ?? { spotEth: 0, vol: 
 // dropped, so pickers hide them (they list enabled assets only) while old positions still find their token.
 const HIDDEN = /Ondo Tokenized/i
 
-type ApiAsset = { address: Address; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | null; maxDurationSec?: number }
+type ApiAsset = { address: Address; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | 'fobo' | null; maxDurationSec?: number }
 
 async function assetsFromChain(client: PublicClient): Promise<Asset[]> {
   const registry = contracts.assetRegistry!
@@ -171,10 +176,11 @@ export function useAssets() {
       )
       if (INDEXER_URL) {
         try {
-          const prices = await api<Record<string, { price: number; session?: Session | null }>>('/prices')
+          const prices = await api<Record<string, { price: number; session?: Session | null; floor?: number }>>('/prices')
           for (const a of list) {
             if (prices[a.symbol]?.price) a.spotEth = prices[a.symbol].price
             if (prices[a.symbol]?.session) a.session = prices[a.symbol].session
+            if (prices[a.symbol]?.floor) a.floorEth = prices[a.symbol].floor
           }
         } catch {}
       }
@@ -191,7 +197,7 @@ export function useAssets() {
 type ApiOffer = {
   id: string; kind: Kind; seller: Address; holder: Address | null; token: Address; symbol: string; decimals: number
   amount: number; amountRaw: string; strike: number; strikeRaw: string; premium: number; premiumRaw: string
-  expiry: number; offerDeadline: number; status: Status; source?: 'pons' | null; overLimit?: boolean
+  expiry: number; offerDeadline: number; status: Status; source?: 'pons' | 'fobo' | null; overLimit?: boolean; floorEth?: number; belowFloor?: boolean
 }
 
 function demoOffers(): Offer[] {
@@ -493,7 +499,7 @@ export function useHealth() {
 
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number }
 export type Marker = { time: number; name: 'OfferCreated' | 'OptionBought' | 'Exercised' | 'Expired' | 'OfferCancelled'; kind: Kind; tx: string; strikePerToken: number }
-export type Quote = { price: number; at: number; change1h: number; source?: 'uniswap-v4' | 'robinhood' | 'dexscreener'; session?: Session | null }
+export type Quote = { price: number; at: number; change1h: number; source?: 'uniswap-v4' | 'robinhood' | 'dexscreener'; session?: Session | null; /** FOBO tokens: floor price (ETH per token) and the ETH it backs */ floor?: number; floorBackingEth?: number }
 
 export function useCandles(symbol: string, interval = 60) {
   const live = useLive()
@@ -530,4 +536,47 @@ export function usePrices() {
 export function useRefresh() {
   const qc = useQueryClient()
   return () => qc.invalidateQueries()
+}
+
+// ------------------------------------------------------------------ USDG rewards (docs/USDG_REWARDS.md)
+
+export type RewardEpoch = {
+  epoch: number; endsAt: number; points: number; share: number; feeEth: number; detail: Record<string, number>
+  amount: string; amountUsdg: number; proof: `0x${string}`[]
+  status: 'claimable' | 'claimed' | 'pending' | 'expired' | 'dust'; expiresAt: number | null
+}
+export type RewardsProgram = {
+  ok: boolean; at: number; token: string; contract: string | null; poolUsdg: number; availableUsdg: number | null
+  rules: { pointPerEthFee: number; openInterestWeight: number; stockPutMultiplier: number; minClaimUsdg: number; epochSec: number; finalAfterSec: number }
+  current: { epoch: number; startsAt: number; endsAt: number; poolUsdg: number; totalPoints: number; participants: number }
+  epochs: Array<{ epoch: number; startsAt: number; endsAt: number; poolUsdg: number; totalPoints: number; participants: number; root: string | null; totalUsdg: number; status: 'final' | 'claimable' | 'swept'; claimedUsdg?: number; expiresAt?: number }>
+}
+export type RewardsAccount = {
+  ok: boolean; at: number; account: string; contract: string | null; token: string
+  current: { epoch: number; endsAt: number; points: number; share: number; estimatedUsdg: number; feeEth: number; detail: Record<string, number>; poolUsdg: number }
+  claimable: RewardEpoch[]; claimableUsdg: number; claimedUsdg: number; epochs: RewardEpoch[]
+}
+
+/** The rewards program (pool, rules, recent epochs). */
+export function useRewardsProgram() {
+  const live = useLive()
+  return useQuery({
+    queryKey: ['rewards', 'program', live],
+    queryFn: async (): Promise<RewardsProgram | null> => (!live || !INDEXER_URL ? null : api<RewardsProgram>('/rewards')),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  })
+}
+
+/** The connected wallet's points this epoch, claimable epochs with proofs, and history. */
+export function useRewards() {
+  const { address } = useAccount()
+  const live = useLive()
+  return useQuery({
+    queryKey: ['rewards', address, live],
+    queryFn: async (): Promise<RewardsAccount | null> => (!live || !INDEXER_URL || !address ? null : api<RewardsAccount>(`/rewards/${address}`)),
+    enabled: Boolean(address),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  })
 }

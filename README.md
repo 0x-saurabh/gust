@@ -4,7 +4,7 @@ Covered calls, cash-secured puts, $KYTE staking, on-chain fee split and burn pro
 Robinhood Chain, built from `../SPEC.md`, `../BUILD_PLAN.md` and `../GUST_REVERSE_ENGINEERING.md`.
 Separate codebase from the Kyte rewards app in `../rh-rewards`.
 
-**Docs:** [`docs/PROJECT_DOCS.md`](docs/PROJECT_DOCS.md) (end to end + TL;DR) · [`BUILD_PLAN.md`](BUILD_PLAN.md) (phases, status) ·
+**Docs:** [`docs/HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md) (step by step, every page) · [`docs/PROJECT_DOCS.md`](docs/PROJECT_DOCS.md) (end to end + TL;DR) · [`docs/FOBO_LISTER.md`](docs/FOBO_LISTER.md) (FOBO launchpad listings and the floor) · [`docs/USDG_REWARDS.md`](docs/USDG_REWARDS.md) (USDG trading rewards) · [`BUILD_PLAN.md`](BUILD_PLAN.md) (phases, status) ·
 [`contracts/README.md`](contracts/README.md) · [`indexer/README.md`](indexer/README.md) · [`keeper/README.md`](keeper/README.md)
 
 ## Run everything locally

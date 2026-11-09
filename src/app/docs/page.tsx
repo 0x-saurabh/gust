@@ -34,6 +34,8 @@ const CORE: [keyof typeof contracts, string, string][] = [
   ['kyteHook', 'KyteHook', `Uniswap v4 hook on the ${BRAND.token}/WETH pool: TWAP and swap fee`],
   ['swapAdapter', 'UniswapV4Adapter', 'Direct PoolManager swaps for the buyback'],
   ['harmonicHaltGate', 'KyteHaltGate', 'Reads Harmonic Agent\'s session oracle: is the stock behind a token trading'],
+  ['ponsLister', 'PonsLister', 'Permissionless listing of graduated Pons launchpad tokens through the timelock'],
+  ['foboLister', 'FoboLister', 'Permissionless listing of FOBO tokens whose floor backs 4.2 ETH, through the timelock'],
   ['timelock', 'Timelock', 'Governance: listings, fee changes, re-enabling'],
   ['guardian', 'Guardian', 'Emergency pause and disable, no timelock'],
 ]

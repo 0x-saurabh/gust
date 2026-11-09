@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { isDevnet } from '@/lib/chains'
-import { AUTOPILOT_ENABLED, LAUNCHPAD_ENABLED, MCP_ENABLED, BRAND } from '@/lib/config'
+import { AUTOPILOT_ENABLED, LAUNCHPAD_ENABLED, MCP_ENABLED, REWARDS_ENABLED, BRAND } from '@/lib/config'
 import { ConnectButton } from './ConnectButton'
 import { Faucet } from './Faucet'
 import { Logo } from './Logo'
@@ -17,6 +17,7 @@ const LINKS = [
   { href: '/sell', label: 'Sell' },
   { href: '/positions', label: 'Positions' },
   { href: '/stake', label: 'Stake' },
+  ...(REWARDS_ENABLED ? [{ href: '/rewards', label: 'Rewards' }] : []),
   { href: '/trades', label: 'Trades' },
   { href: '/proof', label: 'Proof' },
   { href: '/agent', label: 'Agent' },

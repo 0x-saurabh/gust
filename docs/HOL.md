@@ -14,7 +14,7 @@ https://kyte.sh/api/mcp
 
 | Piece | Status | Link |
 |---|---|---|
-| Kyte MCP server | Live, 20 tools, no login | https://kyte.sh/api/mcp |
+| Kyte MCP server | Live, 21 tools, no login | https://kyte.sh/api/mcp |
 | MCP page on kyte.sh, with "Run it under HOL Guard" | Live | https://kyte.sh/mcp |
 | HOL registry listing | Live | [registry profile](https://hol.org/registry/agent/uaid:aid:2P6i4mmnXKNeBw4SkxwGre4AptYWs3hB5kZGBtcKocEvytjLjuxDUHLoT6PuBHw6sx) |
 | DNS ownership record `_hedera.kyte.sh` | Live | TXT `0.0.10949843` |

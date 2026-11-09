@@ -8,7 +8,7 @@
 //   - No private keys, seed phrases or wallet secrets anywhere in these inputs or outputs.
 import { z } from 'zod'
 import { RuleSchema, describeRule, ruleLink } from './autopilot.ts'
-import { FEES, LIMITS, SPLIT, AUTOPILOT_ENABLED, LAUNCHPAD_ENABLED } from '../config.ts'
+import { FEES, LIMITS, SPLIT, AUTOPILOT_ENABLED, LAUNCHPAD_ENABLED, REWARDS_ENABLED } from '../config.ts'
 
 // ------------------------------------------------------------------ indexer access
 
@@ -45,7 +45,7 @@ async function api<T>(path: string): Promise<T> {
 
 // ------------------------------------------------------------------ shapes (as the indexer returns them)
 
-export type Asset = { address: string; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | null; maxDurationSec?: number; session?: Session | null }
+export type Asset = { address: string; symbol: string; name: string; decimals: number; enabled: boolean; putsEnabled: boolean; cap: string; minStrike: string; source?: 'pons' | 'fobo' | null; maxDurationSec?: number; session?: Session | null }
 /** Session of the stock behind a stock token, from Harmonic Agent's oracle via the indexer (docs/HARMONIC.md). */
 export type Session = { state: 'open' | 'held' | 'halted' | 'paused' | 'stale' | 'unknown'; why: string | null; until: number | null; at: number; issuerUsd: number | null; weekendMarkUsd?: number; offFridayBps?: number | null }
 /** One sentence an agent should pass on when the underlying is not trading; null when it is open or has no session. */
@@ -65,8 +65,9 @@ export type Offer = {
   id: string; kind: 'call' | 'put'; market: string; seller: string; holder: string | null; token: string; symbol: string; decimals: number
   amount: number; strike: number; premium: number; expiry: number; offerDeadline: number
   status: 'open' | 'filled' | 'exercised' | 'expired' | 'cancelled'; fillable: boolean; createdAt: number; createdTx: string
+  source?: 'pons' | 'fobo' | null; overLimit?: boolean; floorEth?: number; belowFloor?: boolean
 }
-export type Quote = { price: number; at: number; change1h: number; source?: string; session?: Session | null }
+export type Quote = { price: number; at: number; change1h: number; source?: string; session?: Session | null; floor?: number; floorBackingEth?: number }
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number }
 export type Stake = { myActive: number; myPending: number; claimable: number; epoch: number; epochEndsAt: number; minClaim: number; totalStaked: number; lastEpochRewards: number }
 export type Stats = { volumeEth: number; feesEth: number; openInterestEth: number; burnedTokens: number; stakedTokens: number; stakers: number; activeOffers: number; totalOffers: number }
@@ -113,7 +114,7 @@ export const listTokens = {
       tokens: rows.slice(0, 60).map((a) => ({
         symbol: clean(a.symbol, 16), name: clean(a.name), address: a.address, putsEnabled: a.putsEnabled,
         capTokens: Number(BigInt(a.cap) / 10n ** BigInt(a.decimals)), minStrikeEthPerToken: Number(a.minStrike) / 1e18,
-        ...(a.source === 'pons' ? { source: 'pons', maxExpiry: '24h', note: 'Launchpad token: options on it must expire within 24 hours.' } : {}),
+        ...(a.source === 'pons' ? { source: 'pons', maxExpiry: '24h', note: 'Launchpad token: options on it must expire within 24 hours.' } : a.source === 'fobo' ? { source: 'fobo', maxExpiry: '24h', note: 'FOBO launchpad token: options on it must expire within 24 hours. Its floor only rises; a put struck at or below the floor can never finish in the money.' } : {}),
         ...(a.session ? { session: a.session.state, ...(sessionWarning(a.symbol, a.session) ? { warning: sessionWarning(a.symbol, a.session) } : {}) } : {}),
       })),
       truncated: rows.length > 60,
@@ -149,6 +150,9 @@ function offerRow(o: Offer, spot: number | undefined, now: number, session?: Ses
     spotEthPerToken: spot ?? null, strikeVsSpot: spot ? pct(strikePerToken / spot - 1) : null,
     expiresIn: when(hoursLeft(o.expiry, now)), fillBy: when(hoursLeft(o.offerDeadline, now)), expiry: o.expiry,
     status: o.status, link: `${SITE}/market?buy=${o.id}`,
+    ...(o.source ? { launchpad: o.source } : {}),
+    ...(o.floorEth ? { floorEthPerToken: o.floorEth } : {}),
+    ...(o.belowFloor ? { belowFloor: true, warning: `${clean(o.symbol, 16)} is a FOBO token and this put is struck at or below its floor (${o.floorEth} ETH per token). The floor buys every token above that price, so this put can never finish in the money. Do not buy it.` } : {}),
     ...(session ? { session: session.state } : {}), ...(warning ? { warning } : {}),
   }
 }
@@ -180,7 +184,7 @@ export const getPositions = {
 
 export const getPrices = {
   name: 'get_prices',
-  description: 'Live price in ETH per token for every listed token with a feed, the 1 hour change, the source (Uniswap v4 swaps or a Robinhood quote) and, for stock tokens, the session state (open, held over the weekend, halted, paused, stale) with a warning when the quote is not live. Read-only.',
+  description: 'Live price in ETH per token for every listed token with a feed, the 1 hour change, the source (Uniswap v4 swaps, a DEX price or a Robinhood quote), for FOBO launchpad tokens the floor price the hook guarantees, and, for stock tokens, the session state (open, held over the weekend, halted, paused, stale) with a warning when the quote is not live. Read-only.',
   input: z.object({ tokens: z.array(SYMBOL).max(20).optional().describe('Symbols to include; all when omitted') }),
   async run({ tokens }: { tokens?: string[] }) {
     const all = await api<Record<string, Quote>>('/prices')
@@ -189,6 +193,7 @@ export const getPrices = {
     return {
       prices: Object.fromEntries(rows.map(([s, q]) => [clean(s, 16), {
         ethPerToken: q.price, change1h: pct(q.change1h), at: q.at, source: q.source ?? 'uniswap-v4',
+        ...(q.floor ? { floorEthPerToken: q.floor, floorVsPrice: pct(q.floor / q.price - 1), floorBackingEth: q.floorBackingEth, floorNote: 'FOBO floor: the hook buys every token at this price, so the price cannot close below it. A put struck at or below it can never finish in the money.' } : {}),
         ...(q.session ? { session: q.session.state, ...(sessionWarning(s, q.session) ? { warning: sessionWarning(s, q.session) } : {}) } : {}),
       }])),
       note: 'session: open means a live quote. held (weekend), halted, paused or stale means the price shown is the last print and not live; on-chain trading continues. Source: Harmonic Agent session oracle.',
@@ -369,6 +374,11 @@ export const prepareCashSecuredPut = {
   async run(i: { token: string; amount: number; strikePerToken: number; premium: number; expiry?: ExpiryKey; fillWindow?: ExpiryKey }) {
     const v = await validateOffer({ ...i, kind: 'put', expiry: i.expiry ?? '1w' })
     if ('error' in v) return v
+    if (v.asset.source === 'fobo') {
+      // FOBO: the floor buys every token at or above its price, so a put struck there can never be exercised. Nobody should pay for one.
+      const floor = (await api<Record<string, Quote>>('/prices').catch(() => ({} as Record<string, Quote>)))[v.asset.symbol]?.floor
+      if (floor && i.strikePerToken <= floor) return { error: `${v.asset.symbol} is a FOBO token and ${i.strikePerToken} ETH is at or below its floor (${floor} ETH per token): a put there can never finish in the money, so Kyte does not list it. Choose a strike above the floor.` }
+    }
     const fee = i.premium * (FEES.premiumBps / 10_000)
     const warning = sessionWarning(v.asset.symbol, v.asset.session)
     return { ...(warning ? { warning } : {}), preview: `Lock ${eth(i.strikePerToken * i.amount)} as WETH. You promise to buy ${i.amount} ${v.asset.symbol} at ${i.strikePerToken} ETH per token until expiry (${i.expiry ?? '1w'}), premium ${eth(i.premium)}. If filled you receive ${eth(i.premium - fee)} after fees.`, link: sellLink('put', v.asset.symbol, i.amount, i.strikePerToken, i.premium, v.expirySec, v.fillSec), signs: 'One WETH approval, then createOffer, both signed in your wallet.', disclaimer: DISCLAIMER }
@@ -443,20 +453,59 @@ export const listStrategies = {
 }
 
 export type PonsToken = { address: string; symbol: string; name: string; pairIsWeth: boolean; launchedAt: number; pairedEth: number | null; thresholdEth: number | null; progress: number | null; graduated: boolean; graduatedAt: number | null; priceUsd: number | null; priceEth: number | null; mcapUsd: number | null; change24h: number | null; liquidityUsd: number | null; volume24hUsd: number | null; kyte: 'listed' | 'disabled' | 'scheduled' | 'unlisted'; ponsUrl: string }
+export type FoboToken = { address: string; symbol: string; name: string; quoteIsEth: boolean; launchedAt: number; ageSec: number; floorEth: number | null; floorBackingEth: number | null; floorVsPrice: number | null; progress: number | null; barEth: number; eligible: boolean; eligibleAt: number | null; priceUsd: number | null; priceEth: number | null; mcapUsd: number | null; change24h: number | null; liquidityUsd: number | null; kyte: 'listed' | 'disabled' | 'scheduled' | 'unlisted'; foboUrl: string }
 export const listGraduated = {
   name: 'list_graduated',
-  description: 'Tokens from the Pons launchpad on Robinhood Chain: graduated (locked liquidity crossed 4.2 ETH), near graduation, or the ones listed on Kyte. Each has price, market cap, 24h change, liquidity, graduation time and whether Kyte lists it. Options on Pons tokens expire within 24 hours. Read-only.',
-  input: z.object({ status: z.enum(['recent', 'graduated', 'near', 'listed']).default('graduated').describe('recent = the newest launches'), hours: z.number().int().min(1).max(36).default(36).describe('window in hours for graduated and recent, 24 or 36 (36 at most)'), limit: z.number().int().min(1).max(50).default(20) }),
-  async run({ status, hours, limit }: { status?: 'recent' | 'graduated' | 'near' | 'listed'; hours?: number; limit?: number }) {
-    const r = (await api<{ tokens: PonsToken[]; counts: { launched: number; graduated: number } }>(`/pons/tokens?status=${status ?? 'graduated'}&hours=${hours ?? 36}&limit=${limit ?? 20}`))
+  description: 'Launchpad tokens on Robinhood Chain. launchpad=pons (default): graduated (locked liquidity crossed 4.2 ETH), near graduation, recent, or the ones listed on Kyte. launchpad=fobo: tokens from fobo.fun, whose floor only rises; status eligible = the floor backs 4.2 ETH after 24 h (Kyte lists these), near = getting close, recent = new launches, listed = on Kyte. Each has price, market cap, 24h change, liquidity (FOBO: the floor price and what it backs) and whether Kyte lists it. Options on launchpad tokens expire within 24 hours. Read-only.',
+  input: z.object({
+    launchpad: z.enum(['pons', 'fobo']).default('pons'),
+    status: z.enum(['recent', 'graduated', 'near', 'listed', 'eligible']).optional().describe('pons: graduated (default) | near | recent | listed. fobo: eligible (default) | near | recent | listed'),
+    hours: z.number().int().min(1).max(72).default(36).describe('window in hours for graduated and recent (pons: 36 at most, fobo: 72)'),
+    limit: z.number().int().min(1).max(50).default(20),
+  }),
+  async run({ launchpad, status, hours, limit }: { launchpad?: 'pons' | 'fobo'; status?: 'recent' | 'graduated' | 'near' | 'listed' | 'eligible'; hours?: number; limit?: number }) {
+    if (launchpad === 'fobo') {
+      const st = status === 'graduated' || !status ? 'eligible' : status
+      const r = await api<{ tokens: FoboToken[]; counts: { launched: number; ethQuoted: number; eligible: number }; rule: { minAgeSec: number; minFloorEth: number } }>(`/fobo/tokens?status=${st}&hours=${Math.min(72, hours ?? 72)}&limit=${limit ?? 20}`)
+      return {
+        launchpad: 'fobo', counts: r.counts, rule: `Kyte lists an ETH-quoted FOBO token once it is ${Math.round((r.rule?.minAgeSec ?? 86400) / 3600)} h old and its floor backs ${r.rule?.minFloorEth ?? 4.2} ETH for the circulating tokens; options on it must expire within 24 hours. The floor only rises: a put struck at or below it can never finish in the money.`,
+        tokens: r.tokens.map((t) => ({ symbol: clean(t.symbol, 16), name: clean(t.name), address: t.address, eligible: t.eligible, eligibleAt: t.eligibleAt, ageHours: Math.round(t.ageSec / 3600), floorEthPerToken: t.floorEth, floorBackingEth: t.floorBackingEth, floorVsPrice: t.floorVsPrice == null ? null : pct(t.floorVsPrice), progress: t.progress, priceEth: t.priceEth, priceUsd: t.priceUsd, mcapUsd: t.mcapUsd, change24h: t.change24h, liquidityUsd: t.liquidityUsd, onKyte: t.kyte, fobo: t.foboUrl, kyteMarket: t.kyte === 'listed' ? `${SITE}/market?token=${encodeURIComponent(t.symbol)}` : undefined })),
+        launchpadPage: `${SITE}/launchpad`,
+      }
+    }
+    const st = status === 'eligible' || !status ? 'graduated' : status
+    const r = (await api<{ tokens: PonsToken[]; counts: { launched: number; graduated: number } }>(`/pons/tokens?status=${st}&hours=${Math.min(36, hours ?? 36)}&limit=${limit ?? 20}`))
     return {
-      counts: r.counts, ...(status === 'recent' ? { windowHours: hours ?? 24 } : {}), rule: 'Kyte lists graduated, ETH-paired Pons tokens after review; options on them must expire within 24 hours.',
+      launchpad: 'pons', counts: r.counts, ...(st === 'recent' ? { windowHours: Math.min(36, hours ?? 24) } : {}), rule: 'Kyte lists graduated, ETH-paired Pons tokens after review; options on them must expire within 24 hours.',
       tokens: r.tokens.map((t) => ({ symbol: clean(t.symbol, 16), name: clean(t.name), address: t.address, graduated: t.graduated, graduatedAt: t.graduatedAt, progress: t.progress, pairedEth: t.pairedEth, priceEth: t.priceEth, priceUsd: t.priceUsd, mcapUsd: t.mcapUsd, change24h: t.change24h, liquidityUsd: t.liquidityUsd, onKyte: t.kyte, pons: t.ponsUrl, kyteMarket: t.kyte === 'listed' ? `${SITE}/market?token=${encodeURIComponent(t.symbol)}` : undefined })),
-      launchpad: `${SITE}/launchpad`,
+      launchpad_page: `${SITE}/launchpad`,
     }
   },
 }
 
-export const READ_TOOLS = [listTokens, findOffers, getOffer, getPositions, getPrices, getChart, getStaking, getProtocolStats, getProof, getActivity, explainOffer, compareOffers, ...(LAUNCHPAD_ENABLED ? [listGraduated] : []), ...(AUTOPILOT_ENABLED ? [listStrategies] : [])] as const
+export type RewardsAccount = { account: string; contract: string | null; current: { epoch: number; endsAt: number; points: number; share: number; estimatedUsdg: number; feeEth: number; detail: Record<string, number>; poolUsdg: number }; claimable: Array<{ epoch: number; amountUsdg: number; expiresAt: number | null }>; claimableUsdg: number; claimedUsdg: number; epochs: Array<{ epoch: number; endsAt: number; points: number; share: number; amountUsdg: number; status: string }> }
+export type RewardsProgram = { contract: string | null; poolUsdg: number; availableUsdg: number | null; rules: { pointPerEthFee: number; openInterestWeight: number; stockPutMultiplier: number; minClaimUsdg: number }; current: { epoch: number; endsAt: number; poolUsdg: number; totalPoints: number; participants: number }; epochs: Array<{ epoch: number; endsAt: number; poolUsdg: number; participants: number; totalUsdg: number; status: string }> }
+export const getRewards = {
+  name: 'get_rewards',
+  description: 'USDG trading rewards: the pool this 24 h epoch, the scoring rules (points per ETH of fee paid, 1.5x for cash-secured puts on stock tokens, 0.2x for open interest carried through an epoch end), and for a given address its points and estimated USDG this epoch, the epochs it can claim now and what it has claimed. Claims are signed on the kyte.sh Rewards page. Read-only.',
+  input: z.object({ address: ADDRESS.optional().describe('Wallet to look up; omit for the program only') }),
+  async run({ address }: { address?: string }) {
+    const program = await api<RewardsProgram>('/rewards')
+    const rules = `1 point per ${1 / program.rules.pointPerEthFee} ETH of fee paid on a premium (buyer and seller each); the writer of a cash-secured put on a stock token gets ${program.rules.stockPutMultiplier}x; a position held through an epoch end earns ${program.rules.openInterestWeight}x its fee to both sides every epoch. The epoch's pool splits pro rata; shares below ${program.rules.minClaimUsdg} USDG are not paid. Fees are real cost, so nothing is free to farm.`
+    const base = { token: 'USDG', contract: program.contract, poolUsdgThisEpoch: program.current.poolUsdg, epoch: program.current.epoch, epochEndsIn: when(hoursLeft(program.current.endsAt, Date.now() / 1000)), participantsThisEpoch: program.current.participants, totalPointsThisEpoch: program.current.totalPoints, fundedUnowedUsdg: program.availableUsdg, rules, recentEpochs: program.epochs.slice(0, 7).map((e) => ({ epoch: e.epoch, endsAt: e.endsAt, poolUsdg: e.poolUsdg, participants: e.participants, paidUsdg: e.totalUsdg, status: e.status })), link: `${SITE}/rewards`, ...(program.contract ? {} : { note: 'Points are scored already; payouts start when the rewards contract is deployed and funded.' }) }
+    if (!address) return base
+    const a = await api<RewardsAccount>(`/rewards/${address}`)
+    return {
+      ...base,
+      account: a.account,
+      thisEpoch: { points: a.current.points, share: pct(a.current.share), estimatedUsdg: a.current.estimatedUsdg, feePaidEth: a.current.feeEth, from: a.current.detail },
+      claimableUsdg: a.claimableUsdg, claimable: a.claimable.map((e) => ({ epoch: e.epoch, usdg: e.amountUsdg, claimUntil: e.expiresAt })), claimedUsdg: a.claimedUsdg,
+      history: a.epochs.slice(0, 14).map((e) => ({ epoch: e.epoch, endsAt: e.endsAt, points: e.points, share: pct(e.share), usdg: e.amountUsdg, status: e.status })),
+      claim: a.claimableUsdg > 0 ? `Open ${SITE}/rewards and press Claim; the USDG goes to ${a.account} and the claim is signed in the wallet.` : undefined,
+    }
+  },
+}
+
+export const READ_TOOLS = [listTokens, findOffers, getOffer, getPositions, getPrices, getChart, getStaking, getProtocolStats, getProof, getActivity, explainOffer, compareOffers, ...(LAUNCHPAD_ENABLED ? [listGraduated] : []), ...(AUTOPILOT_ENABLED ? [listStrategies] : []), ...(REWARDS_ENABLED ? [getRewards] : [])] as const
 export const PREPARE_TOOLS = [prepareBuy, prepareCoveredCall, prepareCashSecuredPut, prepareExercise, prepareStake, ...(AUTOPILOT_ENABLED ? [designStrategy] : [])] as const
 export const ALL_TOOLS = [...READ_TOOLS, ...PREPARE_TOOLS] as const

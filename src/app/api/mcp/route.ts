@@ -15,7 +15,7 @@ import { ALL_TOOLS, DISCLAIMER, PREPARE_TOOLS, SITE } from '@/lib/agent/tools'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
-const DOCS = ['how-it-works', 'fees', 'staking', 'rules', 'risks', 'glossary'] as const
+const DOCS = ['how-it-works', 'fees', 'staking', 'rewards', 'rules', 'risks', 'glossary'] as const
 const docText = (name: string) => fs.readFileSync(path.join(process.cwd(), 'src/lib/agent/docs', `${name}.md`), 'utf8')
 
 // per-client limit: 120 requests a minute, keyed by the proxy-appended forwarded address

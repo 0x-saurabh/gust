@@ -21,6 +21,7 @@ const abis = {
   StakingPool: abi('StakingPool.sol', 'StakingPool'),
   BuybackBurner: abi('BuybackBurner.sol', 'BuybackBurner'),
   Router: abi('Router.sol', 'Router'),
+  UsdgRewards: abi('UsdgRewards.sol', 'UsdgRewards'),
   // Mock ERC20/WETH ABIs are a superset of the real ones (they add `mint`, used by the devnet faucet).
   ERC20: abi('Mocks.sol', 'MockERC20'),
   WETH: abi('Mocks.sol', 'MockWETH'),

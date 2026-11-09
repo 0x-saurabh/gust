@@ -14,8 +14,8 @@ it never holds keys and never sends a transaction.
 - `find_offers`, `get_offer`, `explain_offer`, `compare_offers`: open calls and puts, with breakeven and payoff.
 - `get_positions`, `get_staking`: a wallet's holdings and stake (pass the public address).
 - `get_protocol_stats`, `get_proof`, `get_activity`: volume, fee splits, buyback burns, recent events.
-- `list_graduated`: Pons launchpad tokens that graduated and whether Kyte lists them. Options on Pons tokens expire
-  within 24 hours.
+- `list_graduated`: launchpad tokens. `launchpad=pons` (default): Pons tokens that graduated and whether Kyte lists them. `launchpad=fobo`: FOBO tokens whose rising floor backs 4.2 ETH (Kyte lists these), with the floor price. Options on launchpad tokens expire within 24 hours; a FOBO put struck at or below the floor can never finish in the money.
+- `get_rewards`: USDG trading rewards. The pool this 24 h epoch, the fee-weighted scoring rules, and for an address its points, estimate and claimable epochs. Claims are signed on kyte.sh/rewards.
 
 ## Preparing a trade
 

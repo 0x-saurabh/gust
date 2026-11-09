@@ -71,6 +71,10 @@ export type ProtocolContracts = {
   v2?: MarketSection
   /** Markets v3: new NFT (readable on-chain art), markets and router; reuses the v2 registry. */
   v3?: MarketSection
+  ponsLister?: Address
+  foboLister?: Address
+  /** UsdgRewards: USDG trading rewards, one Merkle root per epoch (docs/USDG_REWARDS.md). */
+  usdgRewards?: Address
 }
 type MarketSection = Pick<ProtocolContracts, 'assetRegistry' | 'optionNft' | 'callMarket' | 'putMarket' | 'router'> & { fromBlock?: number }
 

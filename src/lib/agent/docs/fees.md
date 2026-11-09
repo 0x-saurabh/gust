@@ -11,3 +11,5 @@
 The fee rates are written onto each position when it is created. A later governance change never affects an option
 that is already open. Hard caps in the contracts: at most 10% of the premium and 1% of the strike. No other protocol
 fees exist. Network gas is separate.
+
+Fees paid also earn USDG rewards: see `kyte://docs/rewards` and the `get_rewards` tool.

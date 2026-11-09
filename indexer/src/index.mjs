@@ -12,6 +12,8 @@ import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { installAutopilot } from './autopilot.mjs'
 import { installPons } from './pons.mjs'
+import { installFobo } from './fobo.mjs'
+import { installRewards } from './rewards.mjs'
 import { createPublicClient, decodeEventLog, encodeAbiParameters, formatUnits, getAddress, http as httpTransport, keccak256, toHex, toEventSelector } from 'viem'
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname)
@@ -488,19 +490,23 @@ async function loop() {
 
 // ------------------------------------------------------------------ api
 const f18 = (s) => Number(formatUnits(BigInt(s ?? 0), 18))
-// Listing rule per token: Pons launchpad tokens are young and volatile, so Kyte only writes options on them that
-// expire within 24 hours (the UI, agent, MCP and Autopilot enforce it; the markets themselves allow up to 90 days).
+// Listing rule per token: launchpad tokens (Pons, FOBO) are young and volatile, so Kyte only writes options on them
+// that expire within 24 hours (the UI, agent, MCP and Autopilot enforce it; the markets themselves allow up to 90 days).
 const PONS_MAX_DURATION = 86_400
 let ponsSet = new Set()
+let foboSet = new Set()
 function assetRule(address) {
-  const pons = ponsSet.has(String(address).toLowerCase())
-  return { source: pons ? 'pons' : null, maxDurationSec: pons ? PONS_MAX_DURATION : 90 * 86_400 }
+  const a = String(address).toLowerCase()
+  const source = ponsSet.has(a) ? 'pons' : foboSet.has(a) ? 'fobo' : null
+  return { source, maxDurationSec: source ? PONS_MAX_DURATION : 90 * 86_400 }
 }
 function offerOut(r) {
   const now = chainNow
   const rule = assetRule(r.token)
   return {
-    source: rule.source, overLimit: rule.source === 'pons' && r.expiry - r.created_at > PONS_MAX_DURATION,
+    source: rule.source, overLimit: !!rule.source && r.expiry - r.created_at > PONS_MAX_DURATION,
+    // FOBO: a put struck at or below the floor can never finish in the money (the floor buys every token above it)
+    ...(rule.source === 'fobo' ? (() => { const fl = fobo?.floorFor(r.token); const per = f18(r.strike) / Number(formatUnits(BigInt(r.amount), r.decimals)); return fl ? { floorEth: fl.floorEth, belowFloor: r.kind === 'put' && per <= fl.floorEth } : {} })() : {}),
     id: r.id, kind: r.kind, market: r.market, seller: r.seller, holder: r.holder, token: r.token, symbol: r.symbol,
     decimals: r.decimals, amount: Number(formatUnits(BigInt(r.amount), r.decimals)), amountRaw: r.amount,
     strike: f18(r.strike), strikeRaw: r.strike, premium: f18(r.premium), premiumRaw: r.premium,
@@ -571,7 +577,8 @@ const routes = {
       if (!last) continue
       const ago = all('SELECT price FROM prices WHERE symbol = ? AND at <= ? ORDER BY at DESC LIMIT 1', sym, last.at - 3600)[0]
       const asset = all('SELECT address FROM assets WHERE symbol = ?', sym)[0]
-      out[sym] = { price: last.price, at: last.at, change1h: ago ? (last.price - ago.price) / ago.price : 0, source: quoteSource.get(sym) ?? 'uniswap-v4', session: sessionOf(asset?.address, sym) }
+      const floor = asset && foboSet.has(asset.address.toLowerCase()) ? fobo?.floorFor(asset.address) : null
+      out[sym] = { price: last.price, at: last.at, change1h: ago ? (last.price - ago.price) / ago.price : 0, source: quoteSource.get(sym) ?? 'uniswap-v4', session: sessionOf(asset?.address, sym), ...(floor ? { floor: floor.floorEth, floorBackingEth: floor.backingEth } : {}) }
     }
     return out
   },
@@ -775,6 +782,19 @@ const pons = CHAIN_ID === 4663 ? installPons({ db, all, client, lister: dep.pons
 if (pons) { routes['/pons/tokens'] = pons.route; pons.start(); pons.onTokens((set) => { ponsSet = set }); console.log('[pons] watching the Pons factories; /pons/tokens ready') }
 else console.log(`[pons] off (chain ${CHAIN_ID})`)
 
+// ---- FOBO launchpad: launches, floors, quotes; /fobo/tokens. Mainnet only (FoboHook lives there).
+const fobo = CHAIN_ID === 4663 ? installFobo({ db, all, client, lister: dep.foboLister ? getAddress(dep.foboLister) : null }) : null
+if (fobo) { routes['/fobo/tokens'] = fobo.route; fobo.start(); fobo.onTokens((set) => { foboSet = set }); console.log('[fobo] watching FoboFactory and the hook floors; /fobo/tokens ready') }
+else console.log(`[fobo] off (chain ${CHAIN_ID})`)
+
+// ---- USDG rewards: fee-weighted points per 24 h epoch, Merkle trees for UsdgRewards; /rewards, /rewards/epoch/<n>, /rewards/<address>.
+const rewards = installRewards({
+  db, all, client, contract: dep.usdgRewards ? getAddress(dep.usdgRewards) : null, chainNow: () => chainNow,
+  isStock: (token) => { const a = all('SELECT address, symbol FROM assets WHERE lower(address) = ?', String(token).toLowerCase())[0]; return !!a && !!sessionOf(a.address, a.symbol) },
+})
+rewards.start()
+console.log(`[rewards] scoring epochs${dep.usdgRewards ? `, publishing to ${dep.usdgRewards}` : ' (no UsdgRewards deployed: score only)'}`)
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json; charset=utf-8')
   res.setHeader('x-content-type-options', 'nosniff')
@@ -830,6 +850,7 @@ const server = http.createServer(async (req, res) => {
       const offers = all('SELECT * FROM offers WHERE symbol = ? AND status = ? AND deadline > ?', a.symbol, 'open', now).map(offerOut).filter((o) => o.fillable).sort((x, y) => x.expiry - y.expiry)
       body = { ok: true, at: now, symbol: a.symbol, address: a.address, name: a.name, callsEnabled: !!a.enabled, putsEnabled: !!a.puts_enabled, ...assetRule(a.address), session: sessionOf(a.address, a.symbol), price: (await routes['/prices']())[a.symbol] ?? null, openOffers: offers.map((o) => ({ ...o, link: `${SITE_URL}/market?buy=${o.id}` })), links: { market: `${SITE_URL}/market?token=${encodeURIComponent(a.symbol)}`, sell: `${SITE_URL}/sell?token=${encodeURIComponent(a.symbol)}` } }
     }
+    else if (u.pathname.startsWith('/rewards')) body = (await rewards.handle(u)) ?? { error: 'not found' }
     else if (Object.hasOwn(routes, u.pathname)) body = await routes[u.pathname](u)
     else if (m?.[1] === 'offers') {
       if (!/^\d{1,80}$/.test(m[2])) throw new BadRequest('bad id')

@@ -165,13 +165,14 @@ async function checkBalance() {
   if (bal < MIN_ETH) await alert(`keeper ${account.address} low on gas: ${formatEther(bal)} ETH`)
 }
 
-// ---- Pons listings: the indexer says what graduated; PonsLister verifies on chain and runs the timelock operation.
-// Needs deployments.ponsLister (set after the Safe grants it the timelock roles) and INDEXER_URL.
+// ---- Launchpad listings: the indexer says which tokens clear the bar (Pons: graduated; FOBO: floor backs 4.2 ETH
+// after 24 h); the lister contract verifies on chain and runs the timelock operation. Needs deployments.ponsLister /
+// deployments.foboLister (set after the Safe grants them the timelock roles) and INDEXER_URL.
 const INDEXER_URL = (process.env.INDEXER_URL || '').replace(/\/$/, '')
 const LISTER_ABI = [
   { type: 'function', name: 'list', stateMutability: 'nonpayable', inputs: [{ name: 'token', type: 'address' }], outputs: [{ type: 'bytes32' }] },
   { type: 'function', name: 'execute', stateMutability: 'nonpayable', inputs: [{ name: 'token', type: 'address' }], outputs: [] },
-  { type: 'function', name: 'check', stateMutability: 'view', inputs: [{ name: 'token', type: 'address' }], outputs: [{ type: 'uint256' }, { type: 'address' }] },
+  { type: 'function', name: 'check', stateMutability: 'view', inputs: [{ name: 'token', type: 'address' }], outputs: [{ type: 'uint256' }, { type: 'uint256' }] },
   { type: 'function', name: 'operationOf', stateMutability: 'view', inputs: [{ name: 'token', type: 'address' }], outputs: [{ type: 'bytes32' }] },
   { type: 'function', name: 'paused', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
   { type: 'function', name: 'timelockController', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
@@ -182,50 +183,97 @@ const TL_ABI = [
   { type: 'function', name: 'isOperationPending', stateMutability: 'view', inputs: [{ name: 'id', type: 'bytes32' }], outputs: [{ type: 'bool' }] },
 ]
 const ZERO32 = '0x' + '0'.repeat(64)
-const listerSkip = new Map() // token -> until (ms): don't re-check a token that failed its on-chain checks for an hour
-const listerPending = new Map() // token -> symbol: scheduled by us or seen pending; executed without needing the indexer
 const INDEXER_FALLBACK_URL = (process.env.INDEXER_FALLBACK_URL || 'http://127.0.0.1:4201').replace(/\/$/, '')
-async function jobPonsList() {
-  const lister = dep.ponsLister
+const LAUNCHPADS = [
+  { name: 'pons', lister: () => dep.ponsLister, path: '/pons/tokens?status=graduated&limit=200', pick: (t) => t.pairIsWeth },
+  { name: 'fobo', lister: () => dep.foboLister, path: '/fobo/tokens?status=eligible&limit=200', pick: (t) => t.quoteIsEth && t.eligible },
+]
+const listerState = Object.fromEntries(LAUNCHPADS.map((l) => [l.name, {
+  skip: new Map(), // token -> until (ms): don't re-check a token that failed its on-chain checks for an hour
+  pending: new Map(), // token -> symbol: scheduled by us or seen pending; executed without needing the indexer
+}]))
+async function jobLister({ name, lister: addrOf, path: p, pick }) {
+  const lister = addrOf()
   if (!lister || !INDEXER_URL) return
   if (await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'paused' })) return
-  // Graduated tokens from the indexer (production first, local fallback); plus every token this keeper has seen
+  const { skip, pending } = listerState[name]
+  // Candidates from the indexer (production first, local fallback); plus every token this keeper has seen
   // scheduled, so a pending listing executes even while both indexers are down.
   let tokens = []
   for (const base of [INDEXER_URL, INDEXER_FALLBACK_URL].filter(Boolean)) {
     try {
-      const r = await fetch(`${base}/pons/tokens?status=graduated&limit=200`, { signal: AbortSignal.timeout(10_000) })
+      const r = await fetch(`${base}${p}`, { signal: AbortSignal.timeout(10_000) })
       if (!r.ok) throw new Error(`indexer ${r.status}`)
       tokens = (await r.json()).tokens; break
-    } catch (e) { log(`pons: ${base} unavailable (${e.message})`) }
+    } catch (e) { log(`${name}: ${base} unavailable (${e.message})`) }
   }
   const candidates = new Map()
-  for (const t of tokens) if (t.pairIsWeth && (t.kyte === 'unlisted' || t.kyte === 'scheduled')) candidates.set(getAddress(t.address), t.symbol)
-  for (const [a, s] of listerPending) if (!candidates.has(a)) candidates.set(a, s)
+  for (const t of tokens) if (pick(t) && (t.kyte === 'unlisted' || t.kyte === 'scheduled')) candidates.set(getAddress(t.address), t.symbol)
+  for (const [a, s] of pending) if (!candidates.has(a)) candidates.set(a, s)
   const timelockAddr = await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'timelockController' })
   for (const [token, symbol] of candidates) {
-    const t = { symbol }
-    if ((listerSkip.get(token) ?? 0) > Date.now()) continue
+    if ((skip.get(token) ?? 0) > Date.now()) continue
     const op = await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'operationOf', args: [token] })
     if (op === ZERO32) {
       try { await pub.readContract({ address: lister, abi: LISTER_ABI, functionName: 'check', args: [token] }) }
-      catch (e) { listerSkip.set(token, Date.now() + 3_600_000); log(`pons ${t.symbol}: not listable (${e.shortMessage ?? e.message})`); continue }
-      await send(`ponsLister.list ${t.symbol}`, { address: lister, abi: LISTER_ABI, functionName: 'list', args: [token] })
-      listerPending.set(token, t.symbol)
+      catch (e) { skip.set(token, Date.now() + 3_600_000); log(`${name} ${symbol}: not listable (${e.shortMessage ?? e.message})`); continue }
+      await send(`${name}Lister.list ${symbol}`, { address: lister, abi: LISTER_ABI, functionName: 'list', args: [token] })
+      pending.set(token, symbol)
     } else if (await pub.readContract({ address: timelockAddr, abi: TL_ABI, functionName: 'isOperationReady', args: [op] })) {
-      await send(`ponsLister.execute ${t.symbol}`, { address: lister, abi: LISTER_ABI, functionName: 'execute', args: [token] })
-      listerPending.delete(token)
+      await send(`${name}Lister.execute ${symbol}`, { address: lister, abi: LISTER_ABI, functionName: 'execute', args: [token] })
+      pending.delete(token)
     } else if (!(await pub.readContract({ address: timelockAddr, abi: TL_ABI, functionName: 'isOperationPending', args: [op] }))) {
-      listerPending.delete(token)
-      listerSkip.set(token, Date.now() + 3_600_000) // done or cancelled; the timelock can reset() if it should run again
-    } else listerPending.set(token, t.symbol)
+      pending.delete(token)
+      skip.set(token, Date.now() + 3_600_000) // done or cancelled; the timelock can reset() if it should run again
+    } else pending.set(token, symbol)
+  }
+}
+const jobPonsList = () => jobLister(LAUNCHPADS[0])
+const jobFoboList = () => jobLister(LAUNCHPADS[1])
+
+// ---- USDG rewards: publish each final epoch's root from the indexer's tree (docs/USDG_REWARDS.md), sweep expired ones.
+// Needs deployments.usdgRewards (this keeper must be its publisher) and INDEXER_URL. The contract refuses a root the
+// unowed USDG balance cannot cover, so an unfunded epoch simply waits.
+const REWARDS_ABI = [
+  { type: 'function', name: 'publish', stateMutability: 'nonpayable', inputs: [{ name: 'epoch', type: 'uint256' }, { name: 'root', type: 'bytes32' }, { name: 'total', type: 'uint256' }], outputs: [] },
+  { type: 'function', name: 'sweep', stateMutability: 'nonpayable', inputs: [{ name: 'epoch', type: 'uint256' }], outputs: [] },
+  { type: 'function', name: 'epochs', stateMutability: 'view', inputs: [{ name: '', type: 'uint256' }], outputs: [{ type: 'bytes32' }, { type: 'uint128' }, { type: 'uint128' }, { type: 'uint64' }, { type: 'uint64' }, { type: 'bool' }] },
+  { type: 'function', name: 'available', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { type: 'function', name: 'publisher', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'paused', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+]
+const rewardsSkip = new Map() // epoch -> until (ms)
+async function jobRewards() {
+  const c = dep.usdgRewards
+  if (!c || !INDEXER_URL) return
+  const [publisher, paused] = await Promise.all([pub.readContract({ address: c, abi: REWARDS_ABI, functionName: 'publisher' }), pub.readContract({ address: c, abi: REWARDS_ABI, functionName: 'paused' })])
+  if (getAddress(publisher) !== account.address) { await alert(`rewards publisher is ${publisher}, this bot is ${account.address}`); return }
+  if (paused) return
+  let program
+  try { const r = await fetch(`${INDEXER_URL}/rewards`, { signal: AbortSignal.timeout(15_000) }); if (!r.ok) throw new Error(`indexer ${r.status}`); program = await r.json() } catch (e) { log(`rewards: indexer unavailable (${e.message})`); return }
+  const nowSec = Number((await pub.getBlock()).timestamp)
+  for (const e of program.epochs ?? []) {
+    if ((rewardsSkip.get(e.epoch) ?? 0) > Date.now()) continue
+    const [root, , , , expiresAt, swept] = await pub.readContract({ address: c, abi: REWARDS_ABI, functionName: 'epochs', args: [BigInt(e.epoch)] })
+    if (root !== ZERO32) {
+      if (!swept && Number(expiresAt) < nowSec) await send(`usdgRewards.sweep ${e.epoch}`, { address: c, abi: REWARDS_ABI, functionName: 'sweep', args: [BigInt(e.epoch)] })
+      continue
+    }
+    if (!e.root || e.totalUsdg <= 0) continue // nothing to pay in that epoch
+    let tree
+    try { const r = await fetch(`${INDEXER_URL}/rewards/epoch/${e.epoch}`, { signal: AbortSignal.timeout(15_000) }); if (!r.ok) throw new Error(`indexer ${r.status}`); tree = await r.json() } catch (err) { log(`rewards: epoch ${e.epoch} tree unavailable (${err.message})`); continue }
+    if (!tree.final || !tree.root || tree.root !== e.root) continue // the indexer is still settling this epoch
+    const total = BigInt(tree.total)
+    const avail = await pub.readContract({ address: c, abi: REWARDS_ABI, functionName: 'available' })
+    if (avail < total) { rewardsSkip.set(e.epoch, Date.now() + 3_600_000); await alert(`rewards epoch ${e.epoch} needs ${Number(total) / 1e6} USDG, ${Number(avail) / 1e6} available: fund ${c}`); continue }
+    await send(`usdgRewards.publish ${e.epoch} (${Number(total) / 1e6} USDG, ${tree.leaves?.length ?? '?'} accounts)`, { address: c, abi: REWARDS_ABI, functionName: 'publish', args: [BigInt(e.epoch), tree.root, total] })
   }
 }
 
 async function tick() {
   await checkBalance().catch(() => {})
-  // Pons listings first: they are cheap and time-sensitive, while the expiry scan can take minutes after a restart.
-  for (const [name, job] of [['ponsList', jobPonsList], ['expire', jobExpire], ['split', jobSplit], ['buyback', jobBuyback]]) {
+  // Launchpad listings first: they are cheap and time-sensitive, while the expiry scan can take minutes after a restart.
+  for (const [name, job] of [['ponsList', jobPonsList], ['foboList', jobFoboList], ['expire', jobExpire], ['split', jobSplit], ['buyback', jobBuyback], ['rewards', jobRewards]]) {
     try { await job() } catch (e) { await alert(`${name} failed: ${e.shortMessage ?? e.message}`) }
   }
 }

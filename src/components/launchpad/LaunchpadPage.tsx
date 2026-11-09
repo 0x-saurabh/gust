@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { PillButton } from '@/components/PillButton'
 import { TokenLogo } from '@/components/TokenLogo'
 import { Note, PageHeader, Segmented } from '@/components/ui'
+import { FoboList } from '@/components/launchpad/FoboList'
 import { INDEXER_URL } from '@/lib/data'
 import { compact, num, shortAddr } from '@/lib/format'
 
@@ -46,7 +47,10 @@ function CopyAddr({ value }: { value: string }) {
 const SOCIAL: Record<string, string> = { twitter: 'X', x: 'X', telegram: 'Telegram', discord: 'Discord', github: 'GitHub', website: 'Website' }
 const usd = (n: number | null) => (n == null || !Number.isFinite(n) || n === 0 ? '—' : n >= 1000 ? `$${compact(n)}` : n >= 1 ? `$${num(n, 2)}` : `$${n.toPrecision(3)}`)
 
+type Pad = 'pons' | 'fobo'
+
 export function LaunchpadPage() {
+  const [pad, setPad] = useState<Pad>('pons')
   const [tab, setTab] = useState<Tab>('graduated')
   const [hours, setHours] = useState<'24' | '36'>('36')
   const q = useQuery({
@@ -60,10 +64,19 @@ export function LaunchpadPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24">
-      <PageHeader title="Launchpad" sub="Tokens that graduated on Pons, the Robinhood Chain launchpad. A graduated token has crossed 4.2 ETH of locked liquidity. Listed ones trade on Kyte with 24-hour options only.">
-        <Segmented value={tab} onChange={setTab} options={[{ value: 'graduated', label: 'Graduated' }, { value: 'listed', label: 'On Kyte' }]} />
+      <PageHeader
+        title="Launchpad"
+        sub={pad === 'pons'
+          ? 'Tokens that graduated on Pons, the Robinhood Chain launchpad. A graduated token has crossed 4.2 ETH of locked liquidity. Listed ones trade on Kyte with 24-hour options only.'
+          : 'Tokens from FOBO, the Robinhood Chain launchpad where every floor only rises. Kyte lists an ETH-quoted token once its floor backs 4.2 ETH after its first day. Listed ones trade on Kyte with 24-hour options only.'}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <Segmented value={pad} onChange={setPad} options={[{ value: 'pons', label: 'Pons' }, { value: 'fobo', label: 'FOBO' }]} />
+          {pad === 'pons' && <Segmented value={tab} onChange={setTab} options={[{ value: 'graduated', label: 'Graduated' }, { value: 'listed', label: 'On Kyte' }]} />}
+        </div>
       </PageHeader>
 
+      {pad === 'fobo' ? <FoboList /> : (<>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         {counts && <p className="text-sm text-muted">{counts.graduated} graduated of {counts.launched} launched. Data from the Pons factory on chain and DexScreener; refreshed every minute.</p>}
         {tab === 'graduated' && <Segmented value={hours} onChange={setHours} options={[{ value: '24', label: 'Last 24 hours' }, { value: '36', label: 'Last 36 hours' }]} />}
@@ -144,6 +157,7 @@ export function LaunchpadPage() {
       )}
 
       <div className="mt-10"><Note>Pons tokens are young and volatile. Kyte lists graduated, ETH-paired tokens after a review and only allows options that expire within 24 hours on them. Graduation is a liquidity threshold, not a quality signal. Options are risky and can expire worthless.</Note></div>
+      </>)}
     </div>
   )
 }
