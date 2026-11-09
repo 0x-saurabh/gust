@@ -17,6 +17,10 @@ const config: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]
   },
+  async redirects() {
+    // The security self-assessment lives at /audit; /security is the name people guess.
+    return [{ source: '/security', destination: '/audit', permanent: true }]
+  },
 }
 
 export default config

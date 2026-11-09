@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Kyte Security Self-Assessment</title>
+<meta name=description content="Kyte security self-assessment: automated analysis and manual review of Kyte's deployed contracts on Robinhood Chain.">
+<style>
+:root { --ink:#10151a; --muted:#5b6670; --line:#e3e7ea; --soft:#f5f7f8; --a:#2fd59a; --b:#22c3d6; --high:#c2410c; --med:#b45309; --low:#2563eb; --info:#64748b; }
+* { box-sizing:border-box; }
+body { margin:0; background:#fff; color:var(--ink); font:15px/1.62 -apple-system, "Inter", "Segoe UI", Helvetica, Arial, sans-serif; }
+main { max-width:920px; margin:0 auto; padding:56px 24px 80px; }
+a { color:#0f766e; text-decoration:none; } a:hover { text-decoration:underline; }
+code, .mono { font-family:ui-monospace, "SF Mono", Menlo, monospace; font-size:.86em; }
+td.mono { white-space:nowrap; }
+code { background:var(--soft); padding:1px 5px; border-radius:4px; }
+.brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:-.02em; font-size:18px; }
+.brand i { display:block; width:28px; height:4px; border-radius:2px; background:linear-gradient(90deg,var(--a),var(--b)); }
+h1 { font-size:42px; line-height:1.08; letter-spacing:-.035em; margin:20px 0 10px; }
+h2 { font-size:22px; letter-spacing:-.02em; margin:52px 0 14px; padding-top:14px; border-top:1px solid var(--line); }
+h3 { font-size:16.5px; margin:6px 0 4px; letter-spacing:-.01em; }
+.lede { color:var(--muted); font-size:16.5px; margin:0; max-width:680px; }
+.meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin:28px 0 0; }
+.meta div { background:var(--soft); border-radius:10px; padding:12px 14px; }
+.meta b { display:block; font-size:11.5px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+.notice { border-left:3px solid var(--b); background:#f2fbfc; padding:14px 16px; border-radius:0 8px 8px 0; margin:24px 0 0; }
+.toc { columns:2; margin:18px 0 0; padding-left:20px; color:var(--muted); }
+.counts { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:18px 0; }
+.counts div { border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
+.counts b { display:block; font-size:28px; letter-spacing:-.02em; }
+.counts span { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+table { width:100%; border-collapse:collapse; margin:10px 0; font-size:14px; }
+th, td { text-align:left; vertical-align:top; padding:9px 10px; border-bottom:1px solid var(--line); }
+th { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.sub { color:var(--muted); font-size:12.5px; }
+.wrap { overflow-x:auto; }
+.sev { display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:2px 8px; border-radius:20px; color:#fff; white-space:nowrap; }
+.sev.critical, .sev.high { background:var(--high); } .sev.medium { background:var(--med); } .sev.low { background:var(--low); } .sev.informational { background:var(--info); }
+.finding { border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin:14px 0; break-inside:avoid; }
+.fhead { display:flex; gap:10px; align-items:center; }
+.fid { font-family:ui-monospace, Menlo, monospace; font-weight:600; font-size:13px; }
+.status { margin-left:auto; font-size:12px; color:var(--muted); }
+.where { color:var(--muted); font-size:13px; margin-bottom:6px; }
+.ctx { background:#f6f8fa; border-radius:8px; padding:10px 12px; }
+.resp { border-top:1px dashed var(--line); padding-top:10px; color:#253038; }
+.note { border-bottom:1px solid var(--line); padding:6px 0 10px; }
+.ok { color:#0f9d6e; font-weight:700; }
+figure { margin:16px 0; border:1px solid var(--line); border-radius:12px; padding:14px; }
+figure svg { width:100%; height:auto; display:block; }
+figcaption { color:var(--muted); font-size:12.5px; margin-top:8px; }
+pre { background:#0f1418; color:#e6edf2; padding:16px; border-radius:10px; overflow-x:auto; font-size:12.5px; line-height:1.55; }
+ol li, ul li { margin:4px 0; }
+footer { margin-top:56px; color:var(--muted); font-size:12.5px; border-top:1px solid var(--line); padding-top:16px; }
+@media (max-width:640px) { h1 { font-size:31px; } .counts { grid-template-columns:repeat(3,1fr); } .toc { columns:1; } }
+@media print { main { padding:0 6px; } h2 { break-after:avoid; } a { color:var(--ink); } .finding, figure, .note { break-inside:avoid; } }
+</style></head>
+<body><main>
+<div class=brand><i></i>Kyte</div>
+<h1>Security Self-Assessment</h1>
+<p class=lede>Automated analysis, manual code review and on-chain configuration checks of Kyte's deployed smart contracts on Robinhood Chain.</p>
+<div class=meta>
+<div><b>Prepared by</b>Kyte team</div><div><b>Date</b>9 November 2026</div><div><b>Version</b>1.1</div>
+<div><b>Chain</b>Robinhood Chain (4663)</div><div><b>Snapshot block</b>109,974,684</div>
+</div>
+<div class=notice><b>This is a self-assessment, not a third-party audit.</b> The Kyte team ran two open-source security analysers on the exact verified
+source of each deployed contract, reviewed every result by hand, and checked the live configuration on chain. Slither and Aderyn are tools by Trail of Bits
+and Cyfrin; neither company reviewed Kyte.</div>
+<ol class=toc><li><a href='#summary'>Summary</a></li>
+<li><a href='#overview'>System overview</a></li>
+<li><a href='#scope'>Scope</a></li>
+<li><a href='#roles'>Roles and privileges</a></li>
+<li><a href='#config'>Live configuration</a></li>
+<li><a href='#method'>Methodology</a></li>
+<li><a href='#severity'>Severity definitions</a></li>
+<li><a href='#findings'>Findings</a></li>
+<li><a href='#contracts'>Contract review notes</a></li>
+<li><a href='#passed'>Checks that passed</a></li>
+<li><a href='#fp'>False positives</a></li>
+<li><a href='#limits'>Limitations</a></li>
+<li><a href='#repro'>Reproduce</a></li></ol>
+
+<h2 id=summary>1. Summary</h2>
+<p>Twelve deployed contracts were in scope, with about 1,750 lines of Kyte code (excluding comments). The review found <b>0 critical, 0 high, 0 medium, 5 low and 5 informational</b> issues.</p>
+<p>The core option escrow is sound. Collateral can only go to its seller or to the option holder. Exits keep working while the protocol is paused. Every
+entry point is protected against reentrancy, and fees are capped in code.</p>
+<p>The five low findings cover:</p>
+<ul>
+<li>the on-chain buyback route, which is not in use (buybacks are currently executed manually)</li>
+<li>a griefing case on the ETH convenience Router, which has a direct-WETH fallback</li>
+<li>a timelock delay that differs from the code comments</li>
+<li>the dependency of physical settlement on token transferability</li>
+</ul>
+<p>None of them allows anyone to take escrowed collateral or staked $KYTE.</p>
+<div class=counts>
+<div><b>0</b><span>Critical</span></div><div><b>0</b><span>High</span></div><div><b>0</b><span>Medium</span></div>
+<div><b>5</b><span>Low</span></div><div><b>5</b><span>Info</span></div>
+</div>
+<div class=wrap><table><thead><tr><th>ID</th><th>Severity</th><th>Title</th><th>Status</th></tr></thead><tbody>
+<tr><td class=mono><a href='#KYT-01'>KYT-01</a></td><td><span class='sev low'>Low</span></td><td>The on-chain buyback route points to an unfunded pool (route not in use)</td><td>Acknowledged</td></tr>
+<tr><td class=mono><a href='#KYT-02'>KYT-02</a></td><td><span class='sev low'>Low</span></td><td>The on-chain buyback price floor follows the last fill (route not in use)</td><td>Acknowledged</td></tr>
+<tr><td class=mono><a href='#KYT-03'>KYT-03</a></td><td><span class='sev low'>Low</span></td><td>The Router can be blocked by sending it 1 wei of WETH (direct market access unaffected)</td><td>Acknowledged</td></tr>
+<tr><td class=mono><a href='#KYT-04'>KYT-04</a></td><td><span class='sev low'>Low</span></td><td>The timelock delay is 10 minutes on chain; the code comments describe 48 hours</td><td>Acknowledged</td></tr>
+<tr><td class=mono><a href='#KYT-05'>KYT-05</a></td><td><span class='sev low'>Low</span></td><td>Physical settlement depends on the underlying token staying transferable</td><td>Acknowledged</td></tr>
+<tr><td class=mono><a href='#KYT-06'>KYT-06</a></td><td><span class='sev informational'>Informational</span></td><td>The guardian Safe needs a single signature</td><td>Acknowledged</td></tr>
+<tr><td class=mono><a href='#KYT-07'>KYT-07</a></td><td><span class='sev informational'>Informational</span></td><td>StakingPool.notifyReward emits no event</td><td>Acknowledged</td></tr>
+<tr><td class=mono><a href='#KYT-08'>KYT-08</a></td><td><span class='sev informational'>Informational</span></td><td>KyteHaltGate reverts instead of answering if the oracle reports a future timestamp</td><td>Acknowledged</td></tr>
+<tr><td class=mono><a href='#KYT-09'>KYT-09</a></td><td><span class='sev informational'>Informational</span></td><td>Rebasing tokens would break collateral accounting</td><td>Acknowledged</td></tr>
+<tr><td class=mono><a href='#KYT-10'>KYT-10</a></td><td><span class='sev informational'>Informational</span></td><td>Live contracts were built from different commits</td><td>Acknowledged</td></tr>
+</tbody></table></div>
+
+<h2 id=overview>2. System overview</h2>
+<p>Kyte is a fully collateralised options market:</p>
+<ul>
+<li>A seller escrows the full collateral for a covered call (the token) or a cash-secured put (WETH strike).</li>
+<li>A buyer pays the premium and receives an ERC-721 that represents the option.</li>
+<li>The holder of that NFT can exercise before expiry.</li>
+<li>After expiry anyone can return unexercised collateral to the seller.</li>
+<li>Fees flow to a vault that splits them each epoch between stakers, buyback and operations.</li>
+</ul>
+<p>Settings sit behind a timelock, and a guardian can only pause new exposure.</p>
+<figure><svg viewBox='0 0 860 470' xmlns='http://www.w3.org/2000/svg' font-family='-apple-system,Inter,Helvetica,Arial,sans-serif' role='img' aria-label='Kyte contract architecture and fund flows'><defs><marker id='ah' viewBox='0 0 10 10' refX='9' refY='5' markerWidth='7' markerHeight='7' orient='auto-start-reverse'><path d='M0,0 L10,5 L0,10 z' fill='#8a96a0'/></marker></defs><rect x='20' y='30' width='150' height='54' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='95.0' y='55.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>Seller</text><text x='95.0' y='72.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>writes an option</text><rect x='20' y='130' width='150' height='54' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='95.0' y='155.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>Buyer / holder</text><text x='95.0' y='172.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>pays premium</text><rect x='20' y='230' width='150' height='54' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='95.0' y='255.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>ETH users</text><text x='95.0' y='272.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>pay in ETH</text><rect x='20' y='330' width='150' height='50' rx='10' fill='#f4f6f8' stroke='#c3cbd2'/><text x='95.0' y='353.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>Timelock</text><text x='95.0' y='370.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>settings · 600 s</text><rect x='20' y='396' width='150' height='50' rx='10' fill='#f4f6f8' stroke='#c3cbd2'/><text x='95.0' y='419.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>Guardian Safe</text><text x='95.0' y='436.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>pause only</text><rect x='250' y='230' width='150' height='54' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='325.0' y='255.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>Router</text><text x='325.0' y='272.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>wrap · call · refund</text><rect x='250' y='30' width='360' height='154' rx='10' fill='#effaf6' stroke='#7fd8b5'/><text x='430.0' y='112.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'></text><text x='430' y='54' text-anchor='middle' font-size='12' font-weight='600' fill='#0f766e'>ESCROW</text><rect x='268' y='66' width='156' height='52' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='346.0' y='90.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>CallMarket</text><text x='346.0' y='107.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>token collateral</text><rect x='436' y='66' width='156' height='52' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='514.0' y='90.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>PutMarket</text><text x='514.0' y='107.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>WETH collateral</text><rect x='268' y='126' width='324' height='44' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='430.0' y='153.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>OptionNFT</text><rect x='690' y='30' width='150' height='54' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='765.0' y='55.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>AssetRegistry</text><text x='765.0' y='72.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>listings · caps</text><rect x='460' y='240' width='150' height='54' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='535.0' y='265.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>FeeVault</text><text x='535.0' y='282.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>split per epoch</text><rect x='690' y='240' width='150' height='54' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='765.0' y='265.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>KyteHook pool</text><text x='765.0' y='282.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>swap fee</text><rect x='290' y='380' width='150' height='50' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='365.0' y='403.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>StakingPool</text><text x='365.0' y='420.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>stakers 30%</text><rect x='455' y='380' width='160' height='50' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='535.0' y='403.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>BuybackBurner</text><text x='535.0' y='420.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>buyback 20% · manual</text><rect x='630' y='380' width='150' height='50' rx='10' fill='#ffffff' stroke='#cfd6db'/><text x='705.0' y='403.0' text-anchor='middle' font-size='13.5' font-weight='600' fill='#10151a'>Operations Safe</text><text x='705.0' y='420.0' text-anchor='middle' font-size='11.5' fill='#5b6670'>operations 50%</text><line x1='170' y1='57' x2='266' y2='82' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)'/><text x='212' y='58' text-anchor='middle' font-size='11' fill='#5b6670'>collateral</text><line x1='170' y1='157' x2='266' y2='108' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)'/><text x='212' y='150' text-anchor='middle' font-size='11' fill='#5b6670'>premium</text><line x1='170' y1='257' x2='248' y2='257' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)'/><line x1='325' y1='230' x2='325' y2='186' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)'/><text x='268' y='214' text-anchor='middle' font-size='11' fill='#5b6670'>buyFor · exerciseFor</text><line x1='610' y1='57' x2='688' y2='57' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)'/><text x='649' y='50' text-anchor='middle' font-size='11' fill='#5b6670'>reads</text><line x1='535' y1='186' x2='535' y2='238' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)'/><text x='556' y='216' text-anchor='middle' font-size='11' fill='#5b6670'>fees</text><line x1='535' y1='294' x2='365' y2='378' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)'/><line x1='535' y1='294' x2='535' y2='378' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)'/><line x1='535' y1='294' x2='705' y2='378' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)'/><line x1='688' y1='267' x2='612' y2='267' stroke='#8a96a0' stroke-width='1.4' marker-end='url(#ah)' stroke-dasharray='4 4'/></svg><figcaption>Contract architecture and fund flows. Solid arrows are value or calls; the dashed arrow is the KyteHook protocol fee. Percentages are the live
+fee split. The timelock owns settings and the guardian can only pause; neither can move escrowed collateral.</figcaption></figure>
+
+<h2 id=scope>3. Scope</h2>
+<p>The live Kyte contracts on Robinhood Chain at block 109,974,684. Each address resolves to a full Sourcify match, so the code analysed is the code that runs.</p>
+<div class=wrap><table><thead><tr><th>Contract</th><th>Address</th><th>solc</th><th>Verification</th></tr></thead><tbody>
+<tr><td><b>CallMarket</b><div class=sub>Covered calls: escrow, buy, exercise, expire</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0xb6759D8893601BB7c1A032eC8ea40C856a6adf80'>0xb6759D8893601BB7c1A032eC8ea40C856a6adf80</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #58463816</div></td></tr>
+<tr><td><b>PutMarket</b><div class=sub>Cash-secured puts: escrow, buy, exercise, expire</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0x2E2d5DfB4cf30d15688Cc2DDD30641c78DFfcb35'>0x2E2d5DfB4cf30d15688Cc2DDD30641c78DFfcb35</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #58463839</div></td></tr>
+<tr><td><b>Router</b><div class=sub>ETH entry point that wraps, calls a market and refunds</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0xdD76956667E6423bAC56d2EbF827a9b0d7dBDF68'>0xdD76956667E6423bAC56d2EbF827a9b0d7dBDF68</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #58463883</div></td></tr>
+<tr><td><b>OptionNFT</b><div class=sub>ERC-721 that represents each filled option</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0xe0cd21a7ed37898a5acdf7dc68c52259cd63308b'>0xe0cd21a7ed37898a5acdf7dc68c52259cd63308b</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #58463804</div></td></tr>
+<tr><td><b>AssetRegistry</b><div class=sub>Token whitelist, caps and minimum strikes</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0x02f571e10B9c7303EB7A6284A7137b146e18658D'>0x02f571e10B9c7303EB7A6284A7137b146e18658D</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #58327992</div></td></tr>
+<tr><td><b>FeeVault</b><div class=sub>Collects fees and splits them each epoch</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0x78c569a1137b78cb78f42c42b4b6c2b8f1e3ddef'>0x78c569a1137b78cb78f42c42b4b6c2b8f1e3ddef</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #57936203</div></td></tr>
+<tr><td><b>StakingPool</b><div class=sub>$KYTE staking and WETH rewards</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0xD7253a90fd43507F44cF0934F3D5d7432760d17f'>0xD7253a90fd43507F44cF0934F3D5d7432760d17f</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #58609771</div></td></tr>
+<tr><td><b>BuybackBurner</b><div class=sub>On-chain buyback and burn (not in use; buybacks are manual)</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0x8a9d128247d8c4512411cf9d0cdcac5acf86fb95'>0x8a9d128247d8c4512411cf9d0cdcac5acf86fb95</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #58609773</div></td></tr>
+<tr><td><b>UniswapV4Adapter</b><div class=sub>Swap route used by BuybackBurner</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0xfa17818515e946180b9767f9d9c40a09ee80dda6'>0xfa17818515e946180b9767f9d9c40a09ee80dda6</a></td><td class=mono>0.8.26</td><td>Full match<div class=sub>Sourcify #58609785</div></td></tr>
+<tr><td><b>KyteHook</b><div class=sub>Uniswap v4 hook: TWAP oracle and protocol fee</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0x77e52e93aa0892b29a4527af4f3a79f01cfa9044'>0x77e52e93aa0892b29a4527af4f3a79f01cfa9044</a></td><td class=mono>0.8.26</td><td>Full match<div class=sub>Sourcify #57936350</div></td></tr>
+<tr><td><b>KyteHaltGate</b><div class=sub>Reader of Harmonic's session oracle (not called by live contracts)</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0x3Ba49951cae0e9EF38839F9080b48bD254e0bc8b'>0x3Ba49951cae0e9EF38839F9080b48bD254e0bc8b</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #58822304</div></td></tr>
+<tr><td><b>TimelockController</b><div class=sub>OpenZeppelin timelock that owns settings (configuration reviewed)</div></td><td class=mono><a href='https://robinhoodchain.blockscout.com/address/0xf8e6faf7e0e57bc91ad5c59b84fede2cab842893'>0xf8e6faf7e0e57bc91ad5c59b84fede2cab842893</a></td><td class=mono>0.8.28</td><td>Full match<div class=sub>Sourcify #57936139</div></td></tr>
+</tbody></table></div>
+<p class=sub>Out of scope: the $KYTE token contract (not verified on Sourcify at the time of review), the third-party pool in which $KYTE trades, the
+Uniswap v4 PoolManager, Harmonic's oracle, and off-chain systems (website, indexer, MCP server, keeper scripts).</p>
+
+<h2 id=roles>4. Roles and privileges</h2>
+<div class=wrap><table><thead><tr><th>Role</th><th>Holder</th><th>Can do</th></tr></thead><tbody>
+<tr><td><b>TimelockController</b><div class=sub><a class=mono href='https://robinhoodchain.blockscout.com/address/0xf8e6faf7e0e57bc91ad5c59b84fede2cab842893'>0xf8e6…2893</a></div></td><td>Minimum delay 600 s (10 min). The timelock administers itself. The deployer holds no timelock role.</td><td>Fees for new positions within the hard caps · Router · guardian · token listings, caps and minimum strikes · FeeVault destinations and split · burner keeper, adapter and bounds · staking minimum claim · unpause</td></tr>
+<tr><td><b>Guardian</b><div class=sub><a class=mono href='https://robinhoodchain.blockscout.com/address/0x9f433ee8020cfb3521bdae0dda612932e1e90ef0'>0x9f43…0ef0</a></div></td><td>Safe, 3 owners, threshold 1</td><td>Pause new exposure · switch a listing or its puts off. It cannot unpause, enable anything or move funds.</td></tr>
+<tr><td><b>Operations Safe</b><div class=sub><a class=mono href='https://robinhoodchain.blockscout.com/address/0xd97693df18dd20b8c7a542ea0e167c75f630ada5'>0xd976…ada5</a></div></td><td>Safe, 3 owners, threshold 2</td><td>Receives the operations share (50%) of each fee split. It has no protocol permissions.</td></tr>
+<tr><td><b>Buyback keeper</b><div class=sub><a class=mono href='https://robinhoodchain.blockscout.com/address/0x32639bf2456bc69e1e59f68f7f56390299d5d455'>0x3263…d455</a></div></td><td>Externally owned account</td><td>Only <code>BuybackBurner.buyAndBurn</code>, within on-chain size and slippage bounds. Not used: buybacks are manual.</td></tr>
+<tr><td><b>Router</b><div class=sub><a class=mono href='https://robinhoodchain.blockscout.com/address/0xdD76956667E6423bAC56d2EbF827a9b0d7dBDF68'>0xdD76…DF68</a></div></td><td>Contract set by the timelock on both markets</td><td>The <code>*For</code> functions: it pays from its own WETH, and exercise still checks NFT ownership.</td></tr>
+<tr><td><b>FeeVault</b><div class=sub><a class=mono href='https://robinhoodchain.blockscout.com/address/0x78c569a1137b78cb78f42c42b4b6c2b8f1e3ddef'>0x78c5…ddef</a></div></td><td>Contract</td><td>The only caller allowed to notify StakingPool of rewards.</td></tr>
+<tr><td><b>OptionNFT deployer</b><div class=sub>—</div></td><td>One-time</td><td>Called <code>setMarkets</code> once. It is now locked to CallMarket and PutMarket.</td></tr>
+</tbody></table></div>
+<p class=sub>The timelock's proposer is the team's admin account. It is not the deployer, the operations Safe or the guardian. Public RPC logs did not identify
+it in this review.</p>
+
+<h2 id=config>5. Live configuration</h2>
+<div class=wrap><table><thead><tr><th>Contract</th><th>Setting</th><th>Value at block 109,974,684</th></tr></thead><tbody>
+<tr><td>Markets</td><td>Premium fee / exercise fee</td><td class=mono>3% / 0.1% (caps 10% / 1%)</td></tr>
+<tr><td>Markets</td><td>Paused</td><td class=mono>No (CallMarket, PutMarket, StakingPool)</td></tr>
+<tr><td>Markets</td><td>Router set on both markets</td><td class=mono>0xdd76…df68</td></tr>
+<tr><td>Markets</td><td>Option ID tags (from <code>idOf(1)</code>)</td><td class=mono>Calls 5, puts 6</td></tr>
+<tr><td>OptionNFT</td><td>Markets wired</td><td class=mono>0xb675…df80 (calls), 0x2e2d…cb35 (puts)</td></tr>
+<tr><td>AssetRegistry</td><td>Listed tokens</td><td class=mono>251 (maximum 300)</td></tr>
+<tr><td>FeeVault</td><td>Split</td><td class=mono>Stakers 30% · buyback 20% · operations 50%</td></tr>
+<tr><td>StakingPool</td><td>Active stake</td><td class=mono>13,022,690 KYTE</td></tr>
+<tr><td>Router</td><td>WETH / ETH held</td><td class=mono>0 / 0</td></tr>
+<tr><td>BuybackBurner</td><td>Swaps executed / last price</td><td class=mono>0 WETH in, 0 burned / 0</td></tr>
+<tr><td>BuybackBurner</td><td>Max per call / max slippage</td><td class=mono>1 WETH / 5%</td></tr>
+<tr><td>Swap pool (KyteHook)</td><td>Liquidity / quote for 1 WETH</td><td class=mono>0 / 997,000 KYTE</td></tr>
+<tr><td>Timelock</td><td>Minimum delay</td><td class=mono>600 seconds</td></tr>
+</tbody></table></div>
+
+<h2 id=method>6. Methodology</h2>
+<ol>
+<li><b>Source.</b> Verified sources and compiler settings were downloaded from Sourcify for every address, keeping original file paths. Contracts were
+analysed one at a time, because live contracts come from different commits (KYT-10).</li>
+<li><b>Static analysis.</b>
+<ul>
+<li><b>Slither 0.11.4</b> (Trail of Bits, 100 detectors) and <b>Aderyn 0.6.8</b> (Cyfrin) were run on each contract.</li>
+<li>The compiler settings matched each deployment: solc 0.8.28 or 0.8.26, via-IR, 200 optimiser runs, EVM version cancun.</li>
+</ul></li>
+<li><b>Manual review.</b> Every tool result was read against the code and classified as a finding, accepted design, or a false positive. Escrow, buy,
+exercise, expiry, cancellation, fees, staking, buyback and governance paths were reviewed line by line (section 9).</li>
+<li><b>On-chain verification.</b> Live settings, roles, balances and pool state were read at block 109,974,684 through a public Robinhood Chain RPC
+(sections 4 and 5).</li>
+</ol>
+<div class=wrap><table><thead><tr><th>Contract</th><th>Slither H</th><th>M</th><th>L</th><th>Info</th><th>Aderyn H</th><th>L</th><th>nSLOC</th></tr></thead><tbody>
+<tr><td>CallMarket</td><td class=num>0</td><td class=num>0</td><td class=num>7</td><td class=num>17</td><td class=num>0</td><td class=num>9</td><td class=num>430</td></tr>
+<tr><td>PutMarket</td><td class=num>0</td><td class=num>0</td><td class=num>7</td><td class=num>17</td><td class=num>1</td><td class=num>9</td><td class=num>437</td></tr>
+<tr><td>Router</td><td class=num>0</td><td class=num>2</td><td class=num>8</td><td class=num>18</td><td class=num>3</td><td class=num>10</td><td class=num>568</td></tr>
+<tr><td>OptionNFT</td><td class=num>2</td><td class=num>16</td><td class=num>0</td><td class=num>49</td><td class=num>0</td><td class=num>8</td><td class=num>362</td></tr>
+<tr><td>AssetRegistry</td><td class=num>0</td><td class=num>0</td><td class=num>1</td><td class=num>3</td><td class=num>0</td><td class=num>6</td><td class=num>263</td></tr>
+<tr><td>FeeVault</td><td class=num>0</td><td class=num>1</td><td class=num>1</td><td class=num>17</td><td class=num>1</td><td class=num>4</td><td class=num>224</td></tr>
+<tr><td>StakingPool</td><td class=num>1</td><td class=num>9</td><td class=num>7</td><td class=num>30</td><td class=num>0</td><td class=num>6</td><td class=num>326</td></tr>
+<tr><td>BuybackBurner</td><td class=num>0</td><td class=num>3</td><td class=num>3</td><td class=num>17</td><td class=num>1</td><td class=num>8</td><td class=num>243</td></tr>
+<tr><td>UniswapV4Adapter + KyteHook</td><td class=num>5</td><td class=num>44</td><td class=num>7</td><td class=num>58</td><td class=num>0</td><td class=num>7</td><td class=num>325</td></tr>
+<tr><td>KyteHaltGate</td><td class=num>0</td><td class=num>5</td><td class=num>4</td><td class=num>1</td><td class=num>0</td><td class=num>2</td><td class=num>72</td></tr>
+</tbody></table></div>
+<p class=sub>Raw counts include results inside OpenZeppelin and Uniswap library code, and the same shared file is counted once per contract that imports it.
+Confirmed findings are in section 8 and classified false positives in section 11.</p>
+
+<h2 id=severity>7. Severity definitions</h2>
+<div class=wrap><table><tbody>
+<tr><td><span class='sev critical'>Critical</span></td><td>Direct loss or permanent freezing of user funds, with no special conditions.</td></tr>
+<tr><td><span class='sev high'>High</span></td><td>Loss of user funds or insolvency under realistic conditions.</td></tr>
+<tr><td><span class='sev medium'>Medium</span></td><td>Loss of funds under specific conditions, or a lasting break of a core function.</td></tr>
+<tr><td><span class='sev low'>Low</span></td><td>Limited impact, conditions that are unlikely or inactive, or an auxiliary path with a working alternative.</td></tr>
+<tr><td><span class='sev informational'>Informational</span></td><td>Best practice, documentation or design notes, with no direct impact.</td></tr>
+</tbody></table></div>
+<p class=sub>Severity weighs impact against likelihood. A path that is not in use is rated by its current exposure, and the rating it would carry if enabled is
+stated in the finding.</p>
+
+<h2 id=findings>8. Findings</h2>
+<section class=finding id="KYT-01"><div class=fhead><span class="sev low">Low</span>
+<span class=fid>KYT-01</span><span class=status>Acknowledged</span></div><h3>The on-chain buyback route points to an unfunded pool (route not in use)</h3><div class=where>BuybackBurner <code>0x8a9d…fb95</code> · UniswapV4Adapter <code>0xfa17…dda6</code> · KyteHook pool <code>0x9689…1752</code></div><p><code>BuybackBurner.buyAndBurn</code> swaps through <code>UniswapV4Adapter</code>, which trades in the KyteHook $KYTE/WETH pool
+(fee 0.30%, tick spacing 60). At block 109,974,684 that pool holds zero liquidity. Its spot price and its 10-minute TWAP both read
+997,000 KYTE per WETH, which is its initialisation price less the LP fee. $KYTE's live market is a different Uniswap v4 pool
+(<code>0xe25a…229e</code>), where 1 WETH buys about 33.8 million KYTE.</p>
+<p class=ctx><b>Context.</b> Kyte currently executes $KYTE buybacks manually. Platform volume has not yet justified automated buybacks, and BuybackBurner has never been called: no WETH has been swapped and <code>lastPrice</code> is 0. The rating reflects that this path is inactive. The same issue would be rated Medium if the path were switched on unchanged.</p>
+<p><b>Impact if enabled.</b> With no liquidity, a buyback call simply reverts. If liquidity were later added to the KyteHook pool near its current price, the
+on-chain slippage floors would accept a fill far above market. That is because the adapter quote is taken from the same pool. The keeper's
+<code>minTokenOut</code> would then be the only protection.</p>
+<p><b>Recommendation.</b> Before automated buybacks are switched on, point the burner at an adapter for the live pool (<code>setAdapter</code>, through the
+timelock), or seed the KyteHook pool at market price and let a TWAP history build. Derive <code>minTokenOut</code> from the live market.</p>
+<p class=resp><b>Team response.</b> Buybacks remain manual. The route will be corrected before automated buybacks are enabled.</p></section>
+<section class=finding id="KYT-02"><div class=fhead><span class="sev low">Low</span>
+<span class=fid>KYT-02</span><span class=status>Acknowledged</span></div><h3>The on-chain buyback price floor follows the last fill (route not in use)</h3><div class=where>BuybackBurner <code>0x8a9d…fb95</code>, <code>buyAndBurn</code> lines 90–93 and 102</div><p>After each swap the burner records <code>lastPrice</code>, the tokens received per WETH. Every later call must satisfy
+<code>minTokenOut ≥ wethIn × lastPrice × (1 − maxSlippageBps)</code>. If $KYTE rises in price by more than <code>maxSlippageBps</code>
+(5% now, 20% at most) between two buybacks, the next call reverts. <code>lastPrice</code> cannot be reset, and WETH in the burner can
+only leave through a swap.</p>
+<p class=ctx><b>Context.</b> Kyte currently executes $KYTE buybacks manually. Platform volume has not yet justified automated buybacks, and BuybackBurner has never been called: no WETH has been swapped and <code>lastPrice</code> is 0. The rating reflects that this path is inactive. The same issue would be rated Medium if the path were switched on unchanged.</p>
+<p><b>Recommendation.</b> Before enabling automated buybacks, bound each fill against the TWAP only, use a floor that decays over time, or add a
+timelock-only reset. Then deploy the revised burner and point <code>FeeVault.setDestinations</code> at it.</p>
+<p class=resp><b>Team response.</b> Acknowledged. Buybacks remain manual and will move to a revised burner before automation is enabled.</p></section>
+<section class=finding id="KYT-03"><div class=fhead><span class="sev low">Low</span>
+<span class=fid>KYT-03</span><span class=status>Acknowledged</span></div><h3>The Router can be blocked by sending it 1 wei of WETH (direct market access unaffected)</h3><div class=where>Router <code>0xdD76…DF68</code>, <code>_finish</code> line 77</div><p>After every call the Router requires its WETH and ETH balances to be exactly zero. Anyone can transfer WETH to it, and ETH can be forced in
+with <code>SELFDESTRUCT</code>. The Router has no sweep function and is immutable. A 1-wei transfer would therefore make <code>buyWithETH</code>,
+<code>exerciseWithETH</code>, <code>buyPutWithETH</code> and <code>createPutOfferWithETH</code> revert.</p>
+<p><b>Impact.</b> This affects availability only. No funds can be taken, and positions are unaffected. The markets remain usable directly with WETH
+(<code>buy</code>, <code>exercise</code>, <code>exercisePut</code>, <code>createPutOffer</code>). The timelock can install a replacement Router with
+<code>setRouter</code> on both markets. Both of the Router's balances are 0 at block 109,974,684.</p>
+<p><b>Recommendation.</b> In the next Router, compare against balances recorded at the start of each call, or forward any surplus to the FeeVault.</p>
+<p class=resp><b>Team response.</b> Acknowledged. Direct WETH access and a timelock replacement are the fallback; the fix is planned for the next Router.</p></section>
+<section class=finding id="KYT-04"><div class=fhead><span class="sev low">Low</span>
+<span class=fid>KYT-04</span><span class=status>Acknowledged</span></div><h3>The timelock delay is 10 minutes on chain; the code comments describe 48 hours</h3><div class=where>TimelockController <code>0xf8e6…2893</code> · <code>Governed.sol</code> line 7</div><p><code>getMinDelay()</code> returns 600 seconds. The NatSpec in <code>Governed.sol</code> describes "the timelock (48 h, behind the
+admin Safe)". The timelock's powers are listed in section 4; none of them can move escrowed collateral or staked $KYTE. A short delay gives users
+less time to react to a settings change, such as new FeeVault destinations.</p>
+<p><b>Recommendation.</b> Either raise the delay with <code>updateDelay</code> (called through the timelock), or align the documentation with the value
+actually in use.</p>
+<p class=resp><b>Team response.</b> Acknowledged. The documentation will state the on-chain delay, and the delay will be reviewed as usage grows.</p></section>
+<section class=finding id="KYT-05"><div class=fhead><span class="sev low">Low</span>
+<span class=fid>KYT-05</span><span class=status>Acknowledged</span></div><h3>Physical settlement depends on the underlying token staying transferable</h3><div class=where>CallMarket <code>_exercise</code> · PutMarket <code>exercisePut</code> · OptionMarketBase <code>_returnCollateral</code></div><p>Exercise moves the underlying token itself: a call delivers it to the holder, and a put pulls it from the holder. Expiry and cancellation
+return it to the seller. If a token's issuer paused or restricted transfers, those calls would revert. A pause that overlaps an option's expiry could cost the
+holder the exercise window. This is inherent to physical settlement and is not a code defect.</p>
+<p><b>Recommendation.</b> Explain this in the interface next to the session warnings. A trading halt is not the same as a token transfer pause.</p></section>
+<section class=finding id="KYT-06"><div class=fhead><span class="sev informational">Informational</span>
+<span class=fid>KYT-06</span><span class=status>Acknowledged</span></div><h3>The guardian Safe needs a single signature</h3><div class=where>Guardian <code>0x9f43…0ef0</code></div><p>The guardian is a Safe with 3 owners and a threshold of 1. It can only pause and switch
+listings off, never unpause, enable anything or move funds. A single signer suits a fast circuit breaker.</p></section>
+<section class=finding id="KYT-07"><div class=fhead><span class="sev informational">Informational</span>
+<span class=fid>KYT-07</span><span class=status>Acknowledged</span></div><h3>StakingPool.notifyReward emits no event</h3><div class=where>StakingPool <code>notifyReward</code> line 117</div><p>The reward amount is recorded by <code>FeeVault.FeesSplit</code> in the same transaction, so indexers can still follow it.</p></section>
+<section class=finding id="KYT-08"><div class=fhead><span class="sev informational">Informational</span>
+<span class=fid>KYT-08</span><span class=status>Acknowledged</span></div><h3>KyteHaltGate reverts instead of answering if the oracle reports a future timestamp</h3><div class=where>HarmonicHaltGate <code>gateVerdict</code> line 81</div><p>If a row's <code>writtenAt</code> were ever in the future, <code>uint64(block.timestamp) - writtenAt</code> would underflow. That revert happens
+inside the <code>try</code> success block, so <code>catch</code> does not handle it. The behaviour fails closed. No live contract calls the gate.</p></section>
+<section class=finding id="KYT-09"><div class=fhead><span class="sev informational">Informational</span>
+<span class=fid>KYT-09</span><span class=status>Acknowledged</span></div><h3>Rebasing tokens would break collateral accounting</h3><div class=where>OptionMarketBase <code>locked</code> / <code>exposure</code></div><p>Fee-on-transfer tokens are rejected on chain. A rebasing token would make <code>locked</code> disagree with the real balance. Every listing
+goes through the timelock (251 tokens listed), and that curation is the control.</p></section>
+<section class=finding id="KYT-10"><div class=fhead><span class="sev informational">Informational</span>
+<span class=fid>KYT-10</span><span class=status>Acknowledged</span></div><h3>Live contracts were built from different commits</h3><div class=where>Router · StakingPool · AssetRegistry</div><p>The markets use the newest constants (option ID tags 5 and 6, confirmed on chain). AssetRegistry uses an intermediate set, and Router and
+StakingPool were built from an earlier commit. Each contract was verified and analysed on its own source. The differences are only in constants those
+contracts do not use. Tagging one release commit per deployment would make future reviews simpler.</p></section>
+
+<h2 id=contracts>9. Contract review notes</h2>
+<div class=note><h3>OptionMarketBase · CallMarket · PutMarket</h3><p>Offer creation validates the asset, amount, strike floor, minimum premium, duration (1 hour to 90 days), offer deadline, exposure cap and the per-seller open-offer limit, and then pulls the exact collateral. A buy sets <code>Filled</code> before minting the NFT and moving the premium. Exercise requires the NFT holder before expiry. Expiry is open to anyone at or after expiry and returns collateral to the seller. Cancellation is allowed for the seller only while the offer is open. The status always moves to its final value before any transfer, and every entry point is <code>nonReentrant</code>. Fees are fixed per position when it opens. The only places collateral can go are the seller and the option holder.</p></div>
+<div class=note><h3>Router</h3><p>The Router is stateless. It wraps exactly the ETH needed, calls the market for <code>msg.sender</code> and refunds the rest to <code>msg.sender</code>. The markets accept <code>*For</code> calls only from the router the timelock set, and <code>exerciseFor</code> still checks NFT ownership. The one issue found is KYT-03.</p></div>
+<div class=note><h3>OptionNFT</h3><p>Each ID carries a market tag in its top byte, and only that market can mint or burn it. The NFT uses <code>_mint</code>, not <code>_safeMint</code>, so a buyer cannot re-enter. <code>tokenURI</code> builds the metadata on chain and only embeds alphanumeric symbols, so a token symbol cannot inject JSON or SVG.</p></div>
+<div class=note><h3>AssetRegistry</h3><p>Only the timelock can list a token, enable it or enable puts. The guardian can only switch them off. Puts need both flags. Listing is capped at 300 tokens, and caps and minimum strikes apply per market.</p></div>
+<div class=note><h3>FeeVault</h3><p>Anyone can call <code>split</code>, at most once per epoch, and it works while paused. The split must sum to 100% and stakers always get at least 20% (live: 30% / 20% / 50%). Rounding dust stays for the next split. Destinations are set by the timelock.</p></div>
+<div class=note><h3>StakingPool</h3><p>Rewards use a reward-per-share accumulator with 1e36 precision. New stake waits until the next epoch and is then locked for one full epoch, which prevents just-in-time reward capture. Unstaking takes pending stake first, and both unstake and claim work while paused. Rewards that arrive with no active stake are carried forward. Fee-on-transfer stake tokens are rejected.</p></div>
+<div class=note><h3>BuybackBurner · UniswapV4Adapter · KyteHook</h3><p>The burner can only swap WETH for $KYTE and burn the output, falling back to the dead address if burning fails. Calls are limited to the keeper and bounded per call. KyteHook records a 128-slot tick ring buffer for its TWAP and takes its protocol fee in WETH only. This path is not in use: see KYT-01 and KYT-02.</p></div>
+<div class=note><h3>KyteHaltGate</h3><p>The gate is immutable, has no owner and holds no funds. It answers Open only for a fresh open row, and Unreadable while the oracle seat is unpaid. No live contract depends on it.</p></div>
+<div class=note><h3>TimelockController</h3><p>This is a standard OpenZeppelin TimelockController (full Sourcify match). Its configuration was reviewed on chain: the delay is 600 s, it administers itself, and the deployer holds no role. Its code was not re-analysed.</p></div>
+
+<h2 id=passed>10. Checks that passed</h2>
+<div class=wrap><table><tbody>
+<tr><td><span class=ok>✓</span> <b>No admin path to escrowed collateral</b></td><td>Collateral only ever moves to its seller, or to the option holder on exercise.</td></tr>
+<tr><td><span class=ok>✓</span> <b>Exits are never paused</b></td><td>Cancel, exercise, expire, unstake, claim and split all work while paused. Pause only blocks new exposure.</td></tr>
+<tr><td><span class=ok>✓</span> <b>Reentrancy guarded</b></td><td>Every state-changing entry point uses <code>nonReentrant</code> (transient storage). State is set to its final value before any transfer.</td></tr>
+<tr><td><span class=ok>✓</span> <b>Fees capped in code</b></td><td>Premium fee ≤ 10% and exercise fee ≤ 1%, fixed per position. Live: 3% / 0.1%.</td></tr>
+<tr><td><span class=ok>✓</span> <b>Fee-on-transfer tokens rejected</b></td><td>Collateral pulls and stakes check that the balance grew by exactly the amount transferred.</td></tr>
+<tr><td><span class=ok>✓</span> <b>NFT minting locked to the markets</b></td><td>Only the market that owns an ID tag can mint or burn it. Markets are set once and wired correctly on chain.</td></tr>
+<tr><td><span class=ok>✓</span> <b>Fee split bounded</b></td><td>Shares must sum to 100% and stakers always get at least 20%.</td></tr>
+<tr><td><span class=ok>✓</span> <b>No just-in-time staking rewards</b></td><td>New stake waits one epoch and is then locked for a full epoch.</td></tr>
+<tr><td><span class=ok>✓</span> <b>Router holds nothing</b></td><td>Refunds go only to the caller. The Router's WETH and ETH balances are 0 at block 109,974,684.</td></tr>
+<tr><td><span class=ok>✓</span> <b>Deployer has no lingering power</b></td><td>The deployer holds no timelock role, and OptionNFT market wiring is locked.</td></tr>
+<tr><td><span class=ok>✓</span> <b>Deployed code matches the source</b></td><td>Every contract in scope is a full Sourcify match (creation and runtime bytecode).</td></tr>
+</tbody></table></div>
+
+<h2 id=fp>11. False positives</h2>
+<div class=wrap><table><thead><tr><th>Where</th><th>Detector</th><th>Why it does not apply</th></tr></thead><tbody>
+<tr><td>OpenZeppelin <code>Math</code>, <code>Base64</code>; Uniswap <code>FullMath</code>, <code>BitMath</code>, <code>TickMath</code></td><td>incorrect-exp, incorrect-shift, divide-before-multiply</td><td>Audited library code. The XOR and shift tricks are intentional.</td></tr>
+<tr><td>OptionNFT <code>_date</code></td><td>divide-before-multiply</td><td>Integer calendar arithmetic (civil-from-days); the truncation is intended.</td></tr>
+<tr><td>PutMarket <code>exercisePut</code>; FeeVault <code>split</code>; BuybackBurner <code>buyAndBurn</code></td><td>Reentrancy: state change after external call</td><td>Calls are to trusted contracts under <code>nonReentrant</code>, with the final status set first.</td></tr>
+<tr><td>Router payable functions</td><td>ETH transferred without address checks</td><td>The only ETH push is the refund to <code>msg.sender</code>.</td></tr>
+<tr><td>KyteHaltGate, KyteHook, FeeVault</td><td>Strict equality</td><td>These compare enums and timestamps, which is correct. The one real strict-balance check is KYT-03.</td></tr>
+<tr><td>KyteHook <code>consult</code> / <code>observations</code></td><td>weak-prng, uninitialized-state</td><td>Modulo on a time delta, not randomness. The mapping is written in <code>_write</code>.</td></tr>
+<tr><td>Expiry, offer deadlines, epochs</td><td>Block timestamp used in comparisons</td><td>Time-based by design.</td></tr>
+<tr><td><code>setRouter</code>, <code>setKeeper</code></td><td>Missing zero-address check</td><td>Zero intentionally disables these paths.</td></tr>
+<tr><td><code>expireMany</code>, <code>addAssets</code>, <code>gateVerdicts</code></td><td>External calls inside a loop</td><td>Batches are capped (50) or timelock-only, or the function is a view.</td></tr>
+<tr><td>Router constructor, adapter <code>settle</code></td><td>Unused return value</td><td>WETH <code>approve</code> returns true or reverts. The settle amount is checked through deltas.</td></tr>
+</tbody></table></div>
+
+<h2 id=limits>12. Limitations</h2>
+<p>This review cannot prove the absence of bugs. Static analysers find known patterns, and they can miss flaws in business logic, economic design, oracle
+assumptions and interactions between contracts. The manual review was carried out by the Kyte team, which is not independent of the code. Findings and
+configuration reflect the snapshot block above, and later transactions can change them. A third-party audit is recommended before significant growth in
+total value locked.</p>
+
+<h2 id=repro>13. Reproduce</h2>
+<pre># 1. verified source and settings, per address (Robinhood Chain, 4663)
+GET https://sourcify.dev/server/v2/contract/4663/&lt;address&gt;?fields=sources,compilation,deployment
+
+# 2. Slither 0.11.4 (Trail of Bits)
+slither src/&lt;Contract&gt;.sol \
+  --solc-remaps "@openzeppelin/=node_modules/@openzeppelin/ @uniswap/=node_modules/@uniswap/" \
+  --solc-args "--via-ir --optimize --optimize-runs 200 --evm-version cancun" \
+  --exclude-dependencies --json &lt;Contract&gt;.json
+
+# 3. Aderyn 0.6.8 (Cyfrin)
+aderyn . --src src -o &lt;Contract&gt;.md
+
+# 4. live configuration (eth_call on a public RPC, block 109,974,684)
+getMinDelay · hasRole · getThreshold · getOwners · paused · feeBps* · router · nft · callMarket/putMarket
+stakersBps/buybackBps/opsBps · lastPrice · totalBurned · quoteSpot · PoolManager.extsload (pool liquidity)</pre>
+<p class=sub>The unedited Slither (JSON and text) and Aderyn (Markdown) outputs for every contract, the scope file and the on-chain snapshot are published
+with this report.</p>
+
+<footer>Kyte · kyte.sh · Security Self-Assessment v1.1, 9 November 2026. Provided for information only. This is not an audit, an endorsement or investment
+advice. Options can expire worthless.</footer>
+</main></body></html>

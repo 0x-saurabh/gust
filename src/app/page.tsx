@@ -384,7 +384,7 @@ function Security() {
     'Settings change only through a 10-minute timelock run by a multisig, within hard-coded ceilings.',
     'A guardian can only pause new offers and buys or disable a token. It cannot unpause, enable or touch funds.',
     'Pause never blocks cancel, exercise or expire.',
-    'Buybacks must clear a 10-minute TWAP floor checked on-chain, so even a stolen keeper key cannot sell cheap.',
+    'Buybacks are currently executed by hand and published on the Proof page. The on-chain buyback route has a TWAP floor and will be re-pointed at the live pool before it is switched on.',
     'New stake is locked for its first earning epoch, so nobody can snipe a fee split and leave.',
   ]
   return (
@@ -394,7 +394,10 @@ function Security() {
           <div>
             <SectionHead eyebrow="Security design" title={<>Users can <span className="grad-text">always exit.</span></>} sub={`${BRAND.name} is designed so that the people who run it have as little power over your funds as possible. The constraints are in the code, not in a promise.`} />
             <Reveal delay={0.1}>
-              <Link href="/docs#risks" className="btn btn-ghost mt-8">Read the rules and risks <ArrowRight size={16} /></Link>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href="/audit" className="btn btn-ghost">Security self-assessment <ArrowRight size={16} /></Link>
+                <Link href="/docs#risks" className="btn btn-ghost">Read the rules and risks <ArrowRight size={16} /></Link>
+              </div>
             </Reveal>
           </div>
           <ol className="hair border-t">
@@ -441,7 +444,8 @@ function Roadmap() {
     ...(chain.id === 4663
       ? [
           { s: 'Done', done: true, t: 'Mainnet', d: 'Contracts deployed on Robinhood Chain mainnet, owned by a 10 minute timelock and multisigs. Launching with 3 tokens and low caps.' },
-          { s: 'Next', done: false, t: 'Audits and bug bounty', d: 'Independent audits and a public bug bounty. Start small and read the risks first.' },
+          { s: 'Done', done: true, t: 'Security self-assessment', d: 'Slither and Aderyn on the verified source of all 12 deployed contracts, a manual review and on-chain configuration checks. 0 critical, high or medium findings. Published 9 November 2026.' },
+          { s: 'Next', done: false, t: 'Independent audit and bug bounty', d: 'A third-party audit and a public bug bounty. Start small and read the risks first.' },
         ]
       : [
           { s: 'Next', done: false, t: 'Testnet', d: 'Deployment to Robinhood Chain testnet and a public beta.' },

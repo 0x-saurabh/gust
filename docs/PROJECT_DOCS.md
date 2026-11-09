@@ -13,7 +13,7 @@
   The buyback swaps on **Uniswap v4** and burns in the same transaction; the Proof page is built only from events.
   (Gust does its burn by hand from a team wallet. Ours is trustless.)
 - **Safety:** no admin can touch user funds; pausing only stops *new* positions; fees are locked per position;
-  48 h timelock for settings; guardian can only pause/disable.
+  10-minute timelock for settings on mainnet (`Deploy.s.sol` supports 48 h; raising the delay is a timelock operation); guardian can only pause/disable.
 - **Built and working end to end on a local devnet:**
   - 13 contracts incl. a **Uniswap v4 hook**, **106 tests** (unit, fuzz, invariants, swaps and the hook on a real v4 PoolManager);
   - indexer + JSON API (SQLite), keeper bot (expire / split / buyback);
@@ -63,7 +63,7 @@ refunded. Buyer calls `router.exerciseWithETH` with 3 ETH: seller gets 2.997 WET
  Keeper bot: expireMany · split · buyAndBurn
 ```
 
-**Roles:** `TIMELOCK` (48 h `TimelockController`, run by the admin Safe) lists tokens, sets caps/fees/split/router/
+**Roles:** `TIMELOCK` (`TimelockController`, 600 s minimum delay on mainnet, run by the admin Safe) lists tokens, sets caps/fees/split/router/
 adapter/keeper, unpauses. `GUARDIAN` can pause new activity and disable tokens, nothing else. `KEEPER` can only
 run buybacks within the timelock's bounds. No role can move collateral.
 

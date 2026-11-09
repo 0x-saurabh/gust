@@ -20,6 +20,7 @@ const LINKS = [
   ...(REWARDS_ENABLED ? [{ href: '/rewards', label: 'Rewards' }] : []),
   { href: '/trades', label: 'Trades' },
   { href: '/proof', label: 'Proof' },
+  { href: '/audit', label: 'Security' },
   { href: '/agent', label: 'Agent' },
   ...(AUTOPILOT_ENABLED ? [{ href: '/autopilot', label: 'Autopilot' }] : []),
   ...(MCP_ENABLED ? [{ href: '/mcp', label: 'MCP' }] : []),

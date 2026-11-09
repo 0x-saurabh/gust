@@ -788,6 +788,12 @@ cast call 0xf8E6fAF7e0E57bc91aD5C59B84FedE2Cab842893 "getMinDelay()(uint256)" --
 around expiry ±10 s, decimals 0–24, vault and pool solvency), handler invariants (collateral ledgers, forward-only
 status, NFT exists iff Filled, Router never holds a balance) and swaps on a real Uniswap v4 PoolManager.
 
+**Security self-assessment (9 November 2026, v1.1).** The team ran Slither 0.11.4 and Aderyn 0.6.8 on the
+Sourcify-verified source of all 12 deployed contracts, reviewed every result by hand and read the live configuration
+at block 109,974,684. Result: 0 critical, 0 high, 0 medium, 5 low and 5 informational findings, all acknowledged. It
+is a self-assessment, not a third-party audit; an independent audit is planned. The report, a PDF and the raw tool
+outputs are at [kyte.sh/audit](https://kyte.sh/audit).
+
 **Reporting vulnerabilities:** contact@kyte.sh or a direct message to @useKyte on X.
 
 ---

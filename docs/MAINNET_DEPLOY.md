@@ -29,7 +29,8 @@ $EDITOR scripts/mainnet/.env
 scripts/mainnet/deploy.sh            # Deploy.s.sol: timelock, registry, NFT, vault, markets, staking, burner, router, KyteHook
 ```
 
-What the script enforces on mainnet: guardian/ops/admin are contracts, timelock delay ≥ 48 h, and the deployer
+What the script enforces on mainnet: guardian/ops/admin are contracts, timelock delay ≥ 48 h (the live 4663
+deployment went out with 600 s, see the security self-assessment KYT-04; raising it is a timelock operation), and the deployer
 is **not** the timelock (no rehearsal mode). Output: `contracts/deployments/4663.json`, synced into
 `src/lib/generated/`. Note the deploy block number from the broadcast log: the indexer and keeper need it.
 
@@ -44,7 +45,7 @@ scripts/mainnet/deploy.sh adapter    # DeployAdapter.s.sol: initializes the KYTE
 The pool key is `fee 3000, tickSpacing 60, hooks = kyteHook`. Then add liquidity to that exact pool through the
 Uniswap interface. Without the hook on the pool there is no TWAP and `buyAndBurn` refuses to run.
 
-## 4. Wire it through the timelock (48 h)
+## 4. Wire it through the timelock (delay as configured; 600 s on the live deployment, 48 h is the script's target)
 
 ```bash
 ASSETS="0xToken1:cap:minStrike:1,0xToken2:cap:minStrike:0,0xToken3:cap:minStrike:1" \
@@ -52,7 +53,7 @@ ASSETS="0xToken1:cap:minStrike:1,0xToken2:cap:minStrike:0,0xToken3:cap:minStrike
 ```
 
 Paste each `schedule` transaction into the admin Safe (Transaction Builder: to = timelock, value 0, data as
-printed). After 48 hours, send the matching `execute` transactions. This sets the fee vault destinations, the
+printed). After the timelock delay has passed, send the matching `execute` transactions. This sets the fee vault destinations, the
 router on both markets, the buyback adapter and bounds, and lists the assets. Until these execute the market is
 deployed but closed.
 
