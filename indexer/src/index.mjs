@@ -14,6 +14,7 @@ import { installAutopilot } from './autopilot.mjs'
 import { installPons } from './pons.mjs'
 import { installFobo } from './fobo.mjs'
 import { installRewards } from './rewards.mjs'
+import { installStakerShare } from './stakerShare.mjs'
 import { createPublicClient, decodeEventLog, encodeAbiParameters, formatUnits, getAddress, http as httpTransport, keccak256, toHex, toEventSelector } from 'viem'
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname)
@@ -810,6 +811,12 @@ const rewards = installRewards({
 rewards.start()
 console.log(`[rewards] scoring epochs${dep.usdgRewards ? `, publishing to ${dep.usdgRewards}` : ' (no UsdgRewards deployed: score only)'}`)
 
+// ---- Staker share: a daily USDG pool split over active KYTE stake, paid wallet to wallet by the keeper from the
+// treasury payout wallet; /staker-share, /staker-share/epoch/<n>, /staker-share/<address>, POST /staker-share/paid. docs/STAKER_USDG_SHARE.md
+const stakerShare = installStakerShare({ db, all, client, pool: A.pool ?? null, poolAbi: ABI.pool, chainNow: () => chainNow })
+stakerShare.start()
+console.log(`[stakerShare] pool ${process.env.STAKER_SHARE_POOL_USDG || '0'} USDG/epoch${process.env.STAKER_SHARE_KEEPER_TOKEN ? '' : ' (no STAKER_SHARE_KEEPER_TOKEN: payouts cannot be recorded)'}`)
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json; charset=utf-8')
   res.setHeader('x-content-type-options', 'nosniff')
@@ -824,7 +831,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, '')
   const isAutopilot = (req.url ?? '').startsWith('/autopilot/')
   const isHarmonicEvent = req.method === 'POST' && (req.url ?? '').split('?')[0] === '/harmonic/event'
-  if (req.method !== 'GET' && req.method !== 'HEAD' && !isHarmonicEvent && !(isAutopilot && (req.method === 'POST' || req.method === 'DELETE'))) return send(res, 405, { error: 'method not allowed' })
+  const isStakerPaid = req.method === 'POST' && (req.url ?? '').split('?')[0] === '/staker-share/paid'
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !isHarmonicEvent && !isStakerPaid && !(isAutopilot && (req.method === 'POST' || req.method === 'DELETE'))) return send(res, 405, { error: 'method not allowed' })
   if ((req.url ?? '').length > 2048) return send(res, 414, { error: 'uri too long' })
   if (overLimit(req)) { res.setHeader('retry-after', '60'); return send(res, 429, { error: 'rate limited' }) }
 
@@ -850,6 +858,11 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, body)
     }
     const opt = u.pathname.match(/^\/options\/([A-Za-z0-9]{1,16})$/)
+    if (isStakerPaid) {
+      // The keeper reports one USDG transfer (epoch, account, tx), authenticated by the shared STAKER_SHARE_KEEPER_TOKEN.
+      const r = stakerShare.handlePaid(req.headers, await readJson(req))
+      return send(res, r.status, r.body)
+    }
     if (req.method === 'POST' && u.pathname === '/harmonic/event') {
       // Relayed by the website's /api/harmonic/webhook after it verified Harmonic's signature (the indexer is a
       // private service; nothing reaches it from outside). A halt, reopen or weekend mark: refresh the session rows now.
@@ -866,6 +879,7 @@ const server = http.createServer(async (req, res) => {
       body = { ok: true, at: now, symbol: a.symbol, address: a.address, name: a.name, callsEnabled: !!a.enabled, putsEnabled: !!a.puts_enabled, ...assetRule(a.address), session: sessionOf(a.address, a.symbol), price: (await routes['/prices']())[a.symbol] ?? null, openOffers: offers.map((o) => ({ ...o, link: `${SITE_URL}/market?buy=${o.id}` })), links: { market: `${SITE_URL}/market?token=${encodeURIComponent(a.symbol)}`, sell: `${SITE_URL}/sell?token=${encodeURIComponent(a.symbol)}` } }
     }
     else if (u.pathname.startsWith('/rewards')) body = (await rewards.handle(u)) ?? { error: 'not found' }
+    else if (u.pathname.startsWith('/staker-share')) body = (await stakerShare.handle(u)) ?? { error: 'not found' }
     else if (Object.hasOwn(routes, u.pathname)) body = await routes[u.pathname](u)
     else if (m?.[1] === 'offers') {
       if (!/^\d{1,80}$/.test(m[2])) throw new BadRequest('bad id')

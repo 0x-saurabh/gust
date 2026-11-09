@@ -29,6 +29,14 @@ services:
         value: https://kyte.sh # Autopilot trigger links point here
       - key: REWARDS_POOL_USDG
         value: "0" # USDG paid per 24 h epoch (docs/USDG_REWARDS.md); 0 scores points but pays nothing until the ops Safe sets a pool and funds UsdgRewards
+      - key: STAKER_SHARE_POOL_USDG
+        value: "0" # daily USDG split over active KYTE stake, paid wallet to wallet by the keeper (docs/STAKER_USDG_SHARE.md); 0 = snapshot only
+      - key: STAKER_SHARE_MIN_USDG
+        value: "5" # per-wallet floor (below it a wallet gets nothing that day); never shown on the site
+      - key: STAKER_SHARE_MAX_USDG
+        value: "50" # per-wallet cap; never shown on the site
+      - key: STAKER_SHARE_KEEPER_TOKEN # shared secret the keeper sends with POST /staker-share/paid; same value on kyte-keeper-v2
+        sync: false
     disk:
       name: indexer-data
       mountPath: /app/indexer/data

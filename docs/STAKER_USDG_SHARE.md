@@ -1,6 +1,12 @@
 # Staker share of Pons creator rewards: daily USDG, wallet to wallet
 
-Plan written 9 Nov 2026 from Saurabh's brief. Not built yet.
+Plan written 9 Nov 2026 from Saurabh's brief. **Built the same day** (indexer module, keeper job, stake page card,
+`get_staking` field, tests); see "Status and go-live" at the end for what is left to switch on.
+
+**Funds are always withdrawable.** No Kyte contract holds a cent of this program: the USDG sits in the ops Safe and in
+a plain payout wallet (an EOA whose key the team holds), so it can be moved back at any time with an ordinary
+transfer. The only Kyte contract that holds USDG at all, `UsdgRewards` (the trading rewards), has a timelock
+`withdraw(to, amount)` for every unowed balance.
 
 ## The idea, restated
 
@@ -149,6 +155,35 @@ Ops
 - Create the payout EOA, fund 1,400 USDG + 0.05 ETH from the Safe, set the env vars on `kyte-indexer` and
   `kyte-keeper-v2` on Render, redeploy, watch the first epoch with `ONCE=1` before leaving it on.
 - Dune: a `Transfer` query on USDG from the payout wallet for the dashboard.
+
+## Status and go-live (9 Nov 2026)
+
+Built:
+- `indexer/src/stakerShare.mjs`: live snapshot of every staker's **active** stake in the last 3 minutes of each epoch
+  (no archive node needed; an epoch with no snapshot because the indexer was down is marked `missed` and pays nobody),
+  allocation (`allocate()`: drop below min, water-fill the cap, round to the cent), `/staker-share`,
+  `/staker-share/epoch/<n>`, `/staker-share/<address>`, `POST /staker-share/paid` (header `x-keeper-token`).
+  Once any row of an epoch is paid its table is frozen: a pool change no longer recomputes it.
+- `keeper/src/index.mjs` `jobStakerShare`: a second signer from `PAYOUT_PRIVATE_KEY(_FILE)` (must differ from the
+  keeper key), one `USDG.transfer` per due row then `POST /staker-share/paid`, resumable, balance alerts,
+  `STAKER_SHARE_DRY_RUN=1` prints the table and sends nothing.
+- Site: `/stake` shows a "Daily USDG share" card (estimate, last payout with tx link, received so far); hidden
+  while the pool is 0. Flag `NEXT_PUBLIC_STAKER_SHARE_ENABLED`. Proxy allowlist covers the three GET routes.
+- MCP `get_staking` returns `usdgShare` when the program is live.
+- `tests/staker-share.test.ts` (3 tests): allocation incl. the 1,000-dust-wallet case, full epoch lifecycle.
+
+To switch on:
+1. Create the payout EOA. From the ops Safe send it ~1,400 USDG (a week) and 0.05 ETH.
+2. Render `kyte-indexer`: `STAKER_SHARE_POOL_USDG=200`, `STAKER_SHARE_MIN_USDG=5`, `STAKER_SHARE_MAX_USDG=50`,
+   `STAKER_SHARE_KEEPER_TOKEN=<random 32+ chars>`. Redeploy. Snapshots start the same day; the first payable epoch is
+   the first one that ends after the deploy.
+3. Render `kyte-keeper-v2`: `PAYOUT_PRIVATE_KEY`, `STAKER_SHARE_KEEPER_TOKEN` (same value), `INDEXER_URL` (already
+   set). First run with `STAKER_SHARE_DRY_RUN=1`, read the table in the logs, then remove the flag.
+4. Watch the first payout in the keeper log and on the stake page. Weekly: top the payout wallet up from the Safe
+   with that week's Pons creator rewards converted to USDG.
+
+To pause: set `STAKER_SHARE_POOL_USDG=0` (snapshots continue, nothing is owed). To stop paying what is already
+due: remove `PAYOUT_PRIVATE_KEY` from the keeper. To pull the float back: transfer the USDG out of the payout wallet.
 
 ## Decisions to confirm
 

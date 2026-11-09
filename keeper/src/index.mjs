@@ -7,6 +7,7 @@
 //        BUYBACK_MIN_WETH (0.01), BUYBACK_SLIPPAGE_BPS (100), ALERT_WEBHOOK_URL (optional), ONCE=1 (single pass),
 //        KEEPER_PRIVATE_KEY_FILE (read the key from a file/secret mount instead of the env), START_BLOCK (0),
 //        MAX_GAS_GWEI (1 off devnet), MAX_SPOT_TWAP_DEVIATION_BPS (300), KEEPER_MIN_ETH (0.02)
+//        PAYOUT_PRIVATE_KEY(_FILE) + STAKER_SHARE_KEEPER_TOKEN: the staker-share USDG payouts (docs/STAKER_USDG_SHARE.md)
 import fs from 'node:fs'
 import path from 'node:path'
 import { createPublicClient, createWalletClient, formatEther, formatGwei, getAddress, http, parseAbiItem, parseEther, parseGwei } from 'viem'
@@ -67,16 +68,16 @@ async function alert(msg) {
   try { await fetch(process.env.ALERT_WEBHOOK_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: `[kyte keeper] ${msg}` }) }) } catch {}
 }
 
-async function send(label, params) {
+async function send(label, params, signer = { account, wallet }) {
   // A gas spike (or a lying RPC) must not be able to drain the keeper wallet.
   if (MAX_GAS_WEI) {
     const { maxFeePerGas, gasPrice } = await pub.estimateFeesPerGas().catch(() => ({}))
     const fee = maxFeePerGas ?? gasPrice ?? 0n
     if (fee > MAX_GAS_WEI) throw new Error(`gas ${formatGwei(fee)} gwei above MAX_GAS_GWEI, skipped ${label}`)
   }
-  const { request } = await pub.simulateContract({ account, ...params })
+  const { request } = await pub.simulateContract({ account: signer.account, ...params })
   if (MAX_GAS_WEI && request.maxFeePerGas && request.maxFeePerGas > MAX_GAS_WEI) request.maxFeePerGas = MAX_GAS_WEI
-  const hash = await wallet.writeContract(request)
+  const hash = await signer.wallet.writeContract(request)
   const r = await pub.waitForTransactionReceipt({ hash })
   if (r.status !== 'success') throw new Error(`${label} reverted (${hash})`)
   log(label, 'ok', hash)
@@ -270,10 +271,75 @@ async function jobRewards() {
   }
 }
 
+// ---- Staker share: pays each epoch's USDG table (indexer /staker-share) wallet to wallet from a dedicated payout
+// wallet (docs/STAKER_USDG_SHARE.md). The payout key is separate from the keeper key on purpose: it holds the USDG
+// float the treasury tops up, and nothing else. Both keys are plain EOAs, so the funds are always withdrawable by
+// whoever holds the key; no contract holds them. Needs PAYOUT_PRIVATE_KEY(_FILE), STAKER_SHARE_KEEPER_TOKEN, INDEXER_URL.
+// env: STAKER_SHARE_USDG (token address; default: USDG on Robinhood Chain), STAKER_SHARE_DRY_RUN=1 (print the table, send nothing),
+//      PAYOUT_MIN_ETH (0.005: alert when the payout wallet runs low on gas)
+const USDG = getAddress(process.env.STAKER_SHARE_USDG || (CHAIN_ID === 4663 ? '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168' : '0x0000000000000000000000000000000000000000'))
+const PAYOUT_TOKEN = process.env.STAKER_SHARE_KEEPER_TOKEN || ''
+const PAYOUT_DRY = process.env.STAKER_SHARE_DRY_RUN === '1'
+const PAYOUT_MIN_ETH = parseEther(process.env.PAYOUT_MIN_ETH || '0.005')
+const payoutFileKey = process.env.PAYOUT_PRIVATE_KEY_FILE ? fs.readFileSync(process.env.PAYOUT_PRIVATE_KEY_FILE, 'utf8').trim() : ''
+const PAYOUT_KEY = payoutFileKey || process.env.PAYOUT_PRIVATE_KEY ? normalizeKey(payoutFileKey || process.env.PAYOUT_PRIVATE_KEY) : ''
+delete process.env.PAYOUT_PRIVATE_KEY
+let payout = null
+if (PAYOUT_KEY) {
+  if (!/^0x[0-9a-f]{64}$/.test(PAYOUT_KEY)) throw new Error('payout key must be 0x + 64 hex chars')
+  if (!DEVNET && ANVIL_KEYS.has(PAYOUT_KEY)) throw new Error('refusing to run the payout wallet with a public anvil key outside the devnet')
+  if (PAYOUT_KEY === KEY) throw new Error('PAYOUT_PRIVATE_KEY must differ from KEEPER_PRIVATE_KEY: the USDG float stays out of the ops wallet')
+  const acct = privateKeyToAccount(PAYOUT_KEY)
+  payout = { account: acct, wallet: createWalletClient({ account: acct, chain, transport: http(RPC_URL) }) }
+}
+const ERC20_TRANSFER_ABI = [
+  { type: 'function', name: 'transfer', stateMutability: 'nonpayable', inputs: [{ name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: '', type: 'address' }], outputs: [{ type: 'uint256' }] },
+]
+const stakerSkip = new Map() // epoch -> until (ms)
+async function recordPaid(epoch, account, tx) {
+  const r = await fetch(`${INDEXER_URL}/staker-share/paid`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-keeper-token': PAYOUT_TOKEN }, body: JSON.stringify({ epoch, account, tx }), signal: AbortSignal.timeout(15_000) })
+  if (!r.ok) throw new Error(`indexer ${r.status} recording ${account} epoch ${epoch} tx ${tx}`)
+}
+async function jobStakerShare() {
+  if (!payout || !INDEXER_URL) return
+  if (!PAYOUT_TOKEN && !PAYOUT_DRY) { await alert('staker share: STAKER_SHARE_KEEPER_TOKEN missing, payouts could not be recorded; skipping'); return }
+  let program
+  try { const r = await fetch(`${INDEXER_URL}/staker-share`, { signal: AbortSignal.timeout(15_000) }); if (!r.ok) throw new Error(`indexer ${r.status}`); program = await r.json() } catch (e) { log(`staker share: indexer unavailable (${e.message})`); return }
+  const due = (program.due ?? []).filter((d) => (stakerSkip.get(d.epoch) ?? 0) <= Date.now())
+  if (!due.length) return
+  const [usdgBal, ethBal] = await Promise.all([
+    pub.readContract({ address: USDG, abi: ERC20_TRANSFER_ABI, functionName: 'balanceOf', args: [payout.account.address] }),
+    pub.getBalance({ address: payout.account.address }),
+  ])
+  if (ethBal < PAYOUT_MIN_ETH) await alert(`payout wallet ${payout.account.address} low on gas: ${formatEther(ethBal)} ETH`)
+  for (const d of due) {
+    let table
+    try { const r = await fetch(`${INDEXER_URL}/staker-share/epoch/${d.epoch}`, { signal: AbortSignal.timeout(15_000) }); if (!r.ok) throw new Error(`indexer ${r.status}`); table = await r.json() } catch (e) { log(`staker share: epoch ${d.epoch} table unavailable (${e.message})`); continue }
+    if (!table.final) continue
+    const rows = (table.payouts ?? []).filter((p) => p.status === 'due')
+    const total = rows.reduce((s, p) => s + BigInt(p.amount), 0n)
+    if (!rows.length) continue
+    if (PAYOUT_DRY) { log(`staker share DRY RUN epoch ${d.epoch}: ${rows.length} transfers, ${Number(total) / 1e6} USDG`); for (const p of rows) log(`  ${p.account} ${p.amountUsdg} USDG (stake ${Math.round(p.stake)})`); continue }
+    if (usdgBal < total) {
+      stakerSkip.set(d.epoch, Date.now() + 3_600_000)
+      await alert(`staker share epoch ${d.epoch} needs ${Number(total) / 1e6} USDG, payout wallet ${payout.account.address} has ${Number(usdgBal) / 1e6}: top it up from the Safe`)
+      continue
+    }
+    for (const p of rows) {
+      // one transfer, then record it; a crash in between leaves the row `due` and the next tick resends, so the
+      // indexer is checked first (a transfer that was recorded meanwhile is not repeated)
+      const r = await send(`usdg.transfer ${p.amountUsdg} to ${p.account} (staker share epoch ${d.epoch})`, { address: USDG, abi: ERC20_TRANSFER_ABI, functionName: 'transfer', args: [getAddress(p.account), BigInt(p.amount)] }, payout)
+      await recordPaid(d.epoch, p.account, r.transactionHash)
+    }
+    log(`staker share epoch ${d.epoch}: paid ${rows.length} stakers, ${Number(total) / 1e6} USDG`)
+  }
+}
+
 async function tick() {
   await checkBalance().catch(() => {})
   // Launchpad listings first: they are cheap and time-sensitive, while the expiry scan can take minutes after a restart.
-  for (const [name, job] of [['ponsList', jobPonsList], ['foboList', jobFoboList], ['expire', jobExpire], ['split', jobSplit], ['buyback', jobBuyback], ['rewards', jobRewards]]) {
+  for (const [name, job] of [['ponsList', jobPonsList], ['foboList', jobFoboList], ['expire', jobExpire], ['split', jobSplit], ['buyback', jobBuyback], ['rewards', jobRewards], ['stakerShare', jobStakerShare]]) {
     try { await job() } catch (e) { await alert(`${name} failed: ${e.shortMessage ?? e.message}`) }
   }
 }
@@ -286,6 +352,7 @@ for (const k of ['callMarket', 'putMarket', 'feeVault', 'weth']) {
 }
 for (const m of MARKETS) if ((await pub.getCode({ address: m })) === undefined) throw new Error(`market ${m} has no code on chain ${CHAIN_ID}`)
 log(`chain ${CHAIN_ID}, keeper ${account.address}${MAX_GAS_WEI ? `, gas cap ${formatGwei(MAX_GAS_WEI)} gwei` : ''}`)
+if (payout) log(`staker share payout wallet ${payout.account.address}${PAYOUT_DRY ? ' (DRY RUN)' : ''}`)
 await tick()
 if (process.env.ONCE) process.exit(0)
 setInterval(tick, INTERVAL_MS)

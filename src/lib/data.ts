@@ -561,6 +561,41 @@ export type RewardsAccount = {
   claimable: RewardEpoch[]; claimableUsdg: number; claimedUsdg: number; epochs: RewardEpoch[]
 }
 
+export type StakerShareAccount = {
+  ok: boolean; at: number; account: string; token: string
+  current: { epoch: number; endsAt: number; poolUsdg: number; active: number; totalActive: number; estimatedUsdg: number; qualifies: boolean }
+  last: { epoch: number; endsAt: number; amountUsdg: number; tx: string | null; paidAt: number | null } | null
+  paidUsdg: number
+  epochs: Array<{ epoch: number; endsAt: number; stake: number; amountUsdg: number; status: 'due' | 'paid' | 'dropped'; tx: string | null; paidAt: number | null }>
+}
+export type StakerShareProgram = {
+  ok: boolean; at: number; token: string; poolUsdg: number
+  current: { epoch: number; startsAt: number; endsAt: number; poolUsdg: number }
+  epochs: Array<{ epoch: number; startsAt: number; endsAt: number; poolUsdg: number; totalActive: number; stakers: number; participants: number; totalUsdg: number; status: 'snapshot' | 'due' | 'paid' | 'missed' }>
+}
+
+/** The daily USDG staker share: pool, your estimate today (clamped silently by the indexer) and your payouts. */
+export function useStakerShare() {
+  const { address } = useAccount()
+  const live = useLive()
+  return useQuery({
+    queryKey: ['stakerShare', address, live],
+    queryFn: async (): Promise<StakerShareAccount | null> => (!live || !INDEXER_URL || !address ? null : api<StakerShareAccount>(`/staker-share/${address}`)),
+    enabled: Boolean(address),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  })
+}
+export function useStakerShareProgram() {
+  const live = useLive()
+  return useQuery({
+    queryKey: ['stakerShare', 'program', live],
+    queryFn: async (): Promise<StakerShareProgram | null> => (!live || !INDEXER_URL ? null : api<StakerShareProgram>('/staker-share')),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  })
+}
+
 /** The rewards program (pool, rules, recent epochs). */
 export function useRewardsProgram() {
   const live = useLive()

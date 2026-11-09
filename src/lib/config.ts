@@ -40,5 +40,7 @@ export const AUTOPILOT_ENABLED = process.env.NEXT_PUBLIC_AUTOPILOT_ENABLED !== '
 export const LAUNCHPAD_ENABLED = process.env.NEXT_PUBLIC_LAUNCHPAD_ENABLED !== 'false'
 /** USDG rewards (page, nav link, get_rewards tool). On unless NEXT_PUBLIC_REWARDS_ENABLED=false. */
 export const REWARDS_ENABLED = process.env.NEXT_PUBLIC_REWARDS_ENABLED !== 'false'
+/** Daily USDG staker share card on /stake and in get_staking (docs/STAKER_USDG_SHARE.md). On unless NEXT_PUBLIC_STAKER_SHARE_ENABLED=false. */
+export const STAKER_SHARE_ENABLED = process.env.NEXT_PUBLIC_STAKER_SHARE_ENABLED !== 'false'
 /** USDG on Robinhood Chain (Paxos Global Dollar, 6 decimals): the rewards token. */
 export const USDG = { address: '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168', decimals: 6, symbol: 'USDG' } as const

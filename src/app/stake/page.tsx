@@ -8,9 +8,10 @@ import { TimeLeft } from '@/components/TimeLeft'
 import { TxStatus } from '@/components/TxStatus'
 import { WalletHoldings } from '@/components/WalletHoldings'
 import { Note, PageHeader, Segmented, Stat } from '@/components/ui'
-import { contracts } from '@/lib/chains'
-import { BRAND, SPLIT } from '@/lib/config'
-import { useBalances, useLive, useStake, useStats } from '@/lib/data'
+import { contracts, explorerTx } from '@/lib/chains'
+import { BRAND, SPLIT, STAKER_SHARE_ENABLED } from '@/lib/config'
+import { useBalances, useLive, useStake, useStakerShare, useStakerShareProgram, useStats, type StakerShareAccount } from '@/lib/data'
+import { date } from '@/lib/format'
 import { bps, compact, eth, num } from '@/lib/format'
 import { ABIS } from '@/lib/generated/abis'
 import { approvalIfNeeded, useTx } from '@/lib/tx'
@@ -23,6 +24,8 @@ export default function StakePage() {
   const stake = useStake()
   const stats = useStats()
   const balances = useBalances()
+  const share = useStakerShare()
+  const shareProgram = useStakerShareProgram()
   const [mode, setMode] = useState<'stake' | 'unstake'>('stake')
   const [amount, setAmount] = useState('')
   // /stake?action=stake|unstake|claim&amount= (from the agent's prepare_stake link)
@@ -108,11 +111,41 @@ export default function StakePage() {
           <button id="claim" className="btn btn-accent mt-6 w-full" disabled={!isConnected || !live || !canClaim || tx.busy} onClick={claim}>Claim WETH</button>
           {(s?.minClaim ?? 0) > 0 && <p className="mt-2 text-xs text-faint">Minimum claim {eth(s!.minClaim)}.</p>}
         </div>
+        {STAKER_SHARE_ENABLED && live && <StakerShareCard mine={share.data ?? null} pool={shareProgram.data?.poolUsdg ?? null} connected={isConnected} />}
         <WalletHoldings />
         </div>
       </div>
       <TxStatus state={tx.state} onClose={tx.reset} />
     </>
+  )
+}
+
+const usdg = (n: number) => `${num(n, n >= 100 ? 0 : 2)} USDG`
+
+/** The daily USDG share of Pons creator rewards. Shows an estimate only: the per-wallet floor and cap stay server side. */
+function StakerShareCard({ mine, pool, connected }: { mine: StakerShareAccount | null; pool: number | null; connected: boolean }) {
+  if (pool != null && pool <= 0 && !mine?.last) return null // program not funded yet: nothing to show
+  const cur = mine?.current
+  return (
+    <div className="card p-6">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="label">Daily USDG share</div>
+        {pool != null && <span className="font-mono text-xs text-faint">{usdg(pool)} / day</span>}
+      </div>
+      <div className="mt-3 font-mono text-2xl font-semibold text-accent">
+        {!connected ? '—' : !mine ? '…' : cur && cur.qualifies ? `~${usdg(cur.estimatedUsdg)}` : '—'}
+      </div>
+      <p className="mt-1 text-xs text-muted">
+        {!connected ? 'Connect a wallet to see your estimate.' : !mine ? 'Loading…' : cur && cur.qualifies ? 'Estimated for today, based on your active stake. Changes as stake moves.' : cur && cur.active > 0 ? 'Your active stake is below today’s share threshold. Stake more to qualify.' : 'Only stake that is active for the whole day qualifies. New stake activates at the next epoch.'}
+      </p>
+      <dl className="mt-4 space-y-2 text-sm">
+        <Row k="Paid" v="Daily, straight to your wallet in USDG. Nothing to claim." />
+        <Row k="Source" v="Kyte’s creator rewards on Pons" />
+        {mine?.last && <Row k={`Last payout (${date(mine.last.endsAt)})`} v={usdg(mine.last.amountUsdg)} strong />}
+        {mine && mine.paidUsdg > 0 && <Row k="Received so far" v={usdg(mine.paidUsdg)} />}
+      </dl>
+      {mine?.last?.tx && explorerTx(mine.last.tx) && <a className="mt-3 inline-block text-xs text-accent underline-offset-2 hover:underline" href={explorerTx(mine.last.tx)} target="_blank" rel="noreferrer">View last transfer</a>}
+    </div>
   )
 }
 

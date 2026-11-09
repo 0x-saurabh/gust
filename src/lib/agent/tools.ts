@@ -70,6 +70,7 @@ export type Offer = {
 export type Quote = { price: number; at: number; change1h: number; source?: string; session?: Session | null; floor?: number; floorBackingEth?: number }
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number }
 export type Stake = { myActive: number; myPending: number; claimable: number; epoch: number; epochEndsAt: number; minClaim: number; totalStaked: number; lastEpochRewards: number }
+export type StakerShare = { current: { epoch: number; poolUsdg: number; active: number; totalActive: number; estimatedUsdg: number; qualifies: boolean }; last: { epoch: number; amountUsdg: number; tx: string | null } | null; paidUsdg: number }
 export type Stats = { volumeEth: number; feesEth: number; openInterestEth: number; burnedTokens: number; stakedTokens: number; stakers: number; activeOffers: number; totalOffers: number }
 export type Proof = { splits: { epoch: number; at: number; tx: string; stakers: number; buyback: number; ops: number }[]; burns: { at: number; tx: string; wethIn: number; tokenOut: number }[]; totals: Record<string, number> }
 export type Activity = { key: string; name: string; at: number; tx: string; kind: string; text: string; sub: string }
@@ -219,7 +220,10 @@ export const getStaking = {
   async run({ address }: { address?: string }) {
     const s = await api<Stake>(`/stake/${address ?? '0x0000000000000000000000000000000000000000'}`)
     const now = Date.now() / 1000
-    return { ...s, epochEndsIn: when(hoursLeft(s.epochEndsAt, now)), rules: `New stake is pending until the epoch ends, then active and locked for one epoch. Pending stake can be unstaked any time. Stakers receive ${SPLIT.stakersBps / 100}% of all fees in WETH.`, link: `${SITE}/stake` }
+    // The daily USDG share (docs/STAKER_USDG_SHARE.md): an estimate only; the indexer applies the per-wallet floor and cap and never returns them.
+    const share = address ? await api<StakerShare>(`/staker-share/${address}`).catch(() => null) : null
+    const usdgShare = share && share.current.poolUsdg > 0 ? { poolUsdgPerDay: share.current.poolUsdg, estimatedTodayUsdg: share.current.qualifies ? share.current.estimatedUsdg : 0, qualifiesToday: share.current.qualifies, lastPaidUsdg: share.last?.amountUsdg ?? null, lastPaidTx: share.last?.tx ?? null, receivedUsdg: share.paidUsdg, how: 'Paid daily in USDG straight to the staking wallet from Kyte’s Pons creator rewards; nothing to claim. Only stake active for the whole day counts.' } : undefined
+    return { ...s, ...(usdgShare ? { usdgShare } : {}), epochEndsIn: when(hoursLeft(s.epochEndsAt, now)), rules: `New stake is pending until the epoch ends, then active and locked for one epoch. Pending stake can be unstaked any time. Stakers receive ${SPLIT.stakersBps / 100}% of all fees in WETH${usdgShare ? ', plus a daily USDG share of Kyte’s Pons creator rewards, paid straight to the wallet' : ''}.`, link: `${SITE}/stake` }
   },
 }
 
