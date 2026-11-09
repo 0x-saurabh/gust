@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "kyte",
+  "version": "1.0.0",
+  "description": "Kyte options market on Robinhood Chain: read offers, prices, positions, staking and USDG rewards; prepare covered calls, puts, exercises and Autopilot rules as kyte.sh links the user signs. Read and prepare only; never signs.",
+  "author": { "name": "Kyte", "email": "contact@kyte.sh", "url": "https://kyte.sh" },
+  "homepage": "https://kyte.sh/mcp",
+  "repository": "https://github.com/usekyte-org/hermes-kyte",
+  "license": "MIT",
+  "keywords": ["defi", "options", "robinhood-chain", "trading", "mcp", "autopilot"]
+}

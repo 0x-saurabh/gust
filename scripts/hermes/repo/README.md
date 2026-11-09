@@ -36,6 +36,18 @@ Your model, your machine, your Telegram. Kyte never sees a key and never sends a
 
    > /kyte-options prepare a covered call on 1000 HMM, 20% above spot, premium 0.0001 ETH, 1 day
 
+## Install as a plugin (Portable Agent Plugins v1)
+
+The repo is also a portable plugin package (`plugin.json` + `mcp.json` + `skills/`), so one command installs the
+server and both skills together:
+
+```
+hermes plugins install usekyte-org/hermes-kyte
+hermes plugins enable kyte
+```
+
+Skills are then namespaced `kyte:kyte-options` and `kyte:kyte-autopilot-watch`.
+
 ## Autopilot alerts in Telegram
 
 Autopilot is a rule you sign once on [kyte.sh/autopilot](https://kyte.sh/autopilot). Kyte watches the market and

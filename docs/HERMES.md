@@ -137,4 +137,4 @@ Total for the recommended set (1–5): about 1.5 days. Prelaunch checklist appli
 - `src/app/api/mcp/route.ts`: one log line per initialize with the client name.
 - `docs/HOL.md`: Hermes connect block; tool count corrected to 21 (15 read, 6 prepare).
 - Verified against production with the stateless handshake a Hermes client performs: initialize, then tools/list without a session id, then a tools/call. 21 tools with the expected `readOnlyHint` values.
-- Not done: `scripts/hermes/publish.sh` run (creates a public repo), Hermes marketplace listing (external form; disclosure text in §3), a full local Hermes install, tier 2's optional `since=` filter, tier 3.
+- 9 Nov, later: tap published (usekyte-org/hermes-kyte), made a Portable Agent Plugins v1 package (`plugin.json` + `mcp.json` + `skills/`), and submitted to the Hermes plugin catalog: https://github.com/NousResearch/hermes-agent/pull/151992 (pinned sha 5cf75ac). Not done: a full local Hermes install, tier 2's optional `since=` filter, tier 3.
