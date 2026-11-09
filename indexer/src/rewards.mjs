@@ -109,7 +109,9 @@ export function installRewards({ db, all, client, contract = null, isStock = () 
   function catchUp() {
     const first = all("SELECT MIN(at) AS t FROM events WHERE name = 'OptionBought'")[0]?.t
     if (!first) return
-    const from = Math.max(Math.floor(first / EPOCH), Number(getMeta.get('rewards:first_epoch')?.value ?? 0))
+    // REWARDS_FIRST_EPOCH (or the meta key) is the first epoch that pays: epochs before it are never scored into trees,
+    // so switching the pool on does not back-pay every epoch since the first fill (docs/USDG_REWARDS_FUNDING.md)
+    const from = Math.max(Math.floor(first / EPOCH), Number(getMeta.get('rewards:first_epoch')?.value ?? process.env.REWARDS_FIRST_EPOCH ?? 0))
     for (let e = from; e < currentEpoch(); e++) if (isFinal(e)) finalize(e)
   }
 
