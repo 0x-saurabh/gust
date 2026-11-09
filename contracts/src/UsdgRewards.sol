@@ -13,8 +13,9 @@ import {Governed} from "./lib/Governed.sol";
 /// (`publisher`) publishes the root once the epoch is final. Anyone then claims for any account; the USDG always goes
 /// to the account in the leaf.
 ///
-/// Rules, in the protocol's shape (SPEC.md §2): the timelock funds, sets the publisher and the claim window, and can
-/// withdraw only what is not owed; the guardian can pause publishing and revoke an unclaimed root, never claims.
+/// Rules, in the protocol's shape (SPEC.md §2): the timelock funds, sets the publisher, treasury and claim window, and
+/// can withdraw only what is not owed; the guardian can pause publishing and revoke an unclaimed root, never claims.
+/// Unclaimed USDG never parks in the contract: when an epoch expires, `sweep` returns it to the treasury.
 /// Claims are exits: they cannot be paused, and the contract never owes more than it holds (a root publishes only if
 /// the unowed balance covers its total). Leaves use OpenZeppelin's StandardMerkleTree encoding (double keccak,
 /// sorted pairs): `keccak256(bytes.concat(keccak256(abi.encode(epoch, account, amount))))`.
@@ -33,8 +34,10 @@ contract UsdgRewards is Governed {
     IERC20 public immutable token;
     /// @notice The keeper key that publishes roots. Timelock-set.
     address public publisher;
-    /// @notice How long an epoch's claims stay open after publication (default 90 days). Timelock-set, 7 to 365 days.
+    /// @notice How long an epoch's claims stay open after publication. Timelock-set, 1 to 365 days.
     uint64 public claimWindow;
+    /// @notice Where unclaimed USDG goes when an expired epoch is swept (the ops Safe). Timelock-set.
+    address public treasury;
 
     mapping(uint256 epoch => Epoch) public epochs;
     mapping(uint256 epoch => mapping(address account => bool)) public isClaimed;
@@ -44,10 +47,11 @@ contract UsdgRewards is Governed {
     event RootPublished(uint256 indexed epoch, bytes32 root, uint256 total, uint64 expiresAt);
     event RootRevoked(uint256 indexed epoch, bytes32 root);
     event Claimed(uint256 indexed epoch, address indexed account, uint256 amount);
-    event EpochSwept(uint256 indexed epoch, uint256 unclaimed);
+    event EpochSwept(uint256 indexed epoch, uint256 unclaimed, address indexed to);
     event Withdrawn(address indexed to, uint256 amount);
     event PublisherChanged(address indexed oldValue, address indexed newValue);
     event ClaimWindowChanged(uint64 oldValue, uint64 newValue);
+    event TreasuryChanged(address indexed oldValue, address indexed newValue);
 
     error NotPublisher();
     error InvalidRoot();
@@ -63,13 +67,21 @@ contract UsdgRewards is Governed {
     error OverClaim();
     error BadWindow();
 
-    constructor(address timelock_, address guardian_, address token_, address publisher_, uint64 claimWindow_)
-        Governed(timelock_, guardian_)
-    {
-        if (token_ == address(0) || publisher_ == address(0)) revert Errors.ZeroAddress();
-        if (claimWindow_ < 7 days || claimWindow_ > 365 days) revert BadWindow();
+    constructor(
+        address timelock_,
+        address guardian_,
+        address token_,
+        address publisher_,
+        address treasury_,
+        uint64 claimWindow_
+    ) Governed(timelock_, guardian_) {
+        if (token_ == address(0) || publisher_ == address(0) || treasury_ == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        if (claimWindow_ < 1 days || claimWindow_ > 365 days) revert BadWindow();
         token = IERC20(token_);
         publisher = publisher_;
+        treasury = treasury_;
         claimWindow = claimWindow_;
     }
 
@@ -150,7 +162,8 @@ contract UsdgRewards is Governed {
 
     // ---------------------------------------------------------------- expiry
 
-    /// @notice After the claim window, releases the unclaimed part back to the budget (it stays in the contract).
+    /// @notice After the claim window, sends the unclaimed part straight back to the treasury (the ops Safe).
+    /// Anyone may call; the keeper does it on its next tick. Nothing unclaimed stays parked in the contract.
     function sweep(uint256 epoch) external {
         Epoch storage e = epochs[epoch];
         if (e.root == bytes32(0) || e.swept) revert UnknownEpoch(epoch);
@@ -158,7 +171,8 @@ contract UsdgRewards is Governed {
         uint256 unclaimed = e.total - e.claimed;
         e.swept = true;
         outstanding -= unclaimed;
-        emit EpochSwept(epoch, unclaimed);
+        if (unclaimed != 0) token.safeTransfer(treasury, unclaimed);
+        emit EpochSwept(epoch, unclaimed, treasury);
     }
 
     // ----------------------------------------------------------------- admin
@@ -179,8 +193,14 @@ contract UsdgRewards is Governed {
     }
 
     function setClaimWindow(uint64 claimWindow_) external onlyTimelock {
-        if (claimWindow_ < 7 days || claimWindow_ > 365 days) revert BadWindow();
+        if (claimWindow_ < 1 days || claimWindow_ > 365 days) revert BadWindow();
         emit ClaimWindowChanged(claimWindow, claimWindow_);
         claimWindow = claimWindow_;
+    }
+
+    function setTreasury(address treasury_) external onlyTimelock {
+        if (treasury_ == address(0)) revert Errors.ZeroAddress();
+        emit TreasuryChanged(treasury, treasury_);
+        treasury = treasury_;
     }
 }

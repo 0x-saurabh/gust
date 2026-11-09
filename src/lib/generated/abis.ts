@@ -4742,6 +4742,11 @@ export const ABIS = {
           "internalType": "address"
         },
         {
+          "name": "treasury_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
           "name": "claimWindow_",
           "type": "uint64",
           "internalType": "uint64"
@@ -5048,6 +5053,19 @@ export const ABIS = {
     },
     {
       "type": "function",
+      "name": "setTreasury",
+      "inputs": [
+        {
+          "name": "treasury_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "sweep",
       "inputs": [
         {
@@ -5081,6 +5099,19 @@ export const ABIS = {
           "name": "",
           "type": "address",
           "internalType": "contract IERC20"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "treasury",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "stateMutability": "view"
@@ -5194,6 +5225,12 @@ export const ABIS = {
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
         }
       ],
       "anonymous": false
@@ -5276,6 +5313,25 @@ export const ABIS = {
           "type": "bytes32",
           "indexed": false,
           "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "TreasuryChanged",
+      "inputs": [
+        {
+          "name": "oldValue",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newValue",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
         }
       ],
       "anonymous": false

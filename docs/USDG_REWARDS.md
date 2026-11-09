@@ -38,9 +38,10 @@ Governed like the rest of the protocol (timelock + guardian):
 - `publish(epoch, root, total)`: the `publisher` (the keeper key, timelock-set) publishes a finished epoch once; it
   reverts unless the contract's unowed balance covers `total`. `outstanding` tracks what is owed.
 - `claim(epoch, account, amount, proof)` / `claimMany`: anyone may submit, the USDG goes to `account`. **Never pausable**
-  (claims are exits). Open for `claimWindow` after publication (90 days, timelock-set within 7..365 days).
+  (claims are exits). Open for `claimWindow` after publication (7 days by default, timelock-set within 1..365 days).
 - `revoke(epoch)`: guardian or timelock, only while nobody has claimed; the root can then be published again.
-- `sweep(epoch)`: anyone, after expiry; the unclaimed part goes back to the budget (stays in the contract).
+- `sweep(epoch)`: anyone (the keeper does it), after expiry; the unclaimed part is transferred straight back to the
+  `treasury` (the ops Safe). Unclaimed USDG never stays parked in the contract. `setTreasury` is timelock-only.
 - `withdraw(to, amount)`: timelock, never more than the unowed balance.
 - `pause()`: guardian, stops publishing only.
 
@@ -69,7 +70,7 @@ cd /Volumes/my_files/newii/gust-website && scripts/mainnet/usdg-rewards.sh
 ```
 
 1. `forge script DeployUsdgRewards` (deployer keystore): timelock, guardian, USDG, publisher = the keeper wallet
-   `0x377E…bBd4E`, 90 day window. Writes `usdgRewards` into `contracts/deployments/4663.json`.
+   `0x377E…bBd4E`, treasury = ops Safe, 7 day window. Writes `usdgRewards` into `contracts/deployments/4663.json`.
 2. `pnpm sync`, commit, push. Render redeploys the site (ABI + address) and the indexer; set `REWARDS_POOL_USDG` on
    `kyte-indexer` (e.g. `285.71` for 2,000 USDG a week) and redeploy it.
 3. Ops Safe sends USDG to the contract. From the next keeper tick every final epoch publishes.

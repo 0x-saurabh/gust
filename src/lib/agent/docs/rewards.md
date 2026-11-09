@@ -18,8 +18,8 @@ Safe (it can change or be 0); when it is 0 the epoch is still scored and paid la
 
 Ten minutes after an epoch ends the indexer scores it and builds a Merkle tree (OpenZeppelin StandardMerkleTree,
 leaf = (epoch, account, amount)). The keeper publishes the root to `UsdgRewards` once the contract holds enough unowed
-USDG. Anyone can then submit a claim; the USDG always goes to the account in the leaf. Claims stay open 90 days after
-publication, then the unclaimed part returns to the budget. Claims can never be paused. The whole tree for any epoch is
+USDG. Anyone can then submit a claim; the USDG always goes to the account in the leaf. Claims stay open 7 days after
+publication, then the unclaimed part is sent back to the Kyte treasury (the ops Safe); nothing unclaimed stays in the contract. Claims can never be paused. The whole tree for any epoch is
 public at `/api/indexer/rewards/epoch/<n>`; a wallet's standing at `/api/indexer/rewards/<address>`.
 
 Tool: `get_rewards(address?)`. Page: kyte.sh/rewards.

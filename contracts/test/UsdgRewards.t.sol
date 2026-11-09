@@ -11,6 +11,7 @@ contract UsdgRewardsTest is Test {
     address guardian = makeAddr("guardian");
     address publisher = makeAddr("publisher");
     address anyone = makeAddr("anyone");
+    address treasury = makeAddr("treasury");
     address a1 = 0x1111111111111111111111111111111111111111;
     address a2 = 0x2222222222222222222222222222222222222222;
     address a3 = 0x3333333333333333333333333333333333333333;
@@ -26,7 +27,7 @@ contract UsdgRewardsTest is Test {
 
     function setUp() public {
         usdg = new MockERC20("Global Dollar", "USDG", 6);
-        rewards = new UsdgRewards(timelock, guardian, address(usdg), publisher, 90 days);
+        rewards = new UsdgRewards(timelock, guardian, address(usdg), publisher, treasury, 90 days);
         vm.warp((EPOCH + 1) * 1 days + 1 hours); // epoch 7 is over
         usdg.mint(address(rewards), 10_000_000); // 10 USDG budget
         p0 = new bytes32[](1);
@@ -138,7 +139,8 @@ contract UsdgRewardsTest is Test {
         rewards.claim(EPOCH, a2, 2_500_000, p1);
         rewards.sweep(EPOCH);
         assertEq(rewards.outstanding(), 0);
-        assertEq(rewards.available(), 8_500_000); // 10 - 1.5 claimed, the rest back in the budget
+        assertEq(usdg.balanceOf(treasury), 3_500_000); // the unclaimed 3.5 USDG went straight back to the treasury
+        assertEq(rewards.available(), 5_000_000); // 10 - 5 published; nothing unclaimed parked in the contract
         vm.expectRevert(abi.encodeWithSelector(UsdgRewards.UnknownEpoch.selector, EPOCH));
         rewards.sweep(EPOCH);
     }
@@ -163,13 +165,60 @@ contract UsdgRewardsTest is Test {
         rewards.setPublisher(anyone);
         assertEq(rewards.publisher(), anyone);
         vm.expectRevert(UsdgRewards.BadWindow.selector);
-        rewards.setClaimWindow(1 days);
+        rewards.setClaimWindow(12 hours);
         rewards.setClaimWindow(30 days);
         assertEq(rewards.claimWindow(), 30 days);
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        rewards.setTreasury(address(0));
+        rewards.setTreasury(anyone);
+        assertEq(rewards.treasury(), anyone);
         vm.stopPrank();
+        vm.expectRevert(Errors.NotTimelock.selector);
+        rewards.setTreasury(treasury);
         vm.prank(anyone);
         rewards.publish(EPOCH, ROOT, 5_000_000);
         (,,,, uint64 expiresAt,) = rewards.epochs(EPOCH);
         assertEq(expiresAt, block.timestamp + 30 days);
+    }
+
+    function test_sweepReturnsUnclaimedToTreasuryOnly() public {
+        _publish();
+        // everyone claims: nothing to return, no transfer to the treasury
+        rewards.claim(EPOCH, a1, 1_500_000, p0);
+        rewards.claim(EPOCH, a2, 2_500_000, p1);
+        rewards.claim(EPOCH, a3, 1_000_000, p2);
+        vm.warp(block.timestamp + 90 days + 1);
+        rewards.sweep(EPOCH);
+        assertEq(usdg.balanceOf(treasury), 0);
+        assertEq(rewards.outstanding(), 0);
+        assertEq(rewards.available(), 5_000_000);
+    }
+
+    function test_sweepUsesCurrentTreasury() public {
+        _publish();
+        vm.prank(timelock);
+        rewards.setTreasury(anyone);
+        vm.warp(block.timestamp + 90 days + 1);
+        vm.expectEmit(true, true, false, true);
+        emit UsdgRewards.EpochSwept(EPOCH, 5_000_000, anyone);
+        rewards.sweep(EPOCH);
+        assertEq(usdg.balanceOf(anyone), 5_000_000);
+        assertEq(usdg.balanceOf(address(rewards)), 5_000_000); // the unpublished budget stays, nothing owed
+        // a swept epoch can never be claimed or revoked again
+        vm.expectRevert(abi.encodeWithSelector(UsdgRewards.EpochExpired.selector, EPOCH));
+        rewards.claim(EPOCH, a1, 1_500_000, p0);
+        vm.prank(guardian);
+        vm.expectRevert(abi.encodeWithSelector(UsdgRewards.UnknownEpoch.selector, EPOCH));
+        rewards.revoke(EPOCH);
+    }
+
+    function test_constructorRejectsZeroTreasuryAndShortWindow() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        new UsdgRewards(timelock, guardian, address(usdg), publisher, address(0), 7 days);
+        vm.expectRevert(UsdgRewards.BadWindow.selector);
+        new UsdgRewards(timelock, guardian, address(usdg), publisher, treasury, 12 hours);
+        UsdgRewards r = new UsdgRewards(timelock, guardian, address(usdg), publisher, treasury, 1 days);
+        assertEq(r.claimWindow(), 1 days);
+        assertEq(r.treasury(), treasury);
     }
 }
