@@ -181,6 +181,8 @@ shows demand. Note: the seat on Harmonic's oracle is also priced in USDG, so a s
 
 ## 4. Private coins: ZEC and XMR
 
+> **Superseded 9 Nov 2026 by `docs/PRIVATE_COINS.md`.** The WZEC assumption below is wrong: wrappedz.cash never launched (grant rejected Mar 2026), the 2020 WZEC is dead, and the only credible wrapped ZEC (Coinbase cbZEC) is Base-only. Pyth ZEC/USD and XMR/USD are live on 4663. Kept for the record.
+
 ### Constraint
 Kyte settles physically and reads no oracle, so an underlying must be an **ERC-20 on Robinhood Chain with a
 price feed the indexer can read** (a v4 pool, or an API in `pollQuotes()`). A wrapped asset is transparent on
