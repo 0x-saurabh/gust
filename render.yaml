@@ -28,9 +28,9 @@ services:
       - key: SITE_URL
         value: https://kyte.sh # Autopilot trigger links point here
       - key: REWARDS_POOL_USDG
-        value: "0" # USDG paid per 24 h epoch (docs/USDG_REWARDS.md); 0 scores points but pays nothing until the ops Safe sets a pool and funds UsdgRewards
+        value: "20" # USDG paid per 24 h epoch (docs/USDG_REWARDS.md); set live 9 Nov 2026 with 200 USDG in UsdgRewards (10 days); 0 pays nothing
       - key: REWARDS_FIRST_EPOCH
-        value: "0" # first 24 h epoch (floor(unix/86400)) that pays; earlier epochs stay score-only. Set together with the pool (docs/USDG_REWARDS_FUNDING.md)
+        value: "20766" # first 24 h epoch (floor(unix/86400)) that pays: 9 Nov 2026 UTC; earlier epochs stay score-only (docs/USDG_REWARDS_FUNDING.md)
       - key: STAKER_SHARE_POOL_USDG
         value: "0" # daily USDG split over active KYTE stake, paid wallet to wallet by the keeper (docs/STAKER_USDG_SHARE.md); 0 = snapshot only
       - key: STAKER_SHARE_MIN_USDG

@@ -1,18 +1,18 @@
 # USDG rewards: switch payouts on (runbook)
 
-Status 9 Nov 2026: scoring, contract, publisher and keeper job are live; the pool is 0 and the contract holds 0 USDG,
-so no epoch has paid. This is the exact sequence to start paying. Three decisions, two Render env vars, one Safe
+Status 9 Nov 2026 (late): **live.** Contract redeployed with treasury sweep, 200 USDG funded, `REWARDS_POOL_USDG=20`,
+`REWARDS_FIRST_EPOCH=20766`; the first paying epoch is scored 10 Nov 00:10 UTC. The original runbook follows. This is the exact sequence to start paying. Three decisions, two Render env vars, one Safe
 transfer. Nothing here touches user funds or the option contracts.
 
 | Thing | Value |
 |---|---|
-| UsdgRewards contract | `0xAd56f0ba0e75c712B9Eb6537e3dEe7c9eA1B2956` (Blockscout: robinhoodchain.blockscout.com/address/0xAd56f0ba0e75c712B9Eb6537e3dEe7c9eA1B2956) |
+| UsdgRewards contract | `0xA6777B8D42FAad0D92fF0C24F391b0F82Fad69fC` (Blockscout: robinhoodchain.blockscout.com/address/0xA6777B8D42FAad0D92fF0C24F391b0F82Fad69fC) |
 | USDG token (6 decimals) | `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168` |
 | Publisher (must equal the live keeper) | `0x377E8Ac104351173A1009Eb6bdCd9966174bBd4E` (kyte-keeper-v2), confirmed on chain |
 | Ops Safe (funds the contract; today holds 0 USDG) | `0xd97693DF18dd20b8C7A542ea0E167c75F630aDA5` |
 | Timelock (can `withdraw` unowed USDG, `setPublisher`, `setClaimWindow`) | `0xf8E6fAF7e0E57bc91aD5C59B84FedE2Cab842893` |
 | Guardian (can `pause` publishing and `revoke` an unclaimed root) | `0x9F433eE8020cFb3521bDaE0DDA612932e1E90EF0` |
-| Claim window | 90 days (`7776000` s), then anyone can `sweep` the leftovers back to `available()` |
+| Claim window | 1 day (`86400` s, set via the timelock 9 Nov 2026), then the keeper's `sweep` sends the leftovers straight to the ops Safe |
 | Indexer (Render private service) | `kyte-indexer`, `srv-dbjk1qflk1mc739g07gg` |
 | Keeper tick | every 30 s; a short-funded epoch is retried hourly and alerts `ALERT_WEBHOOK_URL` |
 | Epoch | `floor(unix_seconds / 86400)`; today is epoch 20766. An epoch is scored 10 min after it ends (00:10 UTC). |
@@ -24,8 +24,8 @@ transfer. Nothing here touches user funds or the option contracts.
 2. The keeper reads `/rewards`, and for each final epoch with a non-zero total checks `available()` on the contract
    (USDG in the contract minus what is already owed). If it covers the total it calls `publish(epoch, root, total)`.
    If not, it alerts "fund 0xAd56…" and retries in an hour. It never publishes partially.
-3. Users claim on kyte.sh/rewards (one signature). Claims can never be paused. After 90 days unclaimed USDG is swept
-   back into `available()` and funds later epochs.
+3. Users claim on kyte.sh/rewards (one signature). Claims can never be paused. After 1 day unclaimed USDG is swept
+   straight to the ops Safe (treasury); nothing stays parked in the contract.
 
 **The trap to avoid.** `finalize()` recomputes an epoch whenever its pool changes, and `catchUp()` walks every epoch
 since the first fill. If you only set `REWARDS_POOL_USDG`, every past epoch since early November is re-scored with
@@ -72,13 +72,13 @@ curl -s https://kyte.sh/api/indexer/rewards | python3 -c 'import sys,json;d=json
 
 ## Step 4: the Safe sends USDG to the contract
 
-A plain ERC-20 transfer from the ops Safe: token `0x5fc5…d168`, to `0xAd56f0ba0e75c712B9Eb6537e3dEe7c9eA1B2956`,
+A plain ERC-20 transfer from the ops Safe: token `0x5fc5…d168`, to `0xA6777B8D42FAad0D92fF0C24F391b0F82Fad69fC`,
 amount `4000000000` (4,000 USDG) or whatever you decided. No approval, no contract call, no other signer needed.
 
 Verify (both should be 4000000000):
 ```
-cast call 0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168 "balanceOf(address)(uint256)" 0xAd56f0ba0e75c712B9Eb6537e3dEe7c9eA1B2956 --rpc-url https://rpc.mainnet.chain.robinhood.com
-cast call 0xAd56f0ba0e75c712B9Eb6537e3dEe7c9eA1B2956 "available()(uint256)" --rpc-url https://rpc.mainnet.chain.robinhood.com
+cast call 0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168 "balanceOf(address)(uint256)" 0xA6777B8D42FAad0D92fF0C24F391b0F82Fad69fC --rpc-url https://rpc.mainnet.chain.robinhood.com
+cast call 0xA6777B8D42FAad0D92fF0C24F391b0F82Fad69fC "available()(uint256)" --rpc-url https://rpc.mainnet.chain.robinhood.com
 ```
 
 ## Step 5: watch the first payout
