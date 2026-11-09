@@ -34,7 +34,7 @@ function NavLink({ href, children, ...rest }: { href: string; children: ReactNod
   return <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>{children}</a>
 }
 
-/** Floating pill bar (B7): translucent, blurred, off the top edge. Mobile menu is a full height panel. */
+/** Floating pill bar (B7): translucent, blurred, off the top edge. Below lg the links live in a full-height, scrollable panel. */
 export function Nav() {
   const path = usePathname()
   const [open, setOpen] = useState(false)
@@ -52,7 +52,7 @@ export function Nav() {
             <Logo size={20} />
             {isDevnet && <span className="ml-1 rounded-full border border-accent/30 px-2 py-0.5 font-mono text-xs uppercase tracking-wider text-accent">devnet</span>}
           </Link>
-          <div className="hidden flex-1 items-center justify-center gap-1 md:flex">
+          <div className="hidden flex-1 items-center justify-center gap-1 lg:flex">
             {LINKS.map((l) => {
               const active = path === l.href
               return (
@@ -68,14 +68,14 @@ export function Nav() {
             })}
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden md:inline-flex"><Faucet /></span>
+            <span className="hidden lg:inline-flex"><Faucet /></span>
             <ConnectButton />
             <button
               type="button"
               aria-label={open ? 'Close menu' : 'Open menu'}
               aria-expanded={open}
               onClick={() => setOpen((o) => !o)}
-              className="relative flex size-8 items-center justify-center rounded-full md:hidden"
+              className="relative flex size-8 items-center justify-center rounded-full lg:hidden"
             >
               <motion.span className="absolute h-px w-4 bg-ink" animate={{ rotate: open ? 45 : 0, y: open ? 0 : -3 }} transition={{ duration: 0.5, ease: EASE }} />
               <motion.span className="absolute h-px w-4 bg-ink" animate={{ rotate: open ? -45 : 0, y: open ? 0 : 3 }} transition={{ duration: 0.5, ease: EASE }} />
@@ -92,9 +92,9 @@ export function Nav() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: EASE }}
-            className="fixed inset-0 z-10 bg-bg/95 pt-24 backdrop-blur-xl md:hidden"
+            className="fixed inset-0 z-10 overflow-y-auto overscroll-contain bg-bg/95 pb-[max(2rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-xl lg:hidden"
           >
-            <ul className="px-6">
+            <ul className="mx-auto max-w-5xl px-6 sm:grid sm:grid-cols-2 sm:gap-x-10">
               {LINKS.map((l, i) => (
                 <motion.li
                   key={l.href}
@@ -102,12 +102,12 @@ export function Nav() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, ease: EASE, delay: Math.min(i * 0.06, 0.4) }}
                 >
-                  <NavLink href={l.href} aria-current={path === l.href ? 'page' : undefined} className={`block border-b border-line py-4 text-2xl ${path === l.href ? 'text-ink' : 'text-muted'}`}>
+                  <NavLink href={l.href} aria-current={path === l.href ? 'page' : undefined} className={`block border-b border-line py-3.5 text-xl sm:text-2xl ${path === l.href ? 'text-ink' : 'text-muted'}`}>
                     {l.label}
                   </NavLink>
                 </motion.li>
               ))}
-              <motion.li initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE, delay: 0.4 }} className="pt-6">
+              <motion.li initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE, delay: 0.4 }} className="pt-6 sm:col-span-2">
                 <Faucet />
               </motion.li>
             </ul>

@@ -28,9 +28,14 @@ export function AsciiField({ className = '', density = 14, speed = 1 }: { classN
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      const { width, height } = canvas.getBoundingClientRect()
-      canvas.width = width * dpr
-      canvas.height = height * dpr
+      // measure the box the canvas fills, not the canvas: a replaced element with inset-0 and no explicit CSS size
+      // would otherwise take its own attribute width, and each resize would double it (an observer loop)
+      const box = canvas.parentElement ?? canvas
+      const { width, height } = box.getBoundingClientRect()
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(height * dpr)
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.font = `${cell - 2}px ui-monospace, SFMono-Regular, Menlo, monospace`
       ctx.textBaseline = 'top'
@@ -69,7 +74,7 @@ export function AsciiField({ className = '', density = 14, speed = 1 }: { classN
 
     resize()
     const ro = new ResizeObserver(resize)
-    ro.observe(canvas)
+    ro.observe(canvas.parentElement ?? canvas)
     if (reduce) draw(0)
     else raf = requestAnimationFrame(frame)
     return () => {

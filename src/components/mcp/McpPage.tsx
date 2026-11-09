@@ -125,7 +125,7 @@ export function McpPage() {
         </Reveal>
         <Reveal delay={0.1} className="mt-8">
           <Segmented value={client} onChange={setClient} options={(Object.keys(STEPS) as Client[]).map((k) => ({ value: k, label: STEPS[k].label }))} />
-          <div className="mt-5 grid gap-5 md:grid-cols-[1fr_1.1fr]">
+          <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-[1fr_1.1fr]">
             <ol className="space-y-3">
               {STEPS[client].steps.map((s, i) => (
                 <motion.li key={client + i} initial={reduce ? false : { opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: i * 0.06, ease: EASE }} className="flex items-start gap-3 text-[15px] text-ink/85">
@@ -140,7 +140,7 @@ export function McpPage() {
                   {copied === client ? <Check size={13} className="text-accent" /> : <Copy size={13} />} {copied === client ? 'Copied' : 'Copy'}
                 </button>
               </div>
-              <pre className="mono mt-3 overflow-x-auto whitespace-pre-wrap text-[13px] leading-relaxed text-ink/85">{STEPS[client].snippet ?? URL_}</pre>
+              <pre className="mono mt-3 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] text-[13px] leading-relaxed text-ink/85">{STEPS[client].snippet ?? URL_}</pre>
             </div>
           </div>
         </Reveal>
@@ -159,13 +159,13 @@ export function McpPage() {
           </p>
         </Reveal>
         <Reveal delay={0.05}>
-          <div className="mt-8 grid gap-4 md:grid-cols-[1fr_1.1fr]">
-            <div className="card p-6">
+          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-[1fr_1.1fr]">
+            <div className="card min-w-0 p-6">
               <div className="eyebrow !text-[10px]">Terminal</div>
-              <pre className="mono mt-3 overflow-x-auto whitespace-pre-wrap text-[13px] leading-relaxed text-ink/85">{`pipx install hol-guard\nhol-guard init`}</pre>
+              <pre className="mono mt-3 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] text-[13px] leading-relaxed text-ink/85">{`pipx install hol-guard\nhol-guard init`}</pre>
               <p className="mt-4 text-[13px] leading-relaxed text-ink/60">Then add Kyte to your client as above. Guard lists <code className="mono text-ink/80">kyte</code> on its Protect page, where you set the defaults below.</p>
             </div>
-            <div className="card p-6">
+            <div className="card min-w-0 p-6">
               <div className="eyebrow !text-[10px]">What Guard sees</div>
               <ul className="mt-3 space-y-3 text-[14px] leading-relaxed">
                 <li className="flex gap-3"><Check size={16} className="mt-1 shrink-0 text-accent" /><span><span className="text-ink">{READ_TOOLS.length} read tools</span> <span className="text-ink/60">are annotated read-only and never change state. Safe to allow.</span></span></li>
@@ -187,13 +187,13 @@ export function McpPage() {
           </p>
         </Reveal>
         <Reveal delay={0.05}>
-          <div className="mt-8 grid gap-4 md:grid-cols-[1fr_1.1fr]">
-            <div className="card p-6">
+          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-[1fr_1.1fr]">
+            <div className="card min-w-0 p-6">
               <div className="eyebrow !text-[10px]">Config, both servers</div>
-              <pre className="mono mt-3 overflow-x-auto whitespace-pre-wrap text-[13px] leading-relaxed text-ink/85">{`{ "mcpServers": {\n  "kyte": { "url": "${URL_}" },\n  "harmonic-registry": { "type": "http", "url": "https://harmonicagent.solutions/mcp/registry" }\n} }`}</pre>
+              <pre className="mono mt-3 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] text-[13px] leading-relaxed text-ink/85">{`{ "mcpServers": {\n  "kyte": { "url": "${URL_}" },\n  "harmonic-registry": { "type": "http", "url": "https://harmonicagent.solutions/mcp/registry" }\n} }`}</pre>
               <p className="mt-4 text-[13px] leading-relaxed text-ink/60">Harmonic&apos;s <code className="mono text-ink/80">defi_oracle</code>, <code className="mono text-ink/80">defi_weekend_mark</code> and <code className="mono text-ink/80">defi_atlas</code> read the same rows {BRAND.name}&apos;s <code className="mono text-ink/80">get_prices</code> summarises.</p>
             </div>
-            <div className="card p-6">
+            <div className="card min-w-0 p-6">
               <div className="eyebrow !text-[10px]">Try asking</div>
               <ul className="mt-3 space-y-3 text-[14px] leading-relaxed text-ink/80">
                 <li className="flex gap-3"><Sparkle size={16} className="mt-1 shrink-0 text-accent" /><span>Is NVDA open right now, and what NVDA calls are on Kyte?</span></li>

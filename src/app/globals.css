@@ -527,3 +527,8 @@ p {
 @keyframes hermes-blink { 50% { opacity: 0; } }
 .hermes-banner { text-shadow: 0 0 18px rgba(77, 252, 169, 0.35); }
 @media (prefers-reduced-motion: reduce) { .hermes-cursor { animation: none; } }
+
+/* Responsive helpers: a sideways-scrolling row with no visible bar, and a page that never scrolls sideways */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+body { overflow-x: clip; }

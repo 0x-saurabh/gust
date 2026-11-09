@@ -61,13 +61,14 @@ export function Segmented<T extends string>({
 }) {
   const id = useId()
   return (
-    <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
+    // on narrow screens the row scrolls sideways inside its pill instead of widening the page
+    <div className="no-scrollbar inline-flex max-w-full overflow-x-auto whitespace-nowrap rounded-full border border-white/10 bg-white/[0.03] p-1">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className={`relative rounded-full px-3 py-1.5 text-sm transition-colors ${value === o.value ? 'text-ink' : 'text-muted hover:text-ink'}`}
+          className={`relative shrink-0 rounded-full px-3 py-1.5 text-sm transition-colors ${value === o.value ? 'text-ink' : 'text-muted hover:text-ink'}`}
         >
           {value === o.value && <motion.span layoutId={`seg-${id}`} className="absolute inset-0 rounded-full bg-white/[0.08]" transition={{ type: 'spring', stiffness: 300, damping: 28 }} />}
           <span className="relative">{o.label}</span>

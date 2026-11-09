@@ -215,7 +215,7 @@ export function HermesSection() {
         <div className="hermes-shell grain hair relative mt-8 overflow-hidden rounded-3xl border bg-[#040806]">
           <AsciiField className="pointer-events-none absolute inset-0 opacity-90" />
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(70% 60% at 30% 0%, rgba(4,8,6,.2), rgba(4,8,6,.92) 75%)' }} />
-          <div className="relative grid gap-8 p-6 md:grid-cols-[1.15fr_1fr] md:p-9">
+          <div className="relative grid grid-cols-1 gap-8 p-6 md:grid-cols-[1.15fr_1fr] md:p-9">
             <div className="min-w-0">
               <AsciiBanner text="KYTE × HERMES" />
               <div className="mt-6 rounded-2xl border border-white/[.07] bg-black/50 p-4 backdrop-blur-sm md:p-5">
@@ -244,13 +244,13 @@ export function HermesSection() {
                     {copied === 'cfg' ? <Check size={13} className="text-accent" /> : <Copy size={13} />} {copied === 'cfg' ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-                <pre className="mono mt-2 overflow-x-auto whitespace-pre-wrap text-[12px] leading-relaxed text-ink/80">{CONFIG}</pre>
+                <pre className="mono mt-2 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] text-[12px] leading-relaxed text-ink/80">{CONFIG}</pre>
               </div>
             </div>
           </div>
           <div className="relative flex flex-wrap items-center justify-between gap-3 border-t border-white/[.06] bg-black/40 px-6 py-4 md:px-9">
             <div className="flex flex-wrap items-center gap-2">
-              <code className="mono text-[12.5px] text-ink/80">{TAP}</code>
+              <code className="mono break-all text-[12.5px] text-ink/80">{TAP}</code>
               <button type="button" onClick={() => copy(TAP, 'tap')} className="inline-flex items-center gap-1.5 text-[12px] text-muted hover:text-ink">
                 {copied === 'tap' ? <Check size={13} className="text-accent" /> : <Copy size={13} />} {copied === 'tap' ? 'Copied' : 'Copy'}
               </button>
