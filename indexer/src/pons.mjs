@@ -296,11 +296,15 @@ export function installPons({ db, all, client, lister = null, log = console.log 
     setTimeout(quoteLoop, 40_000).unref?.()
   }
 
-  /** Logo URL of a Pons token (served through the site's /api/pons-logo proxy for ipfs:// logos). */
-  function logoFor(address) {
-    const r = all('SELECT logo FROM pons_tokens WHERE lower(address) = ?', String(address).toLowerCase())[0]
-    return r ? logoUrl(r.logo) : null
+  /** Logos of the given tokens (checksummed addresses), by primary key: pons_tokens has 250k+ rows, never scan it per request. */
+  function logosOf(addresses) {
+    const out = new Map()
+    for (let i = 0; i < addresses.length; i += 200) {
+      const chunk = addresses.slice(i, i + 200).map((a) => getAddress(a))
+      for (const r of all(`SELECT address, logo FROM pons_tokens WHERE logo IS NOT NULL AND address IN (${chunk.map(() => '?').join(',')})`, ...chunk)) { const u = logoUrl(r.logo); if (u) out.set(r.address.toLowerCase(), u) }
+    }
+    return out
   }
 
-  return { route, start, syncLaunches, pollGraduation, quote, logoFor, onTokens(fn) { listeners.push(fn); notify() } }
+  return { route, start, syncLaunches, pollGraduation, quote, logosOf, onTokens(fn) { listeners.push(fn); notify() } }
 }

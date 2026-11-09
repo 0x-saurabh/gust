@@ -500,6 +500,19 @@ function assetRule(address) {
   const source = ponsSet.has(a) ? 'pons' : foboSet.has(a) ? 'fobo' : null
   return { source, maxDurationSec: source ? PONS_MAX_DURATION : 90 * 86_400 }
 }
+// Logos of listed launchpad tokens, rebuilt at most once a minute (primary-key lookups; pons_tokens has 250k+ rows,
+// a per-request scan of it blocked the event loop on 9 Nov 2026).
+let logoCache = { at: 0, map: new Map() }
+function assetLogos() {
+  const now = Date.now()
+  if (now - logoCache.at < 60_000) return logoCache.map
+  const addrs = all('SELECT address FROM assets').map((a) => a.address)
+  const map = new Map()
+  try { for (const [k, v] of pons?.logosOf(addrs) ?? []) map.set(k, v) } catch (e) { console.error('[indexer] pons logos:', e.message) }
+  try { for (const [k, v] of fobo?.logosOf(addrs) ?? []) map.set(k, v) } catch (e) { console.error('[indexer] fobo logos:', e.message) }
+  logoCache = { at: now, map }
+  return map
+}
 function offerOut(r) {
   const now = chainNow
   const rule = assetRule(r.token)
@@ -528,7 +541,7 @@ const routes = {
     address: a.address, symbol: a.symbol, name: a.name, decimals: a.decimals, enabled: !!a.enabled, putsEnabled: !!a.puts_enabled,
     cap: a.cap, minStrike: a.min_strike, ...assetRule(a.address), session: sessionOf(a.address, a.symbol),
     // launchpad tokens carry their own logo (FOBO metadata or DexScreener; Pons: the token's ipfs logo via the site proxy)
-    logo: fobo?.logoFor(a.address) ?? pons?.logoFor(a.address) ?? null,
+    logo: assetLogos().get(a.address.toLowerCase()) ?? null,
   })),
   '/offers': async (u) => {
     const status = oneOf(u.searchParams.get('status'), ['open', 'filled', 'exercised', 'expired', 'cancelled', 'all'], 'open')

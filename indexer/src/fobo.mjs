@@ -215,14 +215,19 @@ export function installFobo({ db, all, client, lister = null, log = console.log 
     }
   }
 
-  /** Logo URL (https) of a FOBO token, for the site's token logos. */
-  function logoFor(address) {
-    return all('SELECT logo FROM fobo_tokens WHERE lower(address) = ?', String(address).toLowerCase())[0]?.logo || null
+  /** Logos of the given tokens (checksummed addresses), by primary key. */
+  function logosOf(addresses) {
+    const out = new Map()
+    for (let i = 0; i < addresses.length; i += 200) {
+      const chunk = addresses.slice(i, i + 200).map((a) => getAddress(a))
+      for (const r of all(`SELECT address, logo FROM fobo_tokens WHERE logo IS NOT NULL AND address IN (${chunk.map(() => '?').join(',')})`, ...chunk)) out.set(r.address.toLowerCase(), r.logo)
+    }
+    return out
   }
 
   /** The floor of a FOBO token Kyte knows (for /prices, the market and sell pages): ETH per token and what it backs. */
   function floorFor(address) {
-    const r = all('SELECT floor_eth, backing_eth, floor_tick, checked_at FROM fobo_tokens WHERE lower(address) = ?', String(address).toLowerCase())[0]
+    const r = all('SELECT floor_eth, backing_eth, floor_tick, checked_at FROM fobo_tokens WHERE address = ?', getAddress(address))[0]
     if (!r || r.floor_eth == null) return null
     return { floorEth: r.floor_eth, backingEth: r.backing_eth, tickF: r.floor_tick, at: r.checked_at }
   }
@@ -294,5 +299,5 @@ export function installFobo({ db, all, client, lister = null, log = console.log 
     setTimeout(metaLoop, 35_000).unref?.()
   }
 
-  return { route, start, syncLaunches, pollFloors, pollMeta, quote, floorFor, logoFor, onTokens(fn) { listeners.push(fn); notify() } }
+  return { route, start, syncLaunches, pollFloors, pollMeta, quote, floorFor, logosOf, onTokens(fn) { listeners.push(fn); notify() } }
 }
