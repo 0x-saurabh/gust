@@ -32,13 +32,20 @@ const SAFE = getAddress(env.SAFE || env.ADMIN_SAFE)
 const OWNERS = (env.OWNERS || 'owner1,owner2').split(',')
 const SENDER = env.SENDER || 'deployer'
 const CAST = `${os.homedir()}/.foundry/bin/cast`
-const MULTISEND = '0x9641d764fc13c8B624c04430C7356C1C7C8102e2' // MultiSendCallOnly v1.4.1
+// MultiSendCallOnly: v1.4.1 canonical address by default (Robinhood Chain). Chains that only carry Safe v1.3.0
+// (Elysium 99901) set MULTISEND to the v1.3.0 address 0x40A2aCCbd92BCA938b02010E17A5b8929b49130D. A Safe that
+// delegatecalls an address with no code reports ExecutionSuccess and does nothing, so the address is checked on chain.
+const MULTISEND = getAddress(env.MULTISEND || '0x9641d764fc13c8B624c04430C7356C1C7C8102e2')
 const ZERO = '0x0000000000000000000000000000000000000000'
 // PLAN_FILE runs a different action list through the same flow (e.g. scripts/mainnet/set-keeper.sh).
 const plan = JSON.parse(fs.readFileSync(env.PLAN_FILE || `scripts/mainnet/out/timelock-${CHAIN_ID}.json`, 'utf8'))
 const TL = getAddress(plan.timelock)
 
 const client = createPublicClient({ transport: http(RPC, { retryCount: 6, retryDelay: 2000 }) })
+if (((await client.getCode({ address: MULTISEND })) ?? '0x').length <= 2) {
+  console.error(`MultiSendCallOnly ${MULTISEND} has no code on chain ${CHAIN_ID}. Set MULTISEND to this chain's address (Safe v1.3.0: 0x40A2aCCbd92BCA938b02010E17A5b8929b49130D).`)
+  process.exit(1)
+}
 const safeAbi = parseAbi([
   'function nonce() view returns (uint256)',
   'function getThreshold() view returns (uint256)',
@@ -182,6 +189,10 @@ async function auto() {
 
   // Wait for the timelock.
   const readyAt = Math.max(...ops.map((o) => o.readyAt))
+  if (ops.some((o) => !o.done && !o.queued)) {
+    console.error('\nThe Safe transaction went through but the timelock shows nothing queued: the inner calls did nothing (wrong MultiSend or timelock address?). Not waiting. Check `status` and the Safe tx on the explorer.')
+    process.exit(1)
+  }
   console.log(`\nWaiting until ${fmt(readyAt)} for the ${Math.round(plan.delay / 60)} min timelock. Keep this window open; your Mac is kept awake.`)
   const POLL = Number(env.POLL_MS || 300000)
   for (;;) {

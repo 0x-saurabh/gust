@@ -44,7 +44,8 @@ case "$STEP" in
     echo "plan saved: scripts/mainnet/out/timelock-$CID.json. Next: elysium.sh wire"
     ;;
   wire)
-    SAFE="$ADMIN_SAFE" CHAIN_ID=$CID RPC_URL="$RPC" PLAN_FILE=scripts/mainnet/out/timelock-$CID.json node scripts/mainnet/safe-run.mjs "${2:-auto}"
+    # Elysium carries Safe v1.3.0: its MultiSendCallOnly lives at 0x40A2…130D (the v1.4.1 address has no code here).
+    MULTISEND="${MULTISEND:-0x40A2aCCbd92BCA938b02010E17A5b8929b49130D}" SAFE="$ADMIN_SAFE" CHAIN_ID=$CID RPC_URL="$RPC" PLAN_FILE=scripts/mainnet/out/timelock-$CID.json node scripts/mainnet/safe-run.mjs "${2:-auto}"
     ;;
   sync)
     node scripts/sync-contracts.mjs
