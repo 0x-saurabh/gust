@@ -13,7 +13,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 ENV_FILE=scripts/mainnet/elysium.env
 [ -f "$ENV_FILE" ] || { echo "missing $ENV_FILE (copy scripts/mainnet/elysium.env.example)"; exit 1; }
-grep -q -i "private" "$ENV_FILE" && { echo "refusing: $ENV_FILE contains a private key; use the keystore"; exit 1; }
+grep -q -i -E "PRIVATE_KEY|=0x[0-9a-fA-F]{64}" "$ENV_FILE" && { echo "refusing: $ENV_FILE contains a private key; use the keystore"; exit 1; }
 set -a; . "$ENV_FILE"; set +a
 export PATH="$HOME/.foundry/bin:$PATH"
 ACCOUNT=${ACCOUNT:-deployer}
