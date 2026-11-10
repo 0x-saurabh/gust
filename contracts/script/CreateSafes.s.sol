@@ -47,8 +47,9 @@ contract CreateSafes is Script {
         uint256 guardianThreshold = vm.envOr("GUARDIAN_THRESHOLD", uint256(1));
         require(adminThreshold > 0 && adminThreshold <= owners.length, "bad ADMIN_THRESHOLD");
         require(guardianThreshold > 0 && guardianThreshold <= owners.length, "bad GUARDIAN_THRESHOLD");
-        // A different salt per role and per run, so re-running never collides with an earlier Safe.
-        uint256 base = uint256(keccak256(abi.encode("kyte-safes", block.timestamp, msg.sender)));
+        // Deterministic salt (owners + SAFE_SALT): the simulation and the broadcast then create the same addresses,
+        // so the file written here matches the chain. Bump SAFE_SALT to create a fresh set.
+        uint256 base = uint256(keccak256(abi.encode("kyte-safes", owners, vm.envOr("SAFE_SALT", uint256(1)))));
 
         vm.startBroadcast();
         address admin = _create(owners, adminThreshold, base + 1);
