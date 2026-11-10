@@ -37,6 +37,25 @@ Core addresses on Elysium (from the docs, WHYPE confirmed on chain):
 Not Kinetiq's chain: viem's `elysiumTestnet` (1338) and chainlist "Elysium Mainnet" (1339, PYR) are Vulcan Forged's
 network. Never mix them up.
 
+## Findings 10 Nov 2026 (after the plan was written)
+
+- **Testnet (99801) has no Uniswap v4 and no WHYPE**: `eth_getCode` is empty at the mainnet PoolManager, WHYPE and
+  USDC addresses; only Multicall3 exists. A testnet rehearsal therefore uses the devnet-style deploy (own PoolManager,
+  mock WHYPE and listed tokens, `DeployDevnet.s.sol` pattern) to validate gas in HYPE, explorer and indexer/keeper.
+  The real v4 and WHYPE wiring is only exercisable on mainnet.
+- **Faucet** `elysium.kinetiq.xyz/testnet-faucet` sits behind a Vercel security checkpoint: open it in a browser,
+  claim test HYPE for the deployer wallet.
+- **Sourcify** has no chain 99901/99801 entry yet (checked 10 Nov).
+- **DexScreener** already indexes Elysium (`chainId: elysium`, 30 WHYPE pairs on 10 Nov), so spot and charts work.
+- **Simplest v1 for the site**: the website is built per chain (`NEXT_PUBLIC_CHAIN_ID`). Instead of a multi-chain
+  refactor first, run a second deployment of the same site at `elysium.kyte.sh` with `NEXT_PUBLIC_CHAIN_ID=99901`,
+  its own indexer URL and keeper. The shared code change is only the quote symbol (`QUOTE_SYMBOL`/`GAS_SYMBOL` in
+  `src/lib/chains.ts`, added 10 Nov) replacing hardcoded "ETH"/"WETH" copy. The in-page chain switcher comes later.
+
+Code landed 10 Nov: `elysium` and `elysiumTestnet` chain definitions and `QUOTE_SYMBOL` in `src/lib/chains.ts`,
+RPC defaults for 99901/99801 in the indexer and keeper, `elysium` and `elysium_testnet` in `contracts/foundry.toml`,
+Elysium WHYPE and PoolManager in the site's external address table.
+
 ## Why it fits Kyte
 
 - **Same stack.** Robinhood Chain and Elysium are both Arbitrum Orbit. Our Solidity, the Uniswap v4 hook (KyteHook:

@@ -19,7 +19,7 @@ import { createPublicClient, decodeEventLog, encodeAbiParameters, formatUnits, g
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname)
 const CHAIN_ID = Number(process.env.CHAIN_ID || 31337)
-const RPC_URL = process.env.RPC_URL || (CHAIN_ID === 31337 ? 'http://127.0.0.1:8547' : CHAIN_ID === 4663 ? 'https://rpc.mainnet.chain.robinhood.com' : 'https://rpc.testnet.chain.robinhood.com')
+const RPC_URL = process.env.RPC_URL || (CHAIN_ID === 31337 ? 'http://127.0.0.1:8547' : CHAIN_ID === 4663 ? 'https://rpc.mainnet.chain.robinhood.com' : CHAIN_ID === 99901 ? 'https://rpc.elysium.kinetiq.xyz' : CHAIN_ID === 99801 ? 'https://testnet-rpc.elysium.kinetiq.xyz' : 'https://rpc.testnet.chain.robinhood.com')
 const PORT = Number(process.env.PORT || 4200)
 const POLL_MS = Number(process.env.POLL_MS || 2000)
 const START_BLOCK = BigInt(process.env.START_BLOCK || 0)

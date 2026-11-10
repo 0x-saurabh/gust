@@ -31,6 +31,8 @@ depth = 100
 [rpc_endpoints]
 robinhood_testnet = "https://rpc.testnet.chain.robinhood.com"
 robinhood = "https://rpc.mainnet.chain.robinhood.com"
+elysium = "https://rpc.elysium.kinetiq.xyz"
+elysium_testnet = "https://testnet-rpc.elysium.kinetiq.xyz"
 
 [fmt]
 line_length = 120

@@ -15,7 +15,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname)
 const CHAIN_ID = Number(process.env.CHAIN_ID || 31337)
-const RPC_URL = process.env.RPC_URL || (CHAIN_ID === 31337 ? 'http://127.0.0.1:8547' : CHAIN_ID === 4663 ? 'https://rpc.mainnet.chain.robinhood.com' : 'https://rpc.testnet.chain.robinhood.com')
+const RPC_URL = process.env.RPC_URL || (CHAIN_ID === 31337 ? 'http://127.0.0.1:8547' : CHAIN_ID === 4663 ? 'https://rpc.mainnet.chain.robinhood.com' : CHAIN_ID === 99901 ? 'https://rpc.elysium.kinetiq.xyz' : CHAIN_ID === 99801 ? 'https://testnet-rpc.elysium.kinetiq.xyz' : 'https://rpc.testnet.chain.robinhood.com')
 const INTERVAL_MS = Number(process.env.INTERVAL_MS || 30_000)
 const BUYBACK_MIN = parseEther(process.env.BUYBACK_MIN_WETH || '0.01')
 const SLIPPAGE_BPS = BigInt(process.env.BUYBACK_SLIPPAGE_BPS || 100)

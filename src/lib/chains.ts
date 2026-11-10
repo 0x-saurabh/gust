@@ -6,7 +6,29 @@ import deployments from './generated/deployments.json'
 const OFFICIAL_RPC: Record<number, string> = {
   4663: 'https://rpc.mainnet.chain.robinhood.com',
   46630: 'https://rpc.testnet.chain.robinhood.com',
+  99901: 'https://rpc.elysium.kinetiq.xyz',
+  99801: 'https://testnet-rpc.elysium.kinetiq.xyz',
 }
+
+/** Elysium: Kinetiq's Hyperliquid L2 (Arbitrum Orbit, settles to HyperEVM). Gas is HYPE. docs/ELYSIUM.md. */
+export const elysium = defineChain({
+  id: 99901,
+  name: 'Elysium',
+  nativeCurrency: { name: 'HYPE', symbol: 'HYPE', decimals: 18 },
+  rpcUrls: { default: { http: ['https://rpc.elysium.kinetiq.xyz'] } },
+  blockExplorers: { default: { name: 'Elysium Explorer', url: 'https://elysium.kinetiq.xyz/explorer' } },
+  contracts: { multicall3: { address: '0xcA11bde05977b3631167028862bE2a173976CA11' } },
+})
+
+export const elysiumTestnet = defineChain({
+  id: 99801,
+  name: 'Elysium Testnet',
+  nativeCurrency: { name: 'HYPE', symbol: 'HYPE', decimals: 18 },
+  rpcUrls: { default: { http: ['https://testnet-rpc.elysium.kinetiq.xyz'] } },
+  blockExplorers: { default: { name: 'Elysium Testnet Explorer', url: 'https://elysium.kinetiq.xyz/testnet-explorer' } },
+  contracts: { multicall3: { address: '0xcA11bde05977b3631167028862bE2a173976CA11' } },
+  testnet: true,
+})
 
 /** Local anvil devnet (`contracts/script/DeployDevnet.s.sol`). Port 8547: 8545 is used by another project. */
 export const kyteDevnet = defineChain({
@@ -24,8 +46,12 @@ function withRpc(base: Chain): Chain {
   return { ...base, rpcUrls: { default: { http: [rpc] } } }
 }
 
-export const chain: Chain = withRpc(CHAIN_ID === 4663 ? robinhood : CHAIN_ID === 31337 ? kyteDevnet : robinhoodTestnet)
+const CHAINS: Record<number, Chain> = { 4663: robinhood, 46630: robinhoodTestnet, 31337: kyteDevnet, 99901: elysium, 99801: elysiumTestnet }
+export const chain: Chain = withRpc(CHAINS[CHAIN_ID] ?? robinhoodTestnet)
 export const isDevnet = chain.id === 31337
+/** The wrapped gas token every premium and put strike is quoted in: WETH on Robinhood Chain, WHYPE on Elysium. */
+export const QUOTE_SYMBOL = chain.id === 99901 || chain.id === 99801 ? 'WHYPE' : 'WETH'
+export const GAS_SYMBOL = chain.nativeCurrency.symbol
 
 export function explorerTx(hash: string): string | undefined {
   const url = chain.blockExplorers?.default.url
@@ -86,6 +112,9 @@ const EXTERNAL: Record<number, ProtocolContracts> = {
   4663: { weth: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73' },
   46630: {},
   31337: {},
+  // Elysium mainnet (docs/ELYSIUM.md): WHYPE is the quote asset, Uniswap v4 PoolManager from docs.uniswap.org.
+  99901: { weth: '0xbA876237B0F021A6c6D852d6c26E107997cC5E81', uniswapV4PoolManager: '0xE2e105d3F7209A9DA11f83cCf3E7398a753823F1' },
+  99801: {},
 }
 
 const deployed = (deployments as Record<string, ProtocolContracts>)[String(CHAIN_ID)] ?? {}
