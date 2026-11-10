@@ -10,7 +10,7 @@ import { TokenPicker } from '@/components/TokenPicker'
 import { TxStatus } from '@/components/TxStatus'
 import { WalletHoldings } from '@/components/WalletHoldings'
 import { Note, PageHeader, Segmented } from '@/components/ui'
-import { contracts } from '@/lib/chains'
+import { contracts, GAS_SYMBOL } from '@/lib/chains'
 import { FEES, LIMITS } from '@/lib/config'
 import { useAssets, useBalances, useLive, useTokenBalance, type Kind } from '@/lib/data'
 import { eth, num } from '@/lib/format'
@@ -78,7 +78,7 @@ export default function SellPage() {
   if (!a) errors.push('No token available for this market.')
   if (amt <= 0) errors.push('Amount must be above zero.')
   if (strikeEach <= 0) errors.push('Enter a strike per token.')
-  if (prem < LIMITS.minPremiumEth) errors.push(`Premium must be at least ${LIMITS.minPremiumEth} ETH.`)
+  if (prem < LIMITS.minPremiumEth) errors.push(`Premium must be at least ${LIMITS.minPremiumEth} ${GAS_SYMBOL}.`)
   const maxDuration = Math.min(LIMITS.maxDurationSec, a?.maxDurationSec ?? LIMITS.maxDurationSec)
   const durations = DURATIONS.filter((d) => d.sec <= maxDuration)
   if (durationSec < LIMITS.minDurationSec || durationSec > maxDuration) errors.push(a?.source ? `${a.symbol} is a launchpad token: options on it expire within 24 hours.` : 'Expiry must be 1 hour to 90 days away.')
@@ -140,7 +140,7 @@ export default function SellPage() {
           <Field label="Token">
             <TokenPicker assets={assets} value={a?.symbol ?? ''} onChange={(sym) => { setSymbol(sym); setStrikePer(''); setPremium('') }} />
             <Hint>
-              {a?.spotEth ? <>Spot ≈ {a.spotEth.toPrecision(3)} ETH. </> : null}
+              {a?.spotEth ? <>Spot ≈ {a.spotEth.toPrecision(3)} {GAS_SYMBOL}. </> : null}
               {myTokens !== undefined && <>You hold {num(myTokens, 4)} {a?.symbol}. </>}
               Only listed tokens can be used.
             </Hint>
@@ -178,13 +178,13 @@ export default function SellPage() {
             </Field>
           </div>
 
-          <Field label="Premium (total, ETH)">
+          <Field label={`Premium (total, ${GAS_SYMBOL})`}>
             <input className="input" inputMode="decimal" placeholder={defaultPremium ? defaultPremium.toPrecision(3) : '0.01'} value={premium} onChange={(e) => setPremium(e.target.value)} />
             <Hint>
               {suggested <= 0
                 ? 'Set the price a buyer pays you up front.'
                 : suggested < LIMITS.minPremiumEth
-                  ? <>Black-Scholes suggests {eth(suggested, 6)} ({num((a?.vol ?? 0) * 100, 0)}% vol), below the {LIMITS.minPremiumEth} ETH minimum, so the minimum is used.</>
+                  ? <>Black-Scholes suggests {eth(suggested, 6)} ({num((a?.vol ?? 0) * 100, 0)}% vol), below the {LIMITS.minPremiumEth} {GAS_SYMBOL} minimum, so the minimum is used.</>
                   : <>Suggested {eth(suggested, 6)} (Black-Scholes, {num((a?.vol ?? 0) * 100, 0)}% vol). A hint only.</>}
             </Hint>
           </Field>
@@ -226,7 +226,7 @@ export default function SellPage() {
               ? 'If the price ends above your strike, the buyer will likely exercise and you sell your tokens at the strike. You keep the premium either way.'
               : 'If the price ends below your strike, the buyer will likely exercise and you buy their tokens at the strike. You keep the premium either way.'}
           </Note>
-          <Note>Payouts arrive as WETH. Unwrap to ETH on the Positions page.</Note>
+          <Note>Payouts arrive as W{GAS_SYMBOL}. Unwrap to {GAS_SYMBOL} on the Positions page.</Note>
         </aside>
       </div>
       <TxStatus state={tx.state} onClose={tx.reset} />

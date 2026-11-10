@@ -2,7 +2,7 @@
 
 import { X } from '@phosphor-icons/react'
 import { useAccount } from 'wagmi'
-import { contracts, contractsLive, marketsFor } from '@/lib/chains'
+import { contracts, contractsLive, marketsFor, GAS_SYMBOL } from '@/lib/chains'
 import { FEES } from '@/lib/config'
 import { useLive, type Offer } from '@/lib/data'
 import { date, eth, num } from '@/lib/format'
@@ -63,7 +63,7 @@ export function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => voi
           <Row k="Of which protocol fee" v={eth(fee, 6)} />
           <Row k={offer.kind === 'call' ? 'To exercise you pay' : 'On exercise you receive'} v={eth(offer.strike)} />
           <Row k={offer.kind === 'call' ? 'On exercise you receive' : 'To exercise you deliver'} v={`${num(offer.amount, 4)} ${offer.symbol}`} />
-          <Row k="Break-even per token" v={`${breakEvenPer.toPrecision(3)} ETH`} />
+          <Row k="Break-even per token" v={`${breakEvenPer.toPrecision(3)} ${GAS_SYMBOL}`} />
           <Row k="Expires" v={date(offer.expiry)} />
           <Row k="Fill by" v={date(offer.offerDeadline)} />
         </dl>

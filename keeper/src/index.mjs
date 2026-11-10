@@ -136,6 +136,8 @@ async function jobSplit() {
 async function jobBuyback() {
   const b = dep.buybackBurner
   if (!b) return
+  // Chains without $KYTE (Elysium, docs/ELYSIUM.md): the buyback share sits in a RewardSink, nothing to buy or burn.
+  if (dep.rewardSink && getAddress(dep.rewardSink) === getAddress(b)) return
   const [bal, adapter, maxPerCall, keeper, paused] = await Promise.all([
     pub.readContract({ address: dep.weth, abi: ABI.erc20, functionName: 'balanceOf', args: [b] }),
     pub.readContract({ address: b, abi: ABI.burner, functionName: 'adapter' }),

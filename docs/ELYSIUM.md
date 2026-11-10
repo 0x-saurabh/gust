@@ -106,6 +106,22 @@ Total: about two weeks of work for one person, with option (b) for the token.
 - **Builder share.** It is a revenue share, not a grant. Ask Kinetiq what counts as "blockspace demand" and how it
   is paid out before planning rewards around it.
 
+## Status 10 Nov 2026: live on chain, Render pending
+
+Deployed and wired through the timelock (all 11 operations executed): FeeVault → RewardSink/RewardSink/ops Safe,
+routers set, KNTQ, e/acc, AETHER and A/ACC listed with puts. `contracts/deployments/99901.json` is the record.
+Safes: admin `0x5fbdC65cbC8543D79338D4a819628654D72C99BA` (2/3), guardian `0x194b9b6F88de75DdB2d5a6F3e55F4Fd04A950e41`
+(1/3), ops `0xc7f8c6063566eaE898b102CF24b701e8a75e421e` (2/3). Timelock `0x9F2870E6B0A32546CE6A196a52c88249442FA4A6`
+(10 min). Deployer `0xBeeda2b3Ca61F39bc597Ea056D68268b81cc3323`, keeper `0x377E…bBd4E` funded with HYPE.
+Indexer smoke-tested locally against Elysium (prices from DexScreener in HYPE, stats, options). Code: chain-aware
+quote asset (HYPE/USD), DexScreener `elysium`, RewardSink-aware stats/stake routes and keeper buyback, header chain
+toggle, gas-symbol copy on the trading pages, `render.yaml` services `kyte-indexer-elysium` and `kyte-web-elysium`.
+
+Left: Render Blueprint sync to create the two services and fill the secrets (Privy app id, AI gateway key),
+hand-made worker `kyte-keeper-elysium` (CHAIN_ID=99901, KEEPER_PRIVATE_KEY, RPC_URL), DNS `elysium.kyte.sh` CNAME to
+the web service, contract verification (Sourcify has no 99901 yet), remaining "ETH" copy on docs/agent pages, seed
+offers, Kinetiq outreach.
+
 ## Mainnet launch runbook (built 10 Nov 2026, user chose to go straight to mainnet)
 
 Code: `contracts/src/RewardSink.sol` (holds the staker and buyback shares until $KYTE is on Elysium; timelock

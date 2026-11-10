@@ -8,7 +8,7 @@ import { SessionBadge } from '@/components/SessionBadge'
 import { TimeLeft } from '@/components/TimeLeft'
 import { TxStatus } from '@/components/TxStatus'
 import { KindBadge, Note, PageHeader, Segmented } from '@/components/ui'
-import { contracts, marketsFor } from '@/lib/chains'
+import { contracts, marketsFor, GAS_SYMBOL } from '@/lib/chains'
 import { useBalances, useLive, usePositions, usePrices, type Offer } from '@/lib/data'
 import { eth, num } from '@/lib/format'
 import { ABIS } from '@/lib/generated/abis'
@@ -55,7 +55,7 @@ export default function PositionsPage() {
     if (!client || !address) return
     const wei = await client.readContract({ address: contracts.weth!, abi: ABIS.ERC20, functionName: 'balanceOf', args: [address] })
     if (wei === 0n) return
-    return tx.run([{ label: `Unwrap ${eth(balances.data?.weth ?? 0)} WETH to ETH`, address: contracts.weth!, abi: ABIS.WETH, functionName: 'withdraw', args: [wei] }])
+    return tx.run([{ label: `Unwrap ${eth(balances.data?.weth ?? 0)} W${GAS_SYMBOL} to ${GAS_SYMBOL}`, address: contracts.weth!, abi: ABIS.WETH, functionName: 'withdraw', args: [wei] }])
   }
 
   return (
@@ -73,7 +73,7 @@ export default function PositionsPage() {
               <div><div className="label">ETH</div><div className="mt-1 font-mono text-xl font-semibold tabular">{eth(balances.data?.eth ?? 0)}</div></div>
               <div><div className="label">WETH (payouts)</div><div className="mt-1 font-mono text-xl font-semibold tabular">{eth(balances.data?.weth ?? 0)}</div></div>
             </div>
-            <button className="btn btn-ghost" disabled={!live || tx.busy || !(balances.data?.weth ?? 0)} onClick={unwrap}>Unwrap WETH → ETH</button>
+            <button className="btn btn-ghost" disabled={!live || tx.busy || !(balances.data?.weth ?? 0)} onClick={unwrap}>Unwrap W{GAS_SYMBOL} → {GAS_SYMBOL}</button>
           </div>
 
           <div className="card divide-y divide-line">

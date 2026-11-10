@@ -1,5 +1,7 @@
 'use client'
 
+import { GAS_SYMBOL } from '@/lib/chains'
+
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { BuyDialog } from '@/components/BuyDialog'
@@ -90,7 +92,7 @@ export default function MarketPage() {
             <Segmented value={active.slice(0, 6).includes(symbol) ? symbol : ''} onChange={setSymbol} options={active.slice(0, 6).map((s) => ({ value: s, label: s }))} />
           )}
           <div className="flex items-baseline gap-3 font-mono text-sm">
-            <span className="text-xl text-ink tabular">{quote ? `${quote.price.toPrecision(4)} ETH` : asset?.spotEth ? `${asset.spotEth.toPrecision(4)} ETH` : '…'}</span>
+            <span className="text-xl text-ink tabular">{quote ? `${quote.price.toPrecision(4)} ${GAS_SYMBOL}` : asset?.spotEth ? `${asset.spotEth.toPrecision(4)} ETH` : '…'}</span>
             {quote && <span className={quote.change1h >= 0 ? 'text-accent' : 'text-danger'}>{quote.change1h >= 0 ? '+' : ''}{(quote.change1h * 100).toFixed(2)}% 1h</span>}
             {quote && <span className="text-[10px] uppercase tracking-wider text-muted">{quote.source === 'robinhood' ? 'Robinhood quote' : quote.source === 'dexscreener' ? 'DEX price' : 'Uniswap v4'}</span>}
             <SessionBadge session={quote?.session} />
@@ -133,7 +135,7 @@ export default function MarketPage() {
                     <span className="inline-flex items-center gap-2"><TokenLogo symbol={o.symbol} name={asset?.name} address={o.token} size={18} />{o.symbol}</span>
                   </td>
                   <td className="px-4 py-4 tabular">{num(o.amount, 4)}</td>
-                  <td className="px-4 py-4 font-mono tabular">{strikePer.toPrecision(3)} ETH{o.belowFloor && <span className="ml-2 rounded-full border border-danger/40 px-1.5 py-0.5 font-sans text-[10px] uppercase tracking-wider text-danger" title="This put is struck at or below the FOBO floor. The floor buys every token above that price, so the put can never finish in the money.">below floor</span>}</td>
+                  <td className="px-4 py-4 font-mono tabular">{strikePer.toPrecision(3)} {GAS_SYMBOL}{o.belowFloor && <span className="ml-2 rounded-full border border-danger/40 px-1.5 py-0.5 font-sans text-[10px] uppercase tracking-wider text-danger" title="This put is struck at or below the FOBO floor. The floor buys every token above that price, so the put can never finish in the money.">below floor</span>}</td>
                   <td className={`px-4 py-4 font-mono tabular ${vs === null ? 'text-faint' : vs >= 0 ? 'text-accent' : 'text-danger'}`}>{vs === null ? '–' : `${vs >= 0 ? '+' : ''}${vs.toFixed(0)}%`}</td>
                   <td className="px-4 py-4 font-mono tabular font-medium">{eth(o.premium)}</td>
                   <td className="px-4 py-4"><TimeLeft at={o.expiry} /></td>

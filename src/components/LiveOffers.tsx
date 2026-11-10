@@ -4,7 +4,7 @@ import { ArrowRight, CaretDown } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
 import { Fragment, memo, useEffect, useMemo, useState } from 'react'
-import { chain, isDevnet } from '@/lib/chains'
+import { chain, isDevnet, GAS_SYMBOL } from '@/lib/chains'
 import { FEES } from '@/lib/config'
 import { isFillable, useAssets, useCandles, useOffers, usePrices, type Offer } from '@/lib/data'
 import { eth, num, shortAddr, timeLeft } from '@/lib/format'
@@ -88,7 +88,7 @@ export function LiveOffers({ limit = 6 }: { limit?: number }) {
                     </span>
                   </td>
                   <td className="px-5 py-3 font-mono tabular text-muted">{num(o.amount, 4)}</td>
-                  <td className="px-5 py-3 font-mono tabular">{strikePer.toPrecision(3)} ETH</td>
+                  <td className="px-5 py-3 font-mono tabular">{strikePer.toPrecision(3)} {GAS_SYMBOL}</td>
                   <td className="px-5 py-3">
                     {vs === null ? <span className="text-faint">–</span> : (
                       <span className="inline-flex items-center gap-2">
@@ -162,8 +162,8 @@ function Expanded({ open, offer, spot, breakEven }: { open: boolean; offer: Offe
                 {[
                   ['Seller', shortAddr(offer.seller)],
                   ['Collateral', offer.kind === 'call' ? `${num(offer.amount, 4)} ${offer.symbol} in escrow` : `${eth(offer.strike)} in escrow`],
-                  ['Break even / token', `${breakEven.toPrecision(3)} ETH`],
-                  ['Spot now', spot ? `${spot.toPrecision(3)} ETH` : '–'],
+                  ['Break even / token', `${breakEven.toPrecision(3)} ${GAS_SYMBOL}`],
+                  ['Spot now', spot ? `${spot.toPrecision(3)} ${GAS_SYMBOL}` : '–'],
                   ['Protocol fee', `${eth(fee, 5)} (${FEES.premiumBps / 100}%)`],
                 ].map(([k, v]) => (
                   <div key={k}><div className="label">{k}</div><div className="mt-1 font-mono text-ink">{v}</div></div>

@@ -64,6 +64,8 @@ const A = Object.fromEntries(
 )
 // Listings come from the newest registry; older registries' AssetAdded/Enabled events are ignored.
 const REG = A.registry3 ?? A.registry2 ?? A.registry
+// The staking pool, or null when the pool slot holds a RewardSink (chains without $KYTE, docs/ELYSIUM.md).
+const POOL = A.pool && !(dep.rewardSink && getAddress(dep.rewardSink) === A.pool) ? A.pool : null
 const V2 = new Set([A.calls2, A.puts2, A.nft2, A.registry2].filter(Boolean))
 const V3 = new Set([A.calls3, A.puts3, A.nft3, A.registry3].filter(Boolean))
 const NFTS = new Set([A.nft, A.nft2, A.nft3].filter(Boolean))
@@ -381,16 +383,21 @@ async function fetchJson(url) {
   if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`)
   return r.json()
 }
+// The quote asset's USD price: ETH on Robinhood Chain, HYPE on Elysium (99901/99801), docs/ELYSIUM.md.
+const QUOTE_TICKER = CHAIN_ID === 99901 || CHAIN_ID === 99801 ? 'HYPE' : 'ETH'
+// DexScreener chain slug for token prices without a pool of ours.
+const DEXSCREENER_CHAIN = { 4663: 'robinhood', 99901: 'elysium' }[CHAIN_ID]
 async function ethUsd() {
-  try { return Number((await fetchJson('https://api.coinbase.com/v2/prices/ETH-USD/spot')).data.amount) } catch {}
-  const k = await fetchJson('https://api.kraken.com/0/public/Ticker?pair=ETHUSD')
+  try { return Number((await fetchJson(`https://api.coinbase.com/v2/prices/${QUOTE_TICKER}-USD/spot`)).data.amount) } catch {}
+  const k = await fetchJson(`https://api.kraken.com/0/public/Ticker?pair=${QUOTE_TICKER}USD`)
   return Number(Object.values(k.result)[0].c[0])
 }
 async function pollQuotes() {
   const pooled = new Set(Object.values(POOLS).map((p) => p.symbol))
   const assets = all('SELECT address, symbol FROM assets').filter((a) => !pooled.has(a.symbol))
   if (!assets.length) return
-  const [{ quotes }, usd] = await Promise.all([fetchJson(QUOTES_URL), ethUsd()])
+  // Robinhood's stock-token quote feed only applies to Robinhood Chain; elsewhere every token goes to DexScreener.
+  const [{ quotes }, usd] = await Promise.all([CHAIN_ID === 4663 ? fetchJson(QUOTES_URL) : Promise.resolve({ quotes: [] }), ethUsd()])
   if (!(usd > 0)) return
   const byAddr = new Map(), bySym = new Map()
   for (const qt of quotes ?? []) {
@@ -410,10 +417,10 @@ async function pollQuotes() {
     q.upsertPrice.run(`q:${a.symbol}:${now}`, a.symbol, 0, now, usdPrice / usd, 0, null)
   }
   // Crypto tokens without a pool of ours (any DEX, any pair): DexScreener's price from the token's deepest pair.
-  for (let i = 0; i < rest.length && CHAIN_ID === 4663; i += 30) {
+  for (let i = 0; i < rest.length && DEXSCREENER_CHAIN; i += 30) {
     const chunk = rest.slice(i, i + 30)
     let pairs = []
-    try { pairs = await fetchJson(`https://api.dexscreener.com/tokens/v1/robinhood/${chunk.map((a) => a.address).join(',')}`) } catch (e) { console.error('[indexer] dexscreener:', e.message); continue }
+    try { pairs = await fetchJson(`https://api.dexscreener.com/tokens/v1/${DEXSCREENER_CHAIN}/${chunk.map((a) => a.address).join(',')}`) } catch (e) { console.error('[indexer] dexscreener:', e.message); continue }
     const best = new Map()
     for (const p of Array.isArray(pairs) ? pairs : []) {
       const k = p.baseToken?.address?.toLowerCase()
@@ -642,7 +649,8 @@ const routes = {
     const settled = offers.filter((o) => ['filled', 'exercised', 'expired'].includes(o.status))
     const proof = await routes['/proof']()
     let staked = 0
-    if (A.pool) {
+    // A RewardSink in the pool slot (chains without $KYTE, docs/ELYSIUM.md) has no stake to read.
+    if (POOL) {
       const [a, p] = await Promise.all([
         client.readContract({ address: A.pool, abi: ABI.pool, functionName: 'activeSupply' }),
         client.readContract({ address: A.pool, abi: ABI.pool, functionName: 'pendingSupply' }),
@@ -760,7 +768,7 @@ function overLimit(req) {
 }
 
 const stakeOf = cached(4_000, async (addr) => {
-  const r = (fn, args) => client.readContract({ address: A.pool, abi: ABI.pool, functionName: fn, args })
+  const r = (fn, args) => client.readContract({ address: POOL, abi: ABI.pool, functionName: fn, args })
   const [[active, pending], claimable, epoch, ends, minClaim, totalActive, totalPending] = await Promise.all([
     r('balancesOf', [addr]), r('pendingRewards', [addr]), r('currentEpoch'), r('epochEndsAt'), r('minClaim'), r('activeSupply'), r('pendingSupply'),
   ])
@@ -813,7 +821,7 @@ console.log(`[rewards] scoring epochs${dep.usdgRewards ? `, publishing to ${dep.
 
 // ---- Staker share: a daily USDG pool split over active KYTE stake, paid wallet to wallet by the keeper from the
 // treasury payout wallet; /staker-share, /staker-share/epoch/<n>, /staker-share/<address>, POST /staker-share/paid. docs/STAKER_USDG_SHARE.md
-const stakerShare = installStakerShare({ db, all, client, pool: A.pool ?? null, poolAbi: ABI.pool, chainNow: () => chainNow })
+const stakerShare = installStakerShare({ db, all, client, pool: POOL, poolAbi: ABI.pool, chainNow: () => chainNow })
 stakerShare.start()
 console.log(`[stakerShare] pool ${process.env.STAKER_SHARE_POOL_USDG || '0'} USDG/epoch${process.env.STAKER_SHARE_KEEPER_TOKEN ? '' : ' (no STAKER_SHARE_KEEPER_TOKEN: payouts cannot be recorded)'}`)
 
@@ -894,7 +902,7 @@ const server = http.createServer(async (req, res) => {
         history: all('SELECT * FROM offers WHERE (seller = ? OR holder = ?) AND status IN (?, ?, ?) ORDER BY updated_block DESC LIMIT 50', addr, addr, 'exercised', 'expired', 'cancelled').map(offerOut),
       }
     } else if (m?.[1] === 'stake') {
-      if (!A.pool) return send(res, 404, { error: 'no staking pool' })
+      if (!POOL) return send(res, 404, { error: 'no staking pool' })
       const addr = addressParam(m[2])
       body = await stakeOf(addr, addr)
     } else return send(res, 404, { error: 'not found' })

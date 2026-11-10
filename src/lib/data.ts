@@ -1,5 +1,7 @@
 'use client'
 
+import { GAS_SYMBOL } from '@/lib/chains'
+
 // One data layer for every page. Order of preference: indexer API (NEXT_PUBLIC_INDEXER_URL) → direct chain
 // reads (events + view calls) → demo data (NEXT_PUBLIC_DEMO=1 or no contracts deployed).
 import { registerTokenLogos } from '@/lib/token-logos'
@@ -467,7 +469,7 @@ export function useActivity(limit = 30, symbol?: string) {
         const now = Math.floor(Date.now() / 1000)
         return demo.OFFERS.filter((o) => !symbol || o.symbol === symbol).slice(0, limit).map((o, i) => ({
           key: `demo-${o.id}`, name: 'OfferCreated', at: now - i * 137, tx: '0x' + String(o.id).padStart(64, '0'), kind: o.kind,
-          text: `New ${o.kind}: ${o.amount.toLocaleString('en-US')} ${o.symbol} @ ${o.strike} ETH`, sub: `premium ${o.premium} ETH`,
+          text: `New ${o.kind}: ${o.amount.toLocaleString('en-US')} ${o.symbol} @ ${o.strike} ${GAS_SYMBOL}`, sub: `premium ${o.premium} ${GAS_SYMBOL}`,
           id: String(o.id), symbol: o.symbol, amount: o.amount, strike: o.strike, premium: o.premium, seller: o.seller, actor: o.seller,
         }))
       }
