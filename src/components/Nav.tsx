@@ -53,7 +53,6 @@ export function Nav() {
             <Logo size={20} />
             {isDevnet && <span className="ml-1 rounded-full border border-accent/30 px-2 py-0.5 font-mono text-xs uppercase tracking-wider text-accent">devnet</span>}
           </Link>
-          <span className="hidden shrink-0 md:inline-flex"><ChainSwitch /></span>
           <div className="no-scrollbar hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-x-auto xl:flex">
             {LINKS.map((l) => {
               const active = path === l.href
@@ -71,6 +70,7 @@ export function Nav() {
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <span className="hidden xl:inline-flex"><Faucet /></span>
+            <ChainSwitch />
             <ConnectButton />
             <button
               type="button"
@@ -110,7 +110,6 @@ export function Nav() {
                 </motion.li>
               ))}
               <motion.li initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE, delay: 0.4 }} className="flex flex-wrap items-center gap-4 pt-6 sm:col-span-2">
-                <ChainSwitch size="lg" />
                 <Faucet />
               </motion.li>
             </ul>
