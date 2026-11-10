@@ -106,6 +106,29 @@ Total: about two weeks of work for one person, with option (b) for the token.
 - **Builder share.** It is a revenue share, not a grant. Ask Kinetiq what counts as "blockspace demand" and how it
   is paid out before planning rewards around it.
 
+## Mainnet launch runbook (built 10 Nov 2026, user chose to go straight to mainnet)
+
+Code: `contracts/src/RewardSink.sol` (holds the staker and buyback shares until $KYTE is on Elysium; timelock
+withdraws), `contracts/script/DeployElysium.s.sol` (timelock, registry, NFT, FeeVault, markets, Router, RewardSink;
+no StakingPool/Burner/Hook), `CreateSafes.s.sol` now accepts Safe v1.3.0 addresses via env (Elysium has no v1.4.1),
+`scripts/mainnet/elysium.sh` + `elysium.env.example`. Simulation against the Elysium RPC succeeds, about 13.7M gas.
+
+In the Terminal app (keystore passwords), after bridging HYPE to the deployer wallet:
+
+```bash
+cp scripts/mainnet/elysium.env.example scripts/mainnet/elysium.env
+scripts/mainnet/elysium.sh safes    # 3 Safes (same owners as Robinhood Chain), written into elysium.env
+scripts/mainnet/elysium.sh deploy   # writes contracts/deployments/99901.json
+scripts/mainnet/elysium.sh plan     # timelock plan: setDestinations(sink, sink, ops), setRouter x2, addAsset x4 (+puts)
+scripts/mainnet/elysium.sh wire     # schedule from the admin Safe, wait 10 min, execute (owner1, owner2, deployer passwords)
+scripts/mainnet/elysium.sh sync     # ABIs + addresses into src/lib/generated; then commit + push
+```
+
+Then Render: `kyte-indexer-elysium` (pserv, `CHAIN_ID=99901`, `RPC_URL`, `START_BLOCK` = deployBlock, no Harmonic,
+no Robinhood quotes), `kyte-keeper-elysium` (worker, same `KEEPER_PRIVATE_KEY`, wallet funded with HYPE),
+`kyte-web-elysium` (`NEXT_PUBLIC_CHAIN_ID=99901`, `NEXT_PUBLIC_INDEXER_URL` of the new indexer, domain
+`elysium.kyte.sh`). Verification: Sourcify has no 99901 entry yet; ask Kinetiq which verifier the explorer uses.
+
 ## Sequence
 
 1. **Reach out (this week).** Email or DM Kinetiq (@Enter_Elysium, @kinetiq_xyz) from the Kyte account: options venue

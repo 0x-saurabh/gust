@@ -12,7 +12,7 @@ const ops = dep.opsSafe || envFile.OPS_SAFE
 const timelock = dep.timelock || envFile.TIMELOCK
 if (!timelock) { console.error(`no timelock in contracts/deployments/${CHAIN_ID}.json (devnet has none: its admin is a plain account). Set TIMELOCK in scripts/mainnet/.env or run Deploy.s.sol first.`); process.exit(1) }
 // Schedule with the timelock's real minimum delay (read on chain), so a short-delay timelock isn't scheduled for 48 h.
-const RPCS = { 4663: 'https://rpc.mainnet.chain.robinhood.com', 46630: 'https://rpc.testnet.chain.robinhood.com', 31337: 'http://127.0.0.1:8547' }
+const RPCS = { 4663: 'https://rpc.mainnet.chain.robinhood.com', 46630: 'https://rpc.testnet.chain.robinhood.com', 31337: 'http://127.0.0.1:8547', 99901: 'https://rpc.elysium.kinetiq.xyz', 99801: 'https://testnet-rpc.elysium.kinetiq.xyz' }
 const rpc = process.env.RPC_URL?.startsWith('http') ? process.env.RPC_URL : RPCS[CHAIN_ID]
 let delay = Number(envFile.TIMELOCK_DELAY || 172800)
 try {
@@ -42,7 +42,7 @@ const calls = [
 if (dep.swapAdapter && dep.swapAdapter !== '0x0000000000000000000000000000000000000000') {
   calls.push(['BuybackBurner.setAdapter', dep.buybackBurner, encodeFunctionData({ abi, functionName: 'setAdapter', args: [dep.swapAdapter] })])
   calls.push(['BuybackBurner.setBounds', dep.buybackBurner, encodeFunctionData({ abi, functionName: 'setBounds', args: [BigInt(maxPerCall), BigInt(slippageBps)] })])
-} else console.error('note: no swapAdapter in the deployment file yet; run scripts/mainnet/deploy.sh adapter, then re-run this')
+} else if (!dep.rewardSink) console.error('note: no swapAdapter in the deployment file yet; run scripts/mainnet/deploy.sh adapter, then re-run this')
 for (const a of (process.env.ASSETS || '').split(',').filter(Boolean)) {
   const [token, cap, minStrike, puts] = a.split(':')
   calls.push([`AssetRegistry.addAsset ${token}`, dep.assetRegistry, encodeFunctionData({ abi, functionName: 'addAsset', args: [token, BigInt(cap), BigInt(minStrike)] })])

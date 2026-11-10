@@ -30,12 +30,17 @@ interface ISafe {
 }
 
 contract CreateSafes is Script {
-    address internal constant SAFE_L2 = 0x29fcB43b46531BcA003ddC8FCB67FFE91900C762; // v1.4.1
-    address internal constant FACTORY = 0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67; // v1.4.1
-    address internal constant FALLBACK = 0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99; // CompatibilityFallbackHandler
+    address internal constant SAFE_L2_141 = 0x29fcB43b46531BcA003ddC8FCB67FFE91900C762; // v1.4.1
+    address internal constant FACTORY_141 = 0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67; // v1.4.1
+    address internal constant FALLBACK_141 = 0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99; // CompatibilityFallbackHandler
+    // Chains that only carry Safe v1.3.0 at its canonical addresses (Elysium 99901, docs/ELYSIUM.md) set
+    // SAFE_SINGLETON / SAFE_FACTORY / SAFE_FALLBACK in env; `setup` has the same signature in both versions.
+    address internal SAFE_L2 = vm.envOr("SAFE_SINGLETON", SAFE_L2_141);
+    address internal FACTORY = vm.envOr("SAFE_FACTORY", FACTORY_141);
+    address internal FALLBACK = vm.envOr("SAFE_FALLBACK", FALLBACK_141);
 
     function run() external {
-        require(SAFE_L2.code.length > 0 && FACTORY.code.length > 0, "Safe v1.4.1 is not deployed on this chain");
+        require(SAFE_L2.code.length > 0 && FACTORY.code.length > 0, "Safe singleton/factory not deployed on this chain");
         address[] memory owners = vm.envAddress("SAFE_OWNERS", ",");
         require(owners.length > 0, "SAFE_OWNERS is empty");
         uint256 adminThreshold = vm.envOr("ADMIN_THRESHOLD", uint256(2));
