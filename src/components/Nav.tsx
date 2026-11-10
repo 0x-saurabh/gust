@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { isDevnet } from '@/lib/chains'
 import { AUTOPILOT_ENABLED, LAUNCHPAD_ENABLED, MCP_ENABLED, REWARDS_ENABLED, BRAND } from '@/lib/config'
+import { ChainSwitch } from './ChainSwitch'
 import { ConnectButton } from './ConnectButton'
 import { Faucet } from './Faucet'
 import { Logo } from './Logo'
@@ -52,6 +53,7 @@ export function Nav() {
             <Logo size={20} />
             {isDevnet && <span className="ml-1 rounded-full border border-accent/30 px-2 py-0.5 font-mono text-xs uppercase tracking-wider text-accent">devnet</span>}
           </Link>
+          <span className="hidden shrink-0 md:inline-flex"><ChainSwitch /></span>
           <div className="no-scrollbar hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-x-auto xl:flex">
             {LINKS.map((l) => {
               const active = path === l.href
@@ -107,7 +109,8 @@ export function Nav() {
                   </NavLink>
                 </motion.li>
               ))}
-              <motion.li initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE, delay: 0.4 }} className="pt-6 sm:col-span-2">
+              <motion.li initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE, delay: 0.4 }} className="flex flex-wrap items-center gap-4 pt-6 sm:col-span-2">
+                <ChainSwitch size="lg" />
                 <Faucet />
               </motion.li>
             </ul>

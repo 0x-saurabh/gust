@@ -52,6 +52,11 @@ export const isDevnet = chain.id === 31337
 /** The wrapped gas token every premium and put strike is quoted in: WETH on Robinhood Chain, WHYPE on Elysium. */
 export const QUOTE_SYMBOL = chain.id === 99901 || chain.id === 99801 ? 'WHYPE' : 'WETH'
 export const GAS_SYMBOL = chain.nativeCurrency.symbol
+/** Where each chain's Kyte site lives; the header toggle links between them (docs/ELYSIUM.md). */
+export const CHAIN_SITES: Record<number, string> = {
+  4663: process.env.NEXT_PUBLIC_SITE_ROBINHOOD || 'https://kyte.sh',
+  99901: process.env.NEXT_PUBLIC_SITE_ELYSIUM || 'https://elysium.kyte.sh',
+}
 
 export function explorerTx(hash: string): string | undefined {
   const url = chain.blockExplorers?.default.url
