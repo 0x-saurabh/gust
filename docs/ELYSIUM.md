@@ -117,10 +117,15 @@ Indexer smoke-tested locally against Elysium (prices from DexScreener in HYPE, s
 quote asset (HYPE/USD), DexScreener `elysium`, RewardSink-aware stats/stake routes and keeper buyback, header chain
 toggle, gas-symbol copy on the trading pages, `render.yaml` services `kyte-indexer-elysium` and `kyte-web-elysium`.
 
-Left: Render Blueprint sync to create the two services and fill the secrets (Privy app id, AI gateway key),
-hand-made worker `kyte-keeper-elysium` (CHAIN_ID=99901, KEEPER_PRIVATE_KEY, RPC_URL), DNS `elysium.kyte.sh` CNAME to
-the web service, contract verification (Sourcify has no 99901 yet), remaining "ETH" copy on docs/agent pages, seed
-offers, Kinetiq outreach.
+Render (created through the API on 10 Nov 2026 after deleting 18 suspended services to get under the 25-service
+limit): `kyte-indexer-elysium` (srv-dbp9hj7f3r2c73fggoeg, internal `kyte-indexer-elysium:10000`),
+`kyte-web-elysium` (srv-dbp9id88v5cc73djv6fg, https://kyte-web-elysium.onrender.com, custom domain elysium.kyte.sh),
+`kyte-keeper-elysium` (srv-dbp9ie942hec73c0cej0, reads `/etc/secrets/keeper.key`).
+
+Left: upload the keeper secret file `keeper.key` on kyte-keeper-elysium (same key as kyte-keeper-v2), set
+`AI_GATEWAY_API_KEY` on kyte-web-elysium if the agent should work there, Namecheap CNAME `elysium` →
+`kyte-web-elysium.onrender.com`, contract verification (Sourcify has no 99901 yet), remaining "ETH" copy on
+docs/agent pages, seed offers, Kinetiq outreach.
 
 ## Mainnet launch runbook (built 10 Nov 2026, user chose to go straight to mainnet)
 
